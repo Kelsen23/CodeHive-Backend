@@ -1,11 +1,11 @@
-<p align="center">
-  <img src="assets/CodeHive logo.png" alt="CodeHive Logo" width="750"/>
-</p>
-
 <h1 align="center">CodeHive Backend</h1>
 
 <p align="center">
   🚀 Backend service for <b>CodeHive</b> – powering authentication, APIs, caching, and database management.
+</p>
+
+<p align="center">
+  <img src="assets/CodeHive logo.png" alt="CodeHive Logo" width="800"/>
 </p>
 
 ---
