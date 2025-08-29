@@ -8,12 +8,14 @@ This document outlines how to get started, the contribution workflow, and some g
 ## 🚀 Getting Started
 
 1. **Fork the repository** and clone your fork:
+
    ```bash
    git clone https://github.com/Kelsen23/CodeHive-Backend.git
    cd CodeHive-Backend
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
@@ -68,7 +70,6 @@ git push origin feat/user-auth
 
 - Provide a clear description of the change.
 - Reference related issues using Closes #ISSUE_NUMBER.
-
 
 ## Code Guidelines
 
