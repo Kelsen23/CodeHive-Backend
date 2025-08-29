@@ -1,0 +1,38 @@
+{
+  "name": "codehive-backend",
+  "version": "1.0.0",
+  "description": "<h1 align=\"center\">CodeHive Backend</h1>",
+  "homepage": "https://github.com/Kelsen23/CodeHive-Backend#readme",
+  "bugs": {
+    "url": "https://github.com/Kelsen23/CodeHive-Backend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kelsen23/CodeHive-Backend.git"
+  },
+  "license": "MIT",
+  "author": "Kelsen23",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "nodemon",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.9",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.3.0",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}
