@@ -11,11 +11,13 @@
 ---
 
 ## 🛠️ Tech Stack
+
 - **Node.js** + **Express**
 - **PostgreSQL** (users, data storage)
 - **MongoDB** (questions, answers, replies, nested data)
 - **Redis** (caching, sessions, rate limiting)
 - **GraphQL / REST APIs**
+
 ---
 
 ## ⚙️ Setup
@@ -34,14 +36,15 @@ npm run dev
 
 ## 🤝 Contributing
 
-Contributions are welcome!  
+Contributions are welcome!
 
 If you’d like to improve **CodeHive-Backend**, feel free to **fork the repository** and submit a pull request.  
-This project is licensed under the **MIT License**, so you’re free to use, modify, and share it.  
+This project is licensed under the **MIT License**, so you’re free to use, modify, and share it.
 
 Steps to contribute:
-1. Fork the repository  
-2. Create a new branch (`git checkout -b feature-name`)  
-3. Make your changes  
-4. Commit and push (`git commit -m "Add new feature" && git push origin feature-name`)  
-5. Open a Pull Request  
+
+1. Fork the repository
+2. Create a new branch (`git checkout -b feature-name`)
+3. Make your changes
+4. Commit and push (`git commit -m "Add new feature" && git push origin feature-name`)
+5. Open a Pull Request
