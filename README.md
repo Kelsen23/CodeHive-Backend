@@ -24,7 +24,7 @@
 
 ```bash
 # Clone repo
-git clone https://github.com/yourusername/CodeHive-Backend.git
+git clone https://github.com/Kelsen23/CodeHive-Backend.git
 cd CodeHive-Backend
 
 # Install dependencies
