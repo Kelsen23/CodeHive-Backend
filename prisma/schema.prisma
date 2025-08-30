@@ -8,3 +8,35 @@ datasource db {
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
+
+enum Role {
+  ADMIN
+  MOD
+  USER
+}
+
+enum Status {
+  ACTIVE
+  TERMINATED
+}
+
+model User {
+  id                       String    @id @default(uuid())
+  username                 String    @unique @db.VarChar(15)
+  email                    String    @unique @db.VarChar(100)
+  password                 String    @db.VarChar(345)
+  profilePictureUrl        String?
+  profilePictureKey        String?
+  reputationPoints         Int       @default(0)
+  role                     Role      @default(USER)
+  questionsAsked           Int       @default(0)
+  answersGiven             Int       @default(0)
+  bestAnswers              Int       @default(0)
+  status                   Status    @default(ACTIVE)
+  otp                      String?   @db.Char(6)
+  otpExpireAt              DateTime?
+  resetPasswordOtp         String?   @db.Char(6)
+  resetPasswordOtpExpireAt DateTime?
+  isVarified               Boolean   @default(false)
+  createdAt                DateTime  @default(now())
+}
