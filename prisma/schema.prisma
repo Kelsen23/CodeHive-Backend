@@ -40,7 +40,7 @@ model User {
   resetPasswordOtp                  String?      @db.Char(6)
   resetPasswordOtpResendAvailableAt DateTime?
   resetPasswordOtpExpireAt          DateTime?
-  isVarified                        Boolean      @default(false)
+  isVerified                        Boolean      @default(false)
   createdAt                         DateTime     @default(now())
 }
 
