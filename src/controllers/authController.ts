@@ -8,12 +8,13 @@ import asyncHandler from "../middlewares/asyncHandler.js";
 import generateToken from "../utils/generateToken.js";
 import transporter from "../config/nodemailer.js";
 import getDeviceInfo from "../utils/getDeviceInfo.js";
+import generateUniqueUsername from "../utils/generateUniqueUsername.js";
 
 import { verificationHtml } from "../utils/renderTemplate.js";
 
 import { PrismaClient } from "../generated/prisma/index.js";
 
-const prisma = new PrismaClient();
+export const prisma = new PrismaClient();
 
 class HttpError extends Error {
   statusCode: number;
@@ -78,7 +79,7 @@ const register = asyncHandler(async (req: Request, res: Response) => {
     throw new HttpError(`Failed to send verification email: ${error}`, 500);
   }
 
-  res.status(200).json({
+  return res.status(200).json({
     message: "Successfully registered",
     user: {
       username: updatedUser.username,
@@ -102,7 +103,7 @@ const login = asyncHandler(async (req: Request, res: Response) => {
   const isPasswordCorrect = await bcrypt.compare(password, foundUser.password);
   if (!isPasswordCorrect) throw new HttpError("Invalid password", 401);
 
-  res.json({
+  return res.json({
     message: "Successfully logged in",
     user: {
       username: foundUser.username,
@@ -114,4 +115,87 @@ const login = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
-export { register, login };
+const registerOrLogin = asyncHandler(async (req: Request, res: Response) => {
+  const { provider } = req.body;
+
+  if (provider === "google") {
+    const { email, name, picture, email_verified } = req.body;
+
+    if (!email_verified)
+      throw new HttpError("Email not verified, couldn't register", 400);
+
+    const foundUser = await prisma.user.findUnique({ where: { email } });
+
+    if (!foundUser) {
+      const uniqueUsername = await generateUniqueUsername(name);
+
+      const newUser = await prisma.user.create({
+        data: {
+          username: uniqueUsername,
+          email,
+          profilePictureUrl: picture,
+          isVerified: true,
+        },
+      });
+      generateToken(res, newUser.id);
+
+      return res.status(200).json({
+        message: "Successfully registered",
+        user: {
+          username: newUser.username,
+          email: newUser.email,
+        },
+      });
+    } else {
+      if (foundUser.password)
+        throw new HttpError("User is already registered with this email", 400);
+
+      generateToken(res, foundUser.id);
+
+      return res.status(200).json({
+        message: "Successfully logged in",
+        user: {
+          username: foundUser.username,
+          email: foundUser.email,
+        },
+      });
+    }
+  }
+
+  if (provider === "github") {
+    const { name, email, avatar_url } = req.body;
+
+    const foundUser = await prisma.user.findUnique({ where: { email } });
+
+    if (!foundUser) {
+      const uniqueUsername = await generateUniqueUsername(name);
+
+      const newUser = await prisma.user.create({
+        data: {
+          username: uniqueUsername,
+          email,
+          profilePictureUrl: avatar_url,
+        },
+      });
+
+      generateToken(res, newUser.id);
+
+      return res.status(200).json({
+        message: "Successfully registered",
+        user: { username: newUser.username, email: newUser.email },
+      });
+    } else {
+      if (foundUser.password)
+        throw new HttpError("User is already registered with this email", 400);
+
+      generateToken(res, foundUser.id);
+
+      return res.status(200).json({
+        message: "Successfully logged in",
+        user: { username: foundUser.username, email: foundUser.email },
+      });
+    }
+  }
+});
+
+export { register, login, registerOrLogin };
