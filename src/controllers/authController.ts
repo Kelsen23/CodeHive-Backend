@@ -90,4 +90,28 @@ const register = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
-export { register };
+const login = asyncHandler(async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  const foundUser = await prisma.user.findUnique({ where: { email } });
+  if (!foundUser) throw new HttpError("Email not found", 404);
+
+  if (!foundUser.password)
+    throw new HttpError("This account uses Google/GitHub login only", 400);
+
+  const isPasswordCorrect = await bcrypt.compare(password, foundUser.password);
+  if (!isPasswordCorrect) throw new HttpError("Invalid password", 401);
+
+  res.json({
+    message: "Successfully logged in",
+    user: {
+      username: foundUser.username,
+      email: foundUser.email,
+      otpExpireAt: foundUser.otpExpireAt,
+      otpResendAvailableAt: foundUser.otpResendAvailableAt,
+      isVerified: foundUser.isVerified,
+    },
+  });
+});
+
+export { register, login };
