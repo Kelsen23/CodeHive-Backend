@@ -26,6 +26,13 @@ class HttpError extends Error {
   }
 }
 
+interface AuthenticatedRequest extends Request {
+  cookies: {
+    token?: any;
+  };
+  user?: any;
+}
+
 const register = asyncHandler(async (req: Request, res: Response) => {
   const { username, email, password } = req.body;
 
@@ -198,4 +205,41 @@ const registerOrLogin = asyncHandler(async (req: Request, res: Response) => {
   }
 });
 
-export { register, login, registerOrLogin };
+const verifyEmail = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user;
+    const { otp } = req.body;
+
+    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!foundUser) throw new HttpError("User not found", 404);
+
+    if (foundUser.isVerified) throw new HttpError("User already verified", 400);
+
+    if (!foundUser.otpExpireAt || !foundUser.otpResendAvailableAt) {
+      throw new HttpError("OTP not set", 400);
+    }
+
+    if (foundUser.otpExpireAt < new Date(Date.now())) {
+      throw new HttpError("OTP expired", 400);
+    }
+
+    if (foundUser.otp !== otp) throw new HttpError("Invalid OTP", 400);
+
+    const verifiedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { isVerified: true },
+    });
+
+    res.status(200).json({
+      message: "Successfully verified",
+      user: {
+        username: verifiedUser.username,
+        email: verifiedUser.email,
+        isVerified: verifiedUser.isVerified,
+      },
+    });
+  },
+);
+
+export { register, login, registerOrLogin, verifyEmail };
