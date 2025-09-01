@@ -57,7 +57,14 @@ const githubSchema = z.object({
   avatar_url: z.string().url("Invalid picture url"),
 });
 
-export { registerSchema, loginSchema };
+const verifyEmailSchema = z.object({
+  otp: z
+    .string()
+    .max(6, "OTP should be exactly 6 characters")
+    .min(6, "OTP should be exactly 6 characters"),
+});
+
+export { registerSchema, loginSchema, verifyEmailSchema };
 export const oauthSchema = z.discriminatedUnion("provider", [
   googleSchema,
   githubSchema,
