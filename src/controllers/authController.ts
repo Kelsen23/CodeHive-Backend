@@ -10,7 +10,10 @@ import transporter from "../config/nodemailer.js";
 import getDeviceInfo from "../utils/getDeviceInfo.js";
 import generateUniqueUsername from "../utils/generateUniqueUsername.js";
 
-import { verificationHtml } from "../utils/renderTemplate.js";
+import {
+  resetPasswordHtml,
+  verificationHtml,
+} from "../utils/renderTemplate.js";
 
 import { PrismaClient } from "../generated/prisma/index.js";
 
@@ -313,4 +316,194 @@ const resendVerifyEmail = asyncHandler(
   },
 );
 
-export { register, login, registerOrLogin, verifyEmail, resendVerifyEmail };
+const sendResetPasswordEmail = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user;
+
+    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!foundUser) throw new HttpError("User not found", 404);
+
+    const resetPasswordOtp = Math.floor(
+      10000 + Math.random() * 900000,
+    ).toString();
+    const resetPasswordOtpExpireAt = new Date(Date.now() + 2 * 60 * 1000);
+    const resetPasswordOtpResendAvailableAt = new Date(Date.now() + 30 * 1000);
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        resetPasswordOtp,
+        resetPasswordOtpExpireAt,
+        resetPasswordOtpResendAvailableAt,
+      },
+    });
+
+    if (!updatedUser.resetPasswordOtp) throw new HttpError("OTP not set", 400);
+
+    const deviceInfo = getDeviceInfo(req);
+    const deviceName = `${deviceInfo.browser} on ${deviceInfo.os}`;
+
+    const htmlContent = resetPasswordHtml(
+      updatedUser.username,
+      updatedUser.resetPasswordOtp,
+      deviceName,
+      deviceInfo.ip || "Unknown IP",
+    );
+
+    try {
+      await transporter.sendMail({
+        from: `'CodeHive' <${process.env.CODEHIVE_EMAIL}>`,
+        to: updatedUser.email,
+        subject: "Reset Password Request",
+        html: htmlContent,
+        attachments: [
+          {
+            filename: "CodeHive logo.png",
+            path: path.join(process.cwd(), "assets/CodeHive logo.png"),
+            cid: "codehive-logo",
+          },
+        ],
+      });
+    } catch (error) {
+      throw new HttpError(`Failed to send verification email: ${error}`, 500);
+    }
+
+    return res
+      .status(200)
+      .json({ message: "Successfully sent reset password OTP" });
+  },
+);
+
+const resendResetPasswordEmail = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user;
+
+    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!foundUser) throw new HttpError("User not found", 404);
+
+    if (
+      !foundUser.resetPasswordOtp ||
+      !foundUser.resetPasswordOtpExpireAt ||
+      !foundUser.resetPasswordOtpResendAvailableAt
+    )
+      throw new HttpError("Reset password OTP not set", 400);
+
+    if (foundUser.resetPasswordOtpResendAvailableAt > new Date(Date.now()))
+      throw new HttpError(
+        "OTP resend will soon be available, please wait",
+        400,
+      );
+
+    const resetPasswordOtp = Math.floor(
+      10000 + Math.random() * 900000,
+    ).toString();
+    const resetPasswordOtpExpireAt = new Date(Date.now() + 2 * 60 * 1000);
+    const resetPasswordOtpResendAvailableAt = new Date(Date.now() + 30 * 1000);
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        resetPasswordOtp,
+        resetPasswordOtpExpireAt,
+        resetPasswordOtpResendAvailableAt,
+      },
+    });
+
+    if (!updatedUser.resetPasswordOtp) throw new HttpError("OTP not set", 400);
+
+    const deviceInfo = getDeviceInfo(req);
+    const deviceName = `${deviceInfo.browser} on ${deviceInfo.os}`;
+
+    const htmlContent = resetPasswordHtml(
+      updatedUser.username,
+      updatedUser.resetPasswordOtp,
+      deviceName,
+      deviceInfo.ip || "Unknown IP",
+    );
+
+    try {
+      await transporter.sendMail({
+        from: `'CodeHive' <${process.env.CODEHIVE_EMAIL}>`,
+        to: updatedUser.email,
+        subject: "Reset Password Request",
+        html: htmlContent,
+        attachments: [
+          {
+            filename: "CodeHive logo.png",
+            path: path.join(process.cwd(), "assets/CodeHive logo.png"),
+            cid: "codehive-logo",
+          },
+        ],
+      });
+    } catch (error) {
+      throw new HttpError(`Failed to send verification email: ${error}`, 500);
+    }
+
+    return res
+      .status(200)
+      .json({ message: "Successfully sent reset password OTP" });
+  },
+);
+
+const verifyResetPasswordOtp = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user;
+    const { otp } = req.body;
+
+    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!foundUser) throw new HttpError("User not found", 404);
+
+    if (
+      !foundUser.resetPasswordOtp ||
+      !foundUser.resetPasswordOtpExpireAt ||
+      !foundUser.resetPasswordOtpResendAvailableAt
+    )
+      throw new HttpError("Reset password OTP not set", 400);
+
+    if (foundUser.resetPasswordOtpExpireAt < new Date(Date.now()))
+      throw new HttpError("Reset password OTP expired", 400);
+
+    if (foundUser.resetPasswordOtp !== otp)
+      throw new HttpError("Invalid OTP", 400);
+
+    res.status(200).json({ message: "Successfully verified OTP" });
+  },
+);
+
+const resetPassword = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user;
+    const { newPassword } = req.body;
+
+    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!foundUser) throw new HttpError("User not found", 404);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: newPassword,
+        resetPasswordOtp: null,
+        resetPasswordOtpExpireAt: null,
+        resetPasswordOtpResendAvailableAt: null,
+      },
+    });
+
+    res.status(200).json({ message: "Successfully updated your password" });
+  },
+);
+
+export {
+  register,
+  login,
+  registerOrLogin,
+  verifyEmail,
+  resendVerifyEmail,
+  sendResetPasswordEmail,
+  resendResetPasswordEmail,
+  verifyResetPasswordOtp,
+  resetPassword,
+};

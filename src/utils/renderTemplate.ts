@@ -32,4 +32,19 @@ const verificationHtml = (
   });
 };
 
-export { verificationHtml };
+const resetPasswordHtml = (
+  username: string,
+  resetPasswordOtp: string,
+  deviceName: string,
+  deviceIp: string,
+) => {
+  return renderTemplate("resetPassword", {
+    username,
+    resetPasswordOtp,
+    deviceName,
+    ip: deviceIp,
+    year: new Date().getFullYear().toString(),
+  });
+};
+
+export { verificationHtml, resetPasswordHtml };

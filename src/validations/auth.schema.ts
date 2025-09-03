@@ -64,7 +64,14 @@ const verifyEmailSchema = z.object({
     .min(6, "OTP should be exactly 6 characters"),
 });
 
-export { registerSchema, loginSchema, verifyEmailSchema };
+const resetPasswordSchema = z.object({
+  newPassword: z
+    .string()
+    .min(8, "Password must be atleast 8 characters")
+    .max(60, "Password must be at most 60 characters"),
+});
+
+export { registerSchema, loginSchema, verifyEmailSchema, resetPasswordSchema };
 export const oauthSchema = z.discriminatedUnion("provider", [
   googleSchema,
   githubSchema,

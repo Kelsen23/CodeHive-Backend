@@ -4,8 +4,12 @@ import {
   login,
   register,
   registerOrLogin,
+  resendResetPasswordEmail,
   resendVerifyEmail,
+  resetPassword,
+  sendResetPasswordEmail,
   verifyEmail,
+  verifyResetPasswordOtp,
 } from "../controllers/authController.js";
 
 import isAuthenticated from "../middlewares/authMiddleware.js";
@@ -14,6 +18,7 @@ import {
   loginSchema,
   oauthSchema,
   registerSchema,
+  resetPasswordSchema,
   verifyEmailSchema,
 } from "../validations/auth.schema.js";
 
@@ -27,5 +32,16 @@ router
   .route("/verifyEmail")
   .post(isAuthenticated, validate(verifyEmailSchema), verifyEmail);
 router.route("/resendVerifyEmail").post(isAuthenticated, resendVerifyEmail);
+
+router
+  .route("/sendResetPasswordEmail")
+  .post(isAuthenticated, sendResetPasswordEmail);
+router
+  .route("/resendResetPasswordEmail")
+  .post(isAuthenticated, resendResetPasswordEmail);
+router
+  .route("/verifyResetPasswordOtp")
+  .post(isAuthenticated, validate(verifyEmailSchema), verifyResetPasswordOtp);
+router.route("/resetPassword").post(isAuthenticated, validate(resetPasswordSchema), resetPassword)
 
 export default router;
