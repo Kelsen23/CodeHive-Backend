@@ -113,6 +113,8 @@ const login = asyncHandler(async (req: Request, res: Response) => {
   const isPasswordCorrect = await bcrypt.compare(password, foundUser.password);
   if (!isPasswordCorrect) throw new HttpError("Invalid password", 401);
 
+  generateToken(res, foundUser.id);
+
   return res.json({
     message: "Successfully logged in",
     user: {
@@ -185,6 +187,7 @@ const registerOrLogin = asyncHandler(async (req: Request, res: Response) => {
           username: uniqueUsername,
           email,
           profilePictureUrl: avatar_url,
+          isVerified: true,
         },
       });
 
@@ -371,7 +374,7 @@ const sendResetPasswordEmail = asyncHandler(
         ],
       });
     } catch (error) {
-      throw new HttpError(`Failed to send verification email: ${error}`, 500);
+      throw new HttpError(`Failed to send reset password email: ${error}`, 500);
     }
 
     return res
@@ -443,7 +446,7 @@ const resendResetPasswordEmail = asyncHandler(
         ],
       });
     } catch (error) {
-      throw new HttpError(`Failed to send verification email: ${error}`, 500);
+      throw new HttpError(`Failed to send reset password email: ${error}`, 500);
     }
 
     return res
@@ -474,6 +477,11 @@ const verifyResetPasswordOtp = asyncHandler(
     if (foundUser.resetPasswordOtp !== otp)
       throw new HttpError("Invalid OTP", 400);
 
+    await prisma.user.update({
+      where: { id: foundUser.id },
+      data: { resetPasswordOtpVerified: true },
+    });
+
     res.status(200).json({ message: "Successfully verified OTP" });
   },
 );
@@ -487,13 +495,20 @@ const resetPassword = asyncHandler(
 
     if (!foundUser) throw new HttpError("User not found", 404);
 
+    if (!foundUser.resetPasswordOtpVerified)
+      throw new HttpError("OTP not verified", 400);
+
+    const genSalt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, genSalt);
+
     await prisma.user.update({
       where: { id: userId },
       data: {
-        password: newPassword,
+        password: hashedPassword,
         resetPasswordOtp: null,
         resetPasswordOtpExpireAt: null,
         resetPasswordOtpResendAvailableAt: null,
+        resetPasswordOtpVerified: null,
       },
     });
 
