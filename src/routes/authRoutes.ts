@@ -1,7 +1,9 @@
 import express from "express";
 
 import {
+  isAuth,
   login,
+  logout,
   register,
   registerOrLogin,
   resendResetPasswordEmail,
@@ -42,6 +44,12 @@ router
 router
   .route("/verifyResetPasswordOtp")
   .post(isAuthenticated, validate(verifyEmailSchema), verifyResetPasswordOtp);
-router.route("/resetPassword").post(isAuthenticated, validate(resetPasswordSchema), resetPassword)
+router
+  .route("/resetPassword")
+  .post(isAuthenticated, validate(resetPasswordSchema), resetPassword);
+
+router.route("/isAuth").get(isAuthenticated, isAuth);
+
+router.route("/logout").post(isAuthenticated, logout);
 
 export default router;

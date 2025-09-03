@@ -501,6 +501,30 @@ const resetPassword = asyncHandler(
   },
 );
 
+const isAuth = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user;
+
+    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!foundUser) throw new HttpError("User not found", 404);
+
+    return res.status(200).json({
+      message: "Successfully authenticated",
+    });
+  },
+);
+
+const logout = asyncHandler(async (req: Request, res: Response) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+  });
+
+  return res.status(200).json({ message: "Logged Out" });
+});
+
 export {
   register,
   login,
@@ -511,4 +535,6 @@ export {
   resendResetPasswordEmail,
   verifyResetPasswordOtp,
   resetPassword,
+  isAuth,
+  logout,
 };
