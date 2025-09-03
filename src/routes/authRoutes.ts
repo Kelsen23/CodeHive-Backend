@@ -4,6 +4,7 @@ import {
   login,
   register,
   registerOrLogin,
+  resendVerifyEmail,
   verifyEmail,
 } from "../controllers/authController.js";
 
@@ -24,5 +25,6 @@ router.route("/registerOrLogin").post(validate(oauthSchema), registerOrLogin);
 router
   .route("/verifyEmail")
   .post(isAuthenticated, validate(verifyEmailSchema), verifyEmail);
+router.route("/resendVerifyEmail").post(isAuthenticated, resendVerifyEmail);
 
 export default router;
