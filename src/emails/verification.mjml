@@ -1,0 +1,185 @@
+<mjml>
+  <mj-head>
+    <mj-preview>Email Verification Code</mj-preview>
+    <mj-font name="Poppins" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" />
+    <mj-font name="JetBrains Mono" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap" />
+    <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" />
+    <mj-style>
+      .code {
+        font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Courier New', monospace !important;
+        font-size: 42px;
+        font-weight: 800;
+        color: #ffffff !important;
+        letter-spacing: 12px;
+        background: linear-gradient(135deg, #4169E1, #5a7ce6, #6495ED, #4169E1);
+        background-size: 400% 400%;
+        animation: gradientShift 2.8s ease infinite;
+        padding: 28px 50px;
+        border-radius: 20px;
+        display: inline-block;
+        text-align: center;
+        box-shadow:
+          0 12px 32px rgba(65, 105, 225, 0.5),
+          0 0 0 1px rgba(255, 255, 255, 0.15),
+          inset 0 2px 0 rgba(255, 255, 255, 0.25);
+        border: 3px solid rgba(65, 105, 225, 0.4);
+        position: relative;
+        text-shadow: 0 3px 8px rgba(0, 0, 0, 0.8);
+      }
+
+      @keyframes gradientShift {
+        0% {
+          background-position: 0% 50%;
+          box-shadow:
+            0 12px 32px rgba(65, 105, 225, 0.5),
+            0 0 0 1px rgba(255, 255, 255, 0.15),
+            inset 0 2px 0 rgba(255, 255, 255, 0.25);
+        }
+
+        50% {
+          background-position: 100% 50%;
+          box-shadow:
+            0 16px 40px rgba(65, 105, 225, 0.7),
+            0 0 0 1px rgba(255, 255, 255, 0.2),
+            inset 0 2px 0 rgba(255, 255, 255, 0.35);
+        }
+
+        100% {
+          background-position: 0% 50%;
+          box-shadow:
+            0 12px 32px rgba(65, 105, 225, 0.5),
+            0 0 0 1px rgba(255, 255, 255, 0.15),
+            inset 0 2px 0 rgba(255, 255, 255, 0.25);
+        }
+      }
+
+      .code::before {
+        content: '';
+        position: absolute;
+        top: -3px;
+        left: -3px;
+        right: -3px;
+        bottom: -3px;
+        background: linear-gradient(45deg, #4169E1, #6495ED, #4169E1, #6495ED);
+        background-size: 400% 400%;
+        border-radius: 23px;
+        z-index: -1;
+        animation: gradientShift 2.8s ease infinite;
+      }
+
+      .footer {
+        font-family: 'Inter', 'Poppins', Arial, sans-serif;
+        font-size: 13px;
+        color: #8892b0;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+      }
+
+      .highlight {
+        color: #4169E1;
+        font-weight: 700;
+        background: linear-gradient(135deg, #4169E1, #6495ED);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .container {
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+
+      .main-title {
+        font-family: 'Inter', 'Poppins', sans-serif;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        background: linear-gradient(135deg, #4169E1, #6495ED);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-shadow: none;
+      }
+
+      .body-text {
+        font-family: 'Inter', 'Poppins', sans-serif;
+        font-weight: 500;
+        letter-spacing: 0.2px;
+        line-height: 1.6;
+      }
+
+      .warning-text {
+        font-family: 'Inter', 'Poppins', sans-serif;
+        font-weight: 600;
+        letter-spacing: 0.1px;
+      }
+
+      .info-text {
+        font-family: 'Inter', 'Poppins', sans-serif;
+        font-weight: 500;
+        letter-spacing: 0.1px;
+        line-height: 1.5;
+      }
+
+      .expiry-badge {
+        background: linear-gradient(135deg, #1E90FF, #4169E1);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 25px;
+        font-weight: 700;
+        font-size: 14px;
+        display: inline-block;
+        box-shadow: 0 4px 15px rgba(30, 144, 255, 0.3);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+    </mj-style>
+  </mj-head>
+
+  <mj-body background-color="#dce6f1" font-family="Inter, Poppins, Arial, sans-serif">
+    <mj-section background-color="#ffffff" border-radius="20px" padding="50px 25px" css-class="container">
+      <mj-column>
+        <mj-image src="cid:codehive-logo" alt="CodeHive Logo" width="280px" align="center" />
+
+        <mj-text font-size="32px" font-weight="800" align="center" color="#4169E1" padding="30px 0 18px" css-class="main-title">
+          Email Verification
+        </mj-text>
+
+        <mj-divider border-width="4px" border-color="#4169E1" width="100px" />
+
+        <mj-text font-size="20px" color="#2d3748" padding="25px 0 12px" css-class="body-text">
+          Hi <span class="highlight">{{username}}</span>,
+        </mj-text>
+
+        <mj-text font-size="16px" color="#4a5568" padding="8px 0 25px" css-class="body-text">
+          Your verification code is:
+        </mj-text>
+
+        <mj-text align="center" css-class="code" color="#ffffff">
+          {{otp}}
+        </mj-text>
+
+        <mj-text font-size="15px" color="#4a5568" padding="30px 0 8px" css-class="info-text">
+          This login attempt was made from: <strong>{{deviceName}}</strong><br />
+          IP Address: <strong>{{ip}}</strong>
+        </mj-text>
+
+        <mj-text font-size="15px" color="#dc3545" padding="15px 0" css-class="warning-text">
+          If this wasn't you, please secure your account immediately.
+        </mj-text>
+
+        <mj-text align="center" padding="10px 0">
+          <span class="expiry-badge">Code expires in 2 minutes</span>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section padding="25px 0">
+      <mj-column>
+        <mj-text align="center" css-class="footer">
+          © {{year}} CodeHive. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

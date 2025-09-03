@@ -24,7 +24,7 @@ model User {
   id                                String       @id @default(uuid())
   username                          String       @unique @db.VarChar(15)
   email                             String       @unique @db.VarChar(345)
-  password                          String       @db.VarChar(60)
+  password                          String?      @db.VarChar(60)
   profilePictureUrl                 String?
   profilePictureKey                 String?
   reputationPoints                  Int          @default(0)
@@ -38,9 +38,10 @@ model User {
   otpResendAvailableAt              DateTime?
   otpExpireAt                       DateTime?
   resetPasswordOtp                  String?      @db.Char(6)
+  resetPasswordOtpVerified          Boolean?
   resetPasswordOtpResendAvailableAt DateTime?
   resetPasswordOtpExpireAt          DateTime?
-  isVarified                        Boolean      @default(false)
+  isVerified                        Boolean      @default(false)
   createdAt                         DateTime     @default(now())
 }
 

@@ -28,4 +28,51 @@ const loginSchema = z.object({
     .max(60, "Password must be at most 60 characters"),
 });
 
-export { registerSchema, loginSchema };
+const googleSchema = z.object({
+  provider: z.literal("google"),
+  email: z
+    .string()
+    .email("Invalid email address")
+    .min(5, "Email must be at least 5 characters")
+    .max(345, "Email must be at most 345 characters"),
+  name: z
+    .string()
+    .min(3, "Username must be atleast 3 characters")
+    .max(15, "Username must be at most 15 characters"),
+  picture: z.string().url("Invalid picture url"),
+  email_verified: z.boolean(),
+});
+
+const githubSchema = z.object({
+  provider: z.literal("github"),
+  email: z
+    .string()
+    .email("Invalid email address")
+    .min(5, "Email must be at least 5 characters")
+    .max(345, "Email must be at most 345 characters"),
+  name: z
+    .string()
+    .min(3, "Username must be atleast 3 characters")
+    .max(15, "Username must be at most 15 characters"),
+  avatar_url: z.string().url("Invalid picture url"),
+});
+
+const verifyEmailSchema = z.object({
+  otp: z
+    .string()
+    .max(6, "OTP should be exactly 6 characters")
+    .min(6, "OTP should be exactly 6 characters"),
+});
+
+const resetPasswordSchema = z.object({
+  newPassword: z
+    .string()
+    .min(8, "Password must be atleast 8 characters")
+    .max(60, "Password must be at most 60 characters"),
+});
+
+export { registerSchema, loginSchema, verifyEmailSchema, resetPasswordSchema };
+export const oauthSchema = z.discriminatedUnion("provider", [
+  googleSchema,
+  githubSchema,
+]);

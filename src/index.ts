@@ -4,6 +4,10 @@ import http from "http";
 
 import express from "express";
 
+import authRouter from "./routes/authRoutes.js";
+
+import cookieParser from "cookie-parser";
+
 import connectMongoDB from "./config/mongoDB.js";
 import { connectRedis } from "./config/redis.js";
 
@@ -19,10 +23,9 @@ const port = Number(process.env.PORT) || 5000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-app.use("/", (req, res) => {
-  res.send("Hello From CodeHive 👋");
-});
+app.use("/api/auth", authRouter);
 
 server.on("error", (err) => {
   console.error("Server failed to start:", err);
