@@ -344,6 +344,7 @@ const sendResetPasswordEmail = asyncHandler(
         resetPasswordOtp,
         resetPasswordOtpExpireAt,
         resetPasswordOtpResendAvailableAt,
+        resetPasswordOtpVerified: false,
       },
     });
 
