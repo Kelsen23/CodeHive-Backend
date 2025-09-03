@@ -24,32 +24,62 @@ import {
   verifyEmailSchema,
 } from "../validations/auth.schema.js";
 
+import {
+  emailVerificationLimiter,
+  loginLimiter,
+  registerLimiter,
+  resendEmailLimiter,
+  resetPasswordLimiter,
+  generalLimiter,
+} from "../middlewares/authRateLimiters.js";
+
 const router = express.Router();
 
-router.route("/register").post(validate(registerSchema), register);
-router.route("/login").post(validate(loginSchema), login);
-router.route("/registerOrLogin").post(validate(oauthSchema), registerOrLogin);
+router
+  .route("/register")
+  .post(registerLimiter, validate(registerSchema), register);
+router.route("/login").post(loginLimiter, validate(loginSchema), login);
+router
+  .route("/registerOrLogin")
+  .post(registerLimiter, validate(oauthSchema), registerOrLogin);
 
 router
   .route("/verifyEmail")
-  .post(isAuthenticated, validate(verifyEmailSchema), verifyEmail);
-router.route("/resendVerifyEmail").post(isAuthenticated, resendVerifyEmail);
+  .post(
+    emailVerificationLimiter,
+    isAuthenticated,
+    validate(verifyEmailSchema),
+    verifyEmail,
+  );
+router
+  .route("/resendVerifyEmail")
+  .post(resendEmailLimiter, isAuthenticated, resendVerifyEmail);
 
 router
   .route("/sendResetPasswordEmail")
-  .post(isAuthenticated, sendResetPasswordEmail);
+  .post(resetPasswordLimiter, isAuthenticated, sendResetPasswordEmail);
 router
   .route("/resendResetPasswordEmail")
-  .post(isAuthenticated, resendResetPasswordEmail);
+  .post(resendEmailLimiter, isAuthenticated, resendResetPasswordEmail);
 router
   .route("/verifyResetPasswordOtp")
-  .post(isAuthenticated, validate(verifyEmailSchema), verifyResetPasswordOtp);
+  .post(
+    emailVerificationLimiter,
+    isAuthenticated,
+    validate(verifyEmailSchema),
+    verifyResetPasswordOtp,
+  );
 router
   .route("/resetPassword")
-  .post(isAuthenticated, validate(resetPasswordSchema), resetPassword);
+  .post(
+    resetPasswordLimiter,
+    isAuthenticated,
+    validate(resetPasswordSchema),
+    resetPassword,
+  );
 
-router.route("/isAuth").get(isAuthenticated, isAuth);
+router.route("/isAuth").get(generalLimiter, isAuthenticated, isAuth);
 
-router.route("/logout").post(isAuthenticated, logout);
+router.route("/logout").post(generalLimiter, isAuthenticated, logout);
 
 export default router;
