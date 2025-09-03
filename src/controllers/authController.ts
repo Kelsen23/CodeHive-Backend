@@ -235,7 +235,12 @@ const verifyEmail = asyncHandler(
 
     const verifiedUser = await prisma.user.update({
       where: { id: userId },
-      data: { isVerified: true },
+      data: {
+        isVerified: true,
+        otp: null,
+        otpExpireAt: null,
+        otpResendAvailableAt: null,
+      },
     });
 
     res.status(200).json({
