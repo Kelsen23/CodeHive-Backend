@@ -216,7 +216,11 @@ const verifyEmail = asyncHandler(
 
     if (foundUser.isVerified) throw new HttpError("User already verified", 400);
 
-    if (!foundUser.otpExpireAt || !foundUser.otpResendAvailableAt) {
+    if (
+      !foundUser.otpExpireAt ||
+      !foundUser.otpResendAvailableAt ||
+      !foundUser.otp
+    ) {
       throw new HttpError("OTP not set", 400);
     }
 
@@ -242,4 +246,71 @@ const verifyEmail = asyncHandler(
   },
 );
 
-export { register, login, registerOrLogin, verifyEmail };
+const resendVerifyEmail = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user;
+
+    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!foundUser) throw new HttpError("User not found", 404);
+
+    if (foundUser.isVerified) throw new HttpError("User already verified", 400);
+
+    if (
+      !foundUser.otpExpireAt ||
+      !foundUser.otpResendAvailableAt ||
+      !foundUser.otp
+    )
+      throw new HttpError("OTP not set", 400);
+
+    if (foundUser.otpResendAvailableAt > new Date(Date.now()))
+      throw new HttpError(
+        "OTP resend will soon be available, please wait",
+        400,
+      );
+
+    const otp = Math.floor(10000 + Math.random() * 900000).toString();
+    const otpExpireAt = new Date(Date.now() + 2 * 60 * 1000);
+    const otpResendAvailableAt = new Date(Date.now() + 30 * 1000);
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { otp, otpExpireAt, otpResendAvailableAt },
+    });
+
+    if (!updatedUser.otp) throw new HttpError("OTP not set", 400);
+
+    const deviceInfo = getDeviceInfo(req);
+    const deviceName = `${deviceInfo.browser} on ${deviceInfo.os}`;
+    const htmlContent = verificationHtml(
+      updatedUser.username,
+      updatedUser.otp,
+      deviceName,
+      deviceInfo.ip || "Unknown IP",
+    );
+
+    try {
+      await transporter.sendMail({
+        from: `'CodeHive' <${process.env.CODEHIVE_EMAIL}>`,
+        to: foundUser.email,
+        subject: "Verify Email",
+        html: htmlContent,
+        attachments: [
+          {
+            filename: "CodeHive logo.png",
+            path: path.join(process.cwd(), "assets/CodeHive logo.png"),
+            cid: "codehive-logo",
+          },
+        ],
+      });
+    } catch (error) {
+      throw new HttpError(`Failed to send verification email: ${error}`, 500);
+    }
+
+    return res.status(200).json({
+      message: "Successfully sent another OTP to your email address",
+    });
+  },
+);
+
+export { register, login, registerOrLogin, verifyEmail, resendVerifyEmail };
