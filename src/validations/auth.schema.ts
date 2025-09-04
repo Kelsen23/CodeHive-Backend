@@ -1,10 +1,22 @@
+import { createRequire } from "module";
+
 import z from "zod";
+
+const require = createRequire(import.meta.url);
+const leoProfanity = require("leo-profanity");
 
 const registerSchema = z.object({
   username: z
     .string()
-    .min(3, "Username must be atleast 3 characters")
-    .max(15, "Username must be at most 15 characters"),
+    .min(3, "Username must be at least 3 characters")
+    .max(15, "Username must be at most 15 characters")
+    .regex(
+      /^[a-zA-Z0-9_.]+$/,
+      "Only letters, numbers, underscores, and dots allowed",
+    )
+    .refine((username) => !leoProfanity.check(username), {
+      message: "Username contains inappropriate language",
+    }),
   email: z
     .string()
     .email("Invalid email address")
@@ -13,7 +25,13 @@ const registerSchema = z.object({
   password: z
     .string()
     .min(8, "Password must be atleast 8 characters")
-    .max(60, "Password must be at most 60 characters"),
+    .max(60, "Password must be at most 60 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(
+      /[^a-zA-Z]/,
+      "Password must contain at least one non-letter character",
+    ),
 });
 
 const loginSchema = z.object({
@@ -25,7 +43,13 @@ const loginSchema = z.object({
   password: z
     .string()
     .min(8, "Password must be atleast 8 characters")
-    .max(60, "Password must be at most 60 characters"),
+    .max(60, "Password must be at most 60 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(
+      /[^a-zA-Z]/,
+      "Password must contain at least one non-letter character",
+    ),
 });
 
 const googleSchema = z.object({
@@ -68,7 +92,13 @@ const resetPasswordSchema = z.object({
   newPassword: z
     .string()
     .min(8, "Password must be atleast 8 characters")
-    .max(60, "Password must be at most 60 characters"),
+    .max(60, "Password must be at most 60 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(
+      /[^a-zA-Z]/,
+      "Password must contain at least one non-letter character",
+    ),
 });
 
 export { registerSchema, loginSchema, verifyEmailSchema, resetPasswordSchema };
