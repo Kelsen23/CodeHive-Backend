@@ -1,10 +1,10 @@
 import { Redis } from "ioredis";
 
-let redisClient: Redis;
+const redisClient = new Redis(
+  process.env.REDIS_CLI || "redis://localhost:6379",
+);
 
-const connectRedis = async (redisUrl?: string) => {
-  redisClient = new Redis(redisUrl || "redis://localhost:6379");
-
+const checkRedisConnection = async () => {
   try {
     await redisClient.ping();
     console.log("Redis connection established 🔴");
@@ -14,4 +14,4 @@ const connectRedis = async (redisUrl?: string) => {
   }
 };
 
-export { connectRedis, redisClient };
+export { redisClient, checkRedisConnection };
