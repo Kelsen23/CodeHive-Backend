@@ -25,46 +25,56 @@ import {
 } from "../validations/auth.schema.js";
 
 import {
-  emailVerificationLimiter,
-  loginLimiter,
-  registerLimiter,
-  resendEmailLimiter,
-  resetPasswordLimiter,
-  generalLimiter,
+  emailVerificationLimiterMiddleware,
+  loginLimiterMiddleware,
+  registerLimiterMiddleware,
+  resendEmailLimiterMiddleware,
+  resetPasswordLimiterMiddleware,
+  generalLimiterMiddleware,
 } from "../middlewares/authRateLimiters.js";
 
 const router = express.Router();
 
 router
   .route("/register")
-  .post(registerLimiter, validate(registerSchema), register);
-router.route("/login").post(loginLimiter, validate(loginSchema), login);
+  .post(registerLimiterMiddleware, validate(registerSchema), register);
+router
+  .route("/login")
+  .post(loginLimiterMiddleware, validate(loginSchema), login);
 router
   .route("/registerOrLogin")
-  .post(registerLimiter, validate(oauthSchema), registerOrLogin);
+  .post(registerLimiterMiddleware, validate(oauthSchema), registerOrLogin);
 
 router
   .route("/verifyEmail")
   .post(
-    emailVerificationLimiter,
+    emailVerificationLimiterMiddleware,
     isAuthenticated,
     validate(verifyEmailSchema),
     verifyEmail,
   );
 router
   .route("/resendVerifyEmail")
-  .post(resendEmailLimiter, isAuthenticated, resendVerifyEmail);
+  .post(resendEmailLimiterMiddleware, isAuthenticated, resendVerifyEmail);
 
 router
   .route("/sendResetPasswordEmail")
-  .post(resetPasswordLimiter, isAuthenticated, sendResetPasswordEmail);
+  .post(
+    resetPasswordLimiterMiddleware,
+    isAuthenticated,
+    sendResetPasswordEmail,
+  );
 router
   .route("/resendResetPasswordEmail")
-  .post(resendEmailLimiter, isAuthenticated, resendResetPasswordEmail);
+  .post(
+    resendEmailLimiterMiddleware,
+    isAuthenticated,
+    resendResetPasswordEmail,
+  );
 router
   .route("/verifyResetPasswordOtp")
   .post(
-    emailVerificationLimiter,
+    emailVerificationLimiterMiddleware,
     isAuthenticated,
     validate(verifyEmailSchema),
     verifyResetPasswordOtp,
@@ -72,14 +82,14 @@ router
 router
   .route("/resetPassword")
   .post(
-    resetPasswordLimiter,
+    resetPasswordLimiterMiddleware,
     isAuthenticated,
     validate(resetPasswordSchema),
     resetPassword,
   );
 
-router.route("/isAuth").get(generalLimiter, isAuthenticated, isAuth);
+router.route("/isAuth").get(generalLimiterMiddleware, isAuthenticated, isAuth);
 
-router.route("/logout").post(generalLimiter, isAuthenticated, logout);
+router.route("/logout").post(generalLimiterMiddleware, isAuthenticated, logout);
 
 export default router;
