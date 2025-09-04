@@ -13,14 +13,14 @@ const loginLimiter = new RateLimiterRedis({
 const registerLimiter = new RateLimiterRedis({
   storeClient: redisClient,
   keyPrefix: "register",
-  points: 3,
-  duration: 60 * 60,
+  points: 5,
+  duration: 30 * 60,
 });
 
 const resetPasswordLimiter = new RateLimiterRedis({
   storeClient: redisClient,
   keyPrefix: "resetPassword",
-  points: 3,
+  points: 5,
   duration: 60 * 60,
 });
 
@@ -34,7 +34,7 @@ const emailVerificationLimiter = new RateLimiterRedis({
 const resendEmailLimiter = new RateLimiterRedis({
   storeClient: redisClient,
   keyPrefix: "resendEmail",
-  points: 2,
+  points: 3,
   duration: 5 * 60,
 });
 
@@ -52,7 +52,7 @@ export const loginLimiterMiddleware = createRateLimiterMiddleware(
 
 export const registerLimiterMiddleware = createRateLimiterMiddleware(
   registerLimiter,
-  "Too many accounts created from this IP, please try again after an hour",
+  "Too many accounts created from this IP, please try again after 30 minutes",
 );
 
 export const resetPasswordLimiterMiddleware = createRateLimiterMiddleware(
