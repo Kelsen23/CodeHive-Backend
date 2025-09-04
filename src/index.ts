@@ -9,7 +9,7 @@ import authRouter from "./routes/authRoutes.js";
 import cookieParser from "cookie-parser";
 
 import connectMongoDB from "./config/mongoDB.js";
-import { connectRedis } from "./config/redis.js";
+import { checkRedisConnection } from "./config/redis.js";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
@@ -17,7 +17,7 @@ const app = express();
 const server = http.createServer(app);
 
 connectMongoDB(process.env.MONGO_URI as string);
-connectRedis(process.env.REDIS_CLI as string);
+checkRedisConnection();
 
 const port = Number(process.env.PORT) || 5000;
 
