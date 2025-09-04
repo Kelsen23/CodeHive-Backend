@@ -1,63 +1,76 @@
-import { rateLimit } from "express-rate-limit";
+import { RateLimiterRedis } from "rate-limiter-flexible";
+import { redisClient } from "../config/redis.js";
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message:
-    "Too many login attempts from this IP, please try again after 15 minutes",
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipSuccessfulRequests: true,
+import createRateLimiterMiddleware from "../utils/createRateLimiterMiddleware.js";
+
+const loginLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "login",
+  points: 5,
+  duration: 15 * 60,
 });
 
-const registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 3,
-  message:
-    "Too many accounts created from this IP, please try again after an hour",
-  standardHeaders: true,
-  legacyHeaders: false,
+const registerLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "register",
+  points: 3,
+  duration: 60 * 60,
 });
 
-const resetPasswordLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 3,
-  message:
-    "Too many password reset requests from this IP, please try again after an hour",
-  standardHeaders: true,
-  legacyHeaders: false,
+const resetPasswordLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "resetPassword",
+  points: 3,
+  duration: 60 * 60,
 });
 
-const emailVerificationLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 10,
-  message: "Too many email verification requests, please try again later",
-  standardHeaders: true,
-  legacyHeaders: false,
+const emailVerificationLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "emailVerification",
+  points: 10,
+  duration: 60 * 60,
 });
 
-const resendEmailLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000,
-  max: 2,
-  message:
-    "Too many email resend requests, please wait before requesting again",
-  standardHeaders: true,
-  legacyHeaders: false,
+const resendEmailLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "resendEmail",
+  points: 2,
+  duration: 5 * 60,
 });
 
-const generalLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 1000,
-  message: "Too many requests please wait before requesting again",
-  standardHeaders: true,
-  legacyHeaders: false,
+const generalLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "general",
+  points: 1000,
+  duration: 10 * 60,
 });
 
-export {
+export const loginLimiterMiddleware = createRateLimiterMiddleware(
   loginLimiter,
+  "Too many login attempts from this IP, please try again after 15 minutes",
+);
+
+export const registerLimiterMiddleware = createRateLimiterMiddleware(
   registerLimiter,
+  "Too many accounts created from this IP, please try again after an hour",
+);
+
+export const resetPasswordLimiterMiddleware = createRateLimiterMiddleware(
   resetPasswordLimiter,
+  "Too many password reset requests from this IP, please try again after an hour",
+);
+
+export const emailVerificationLimiterMiddleware = createRateLimiterMiddleware(
   emailVerificationLimiter,
+  "Too many email verification requests, please try again later",
+);
+
+export const resendEmailLimiterMiddleware = createRateLimiterMiddleware(
   resendEmailLimiter,
+  "Too many email resend requests, please wait before requesting again",
+);
+
+export const generalLimiterMiddleware = createRateLimiterMiddleware(
   generalLimiter,
-};
+  "Too many requests please wait before requesting again",
+);
