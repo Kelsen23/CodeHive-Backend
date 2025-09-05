@@ -8,6 +8,8 @@ import authRouter from "./routes/authRoutes.js";
 
 import cookieParser from "cookie-parser";
 
+import { PrismaClient } from "./generated/prisma/index.js";
+
 import connectMongoDB from "./config/mongoDB.js";
 import { checkRedisConnection } from "./config/redis.js";
 
@@ -15,6 +17,8 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 const app = express();
 const server = http.createServer(app);
+
+export const prisma = new PrismaClient();
 
 connectMongoDB(process.env.MONGO_URI as string);
 checkRedisConnection();

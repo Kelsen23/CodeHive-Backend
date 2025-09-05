@@ -1,4 +1,4 @@
-import { prisma } from "../controllers/authController.js";
+import { prisma } from "../index.js";
 
 async function generateUniqueUsername(name: string) {
   let username = name;

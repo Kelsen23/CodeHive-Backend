@@ -15,9 +15,7 @@ import {
   verificationHtml,
 } from "../utils/renderTemplate.js";
 
-import { PrismaClient } from "../generated/prisma/index.js";
-
-export const prisma = new PrismaClient();
+import { prisma } from "../index.js";
 
 class HttpError extends Error {
   statusCode: number;
