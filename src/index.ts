@@ -14,6 +14,7 @@ import typeDefs from "./graphql/typeDefs/index.js";
 import resolvers from "./graphql/resolvers/index.js";
 
 import authRouter from "./routes/authRoutes.js";
+import uploadFileRoutes from "./routes/uploadFileRoutes.js";
 
 import cookieParser from "cookie-parser";
 
@@ -48,6 +49,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use("/api/auth", authRouter);
+app.use("/api/upload", uploadFileRoutes);
 
 app.use(
   "/graphql",
