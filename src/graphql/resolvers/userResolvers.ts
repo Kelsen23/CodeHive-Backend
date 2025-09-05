@@ -12,14 +12,27 @@ const userResolvers = {
       const foundUser = await prisma.user.findUnique({ where: { id } });
       if (!foundUser) throw new Error("User not found");
 
+      const {
+        password,
+        profilePictureKey,
+        otp,
+        otpResendAvailableAt,
+        otpExpireAt,
+        resetPasswordOtp,
+        resetPasswordOtpVerified,
+        resetPasswordOtpResendAvailableAt,
+        resetPasswordOtpExpireAt,
+        ...userWithoutSensitiveInfo
+      } = foundUser;
+
       await redisClient.set(
         `user:${id}`,
-        JSON.stringify(foundUser),
+        JSON.stringify(userWithoutSensitiveInfo),
         "EX",
         60 * 60,
       );
 
-      return foundUser;
+      return userWithoutSensitiveInfo;
     },
   },
 };
