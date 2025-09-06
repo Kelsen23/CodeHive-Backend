@@ -1,3 +1,5 @@
+import HttpError from "../../utils/httpError.js";
+
 const userResolvers = {
   Query: {
     getUserById: async (
@@ -10,7 +12,7 @@ const userResolvers = {
       if (cachedUser) return JSON.parse(cachedUser);
 
       const foundUser = await prisma.user.findUnique({ where: { id } });
-      if (!foundUser) throw new Error("User not found");
+      if (!foundUser) throw new HttpError("User not found", 404);
 
       const {
         password,
