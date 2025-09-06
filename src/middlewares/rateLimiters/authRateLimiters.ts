@@ -1,7 +1,7 @@
 import { RateLimiterRedis } from "rate-limiter-flexible";
-import { redisClient } from "../config/redis.js";
+import { redisClient } from "../../config/redis.js";
 
-import createRateLimiterMiddleware from "../utils/createRateLimiterMiddleware.js";
+import createRateLimiterMiddleware from "../../utils/createRateLimiterMiddleware.js";
 
 const loginLimiter = new RateLimiterRedis({
   storeClient: redisClient,
@@ -45,32 +45,41 @@ const generalLimiter = new RateLimiterRedis({
   duration: 10 * 60,
 });
 
-export const loginLimiterMiddleware = createRateLimiterMiddleware(
+const loginLimiterMiddleware = createRateLimiterMiddleware(
   loginLimiter,
   "Too many login attempts from this IP, please try again after 15 minutes",
 );
 
-export const registerLimiterMiddleware = createRateLimiterMiddleware(
+const registerLimiterMiddleware = createRateLimiterMiddleware(
   registerLimiter,
   "Too many accounts created from this IP, please try again after 30 minutes",
 );
 
-export const resetPasswordLimiterMiddleware = createRateLimiterMiddleware(
+const resetPasswordLimiterMiddleware = createRateLimiterMiddleware(
   resetPasswordLimiter,
   "Too many password reset requests from this IP, please try again after an hour",
 );
 
-export const emailVerificationLimiterMiddleware = createRateLimiterMiddleware(
+const emailVerificationLimiterMiddleware = createRateLimiterMiddleware(
   emailVerificationLimiter,
   "Too many email verification requests, please try again later",
 );
 
-export const resendEmailLimiterMiddleware = createRateLimiterMiddleware(
+const resendEmailLimiterMiddleware = createRateLimiterMiddleware(
   resendEmailLimiter,
   "Too many email resend requests, please wait before requesting again",
 );
 
-export const generalLimiterMiddleware = createRateLimiterMiddleware(
+const generalLimiterMiddleware = createRateLimiterMiddleware(
   generalLimiter,
   "Too many requests please wait before requesting again",
 );
+
+export {
+  loginLimiterMiddleware,
+  registerLimiterMiddleware,
+  resetPasswordLimiterMiddleware,
+  emailVerificationLimiterMiddleware,
+  resendEmailLimiterMiddleware,
+  generalLimiterMiddleware,
+};

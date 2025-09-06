@@ -31,7 +31,7 @@ import {
   resendEmailLimiterMiddleware,
   resetPasswordLimiterMiddleware,
   generalLimiterMiddleware,
-} from "../middlewares/authRateLimiters.js";
+} from "../middlewares/rateLimiters/authRateLimiters.js";
 
 const router = express.Router();
 
