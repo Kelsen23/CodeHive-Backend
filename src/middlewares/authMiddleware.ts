@@ -4,15 +4,7 @@ import asyncHandler from "./asyncHandler.js";
 
 import { NextFunction, Request, Response } from "express";
 
-class HttpError extends Error {
-  statusCode: number;
-
-  constructor(message: string, statusCode: number) {
-    super(message);
-    this.statusCode = statusCode;
-    this.name = "HttpError";
-  }
-}
+import HttpError from "../utils/httpError.js";
 
 interface AuthenticatedRequest extends Request {
   cookies: {
