@@ -3,7 +3,7 @@ import express from "express";
 import multer from "multer";
 import { changeProfilePicture } from "../controllers/uploadFileController.js";
 
-import isAuthenticated from "../middlewares/authMiddleware.js";
+import isAuthenticated, { isVerified } from "../middlewares/authMiddleware.js";
 
 import { uploadProfilePictureLimiterMiddleware } from "../middlewares/rateLimiters/uploadFileLimiters.js";
 
@@ -17,6 +17,7 @@ router
   .post(
     uploadProfilePictureLimiterMiddleware,
     isAuthenticated,
+    isVerified,
     upload.single("profilePicture"),
     changeProfilePicture,
   );
