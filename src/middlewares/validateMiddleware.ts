@@ -8,7 +8,9 @@ const validate =
       next();
     } catch (error) {
       if (error instanceof ZodError)
-        return res.json({ message: "Validation Failed", errors: error.issues });
+        return res
+          .status(400)
+          .json({ message: "Validation Failed", errors: error.issues });
     }
   };
 
