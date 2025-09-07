@@ -6,6 +6,8 @@ import { NextFunction, Request, Response } from "express";
 
 import HttpError from "../utils/httpError.js";
 
+import { prisma } from "../index.js";
+
 interface AuthenticatedRequest extends Request {
   cookies: {
     token?: any;
@@ -31,4 +33,19 @@ const isAuthenticated = asyncHandler(
   },
 );
 
+const isVerified = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const userId = req.user;
+
+    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!foundUser) throw new HttpError("User not found", 404);
+
+    if (!foundUser.isVerified) throw new HttpError("User not verified", 403);
+
+    next();
+  },
+);
+
 export default isAuthenticated;
+export { isVerified };
