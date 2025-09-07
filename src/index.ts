@@ -13,8 +13,8 @@ import DataLoader from "dataloader";
 import typeDefs from "./graphql/typeDefs/index.js";
 import resolvers from "./graphql/resolvers/index.js";
 
-import authRoutes from "./routes/authRoutes.js";
-import uploadFileRoutes from "./routes/uploadFileRoutes.js";
+import authRoutes from "./routes/authRoute.js";
+import uploadFileRoutes from "./routes/uploadFileRoute.js";
 
 import cookieParser from "cookie-parser";
 
