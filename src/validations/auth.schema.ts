@@ -11,9 +11,12 @@ const registerSchema = z.object({
     .min(3, "Username must be at least 3 characters")
     .max(15, "Username must be at most 15 characters")
     .regex(
-      /^[a-zA-Z0-9_.]+$/,
-      "Only letters, numbers, underscores, and dots allowed",
+      /^[a-zA-Z0-9_. ]+$/,
+      "Only letters, numbers, spaces, underscores, and dots allowed",
     )
+    .refine((username) => username.trim().length > 0, {
+      message: "Username cannot be only spaces",
+    })
     .refine((username) => !leoProfanity.check(username), {
       message: "Username contains inappropriate language",
     }),
