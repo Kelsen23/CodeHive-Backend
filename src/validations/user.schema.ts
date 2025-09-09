@@ -5,6 +5,8 @@ import z from "zod";
 const require = createRequire(import.meta.url);
 const leoProfanity = require("leo-profanity");
 
+const normalize = (text: string) => text.replace(/[^a-zA-Z]+/g, " ");
+
 const updateProfileSchema = z.object({
   username: z
     .string()
@@ -17,7 +19,7 @@ const updateProfileSchema = z.object({
     .refine((username) => username.trim().length > 0, {
       message: "Username cannot be only spaces",
     })
-    .refine((username) => !leoProfanity.check(username), {
+    .refine((username) => !leoProfanity.check(normalize(username)), {
       message: "Username contains inappropriate language",
     }),
   bio: z
