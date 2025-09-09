@@ -13,9 +13,9 @@ import DataLoader from "dataloader";
 import typeDefs from "./graphql/typeDefs/index.js";
 import resolvers from "./graphql/resolvers/index.js";
 
-import authRoutes from "./routes/authRoute.js";
-import uploadFileRoutes from "./routes/uploadFileRoute.js";
-import userRoutes from "./routes/userRoute.js";
+import authRoute from "./routes/authRoute.js";
+import uploadFileRoute from "./routes/uploadFileRoute.js";
+import userRoute from "./routes/userRoute.js";
 
 import cookieParser from "cookie-parser";
 
@@ -49,9 +49,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use("/api/auth", authRoutes);
-app.use("/api/upload", uploadFileRoutes);
-app.use("/api/user", userRoutes);
+app.use("/api/auth", authRoute);
+app.use("/api/upload", uploadFileRoute);
+app.use("/api/user", userRoute);
 
 app.use(
   "/graphql",
