@@ -47,5 +47,20 @@ const isVerified = asyncHandler(
   },
 );
 
+const isTerminated = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const userId = req.user;
+
+    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!foundUser) throw new HttpError("User not found", 404);
+
+    if (foundUser.status !== "ACTIVE")
+      throw new HttpError("User not active", 403);
+
+    next();
+  },
+);
+
 export default isAuthenticated;
-export { isVerified };
+export { isVerified, isTerminated };
