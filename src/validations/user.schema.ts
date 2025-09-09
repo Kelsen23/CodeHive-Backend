@@ -5,7 +5,7 @@ import z from "zod";
 const require = createRequire(import.meta.url);
 const leoProfanity = require("leo-profanity");
 
-const updateProfile = z.object({
+const updateProfileSchema = z.object({
   username: z
     .string()
     .min(3, "Username must be at least 3 characters")
@@ -28,4 +28,4 @@ const updateProfile = z.object({
     }),
 });
 
-export { updateProfile };
+export { updateProfileSchema };
