@@ -15,6 +15,7 @@ import resolvers from "./graphql/resolvers/index.js";
 
 import authRoutes from "./routes/authRoute.js";
 import uploadFileRoutes from "./routes/uploadFileRoute.js";
+import userRoutes from "./routes/userRoute.js";
 
 import cookieParser from "cookie-parser";
 
@@ -50,6 +51,7 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/upload", uploadFileRoutes);
+app.use("/api/user", userRoutes);
 
 app.use(
   "/graphql",
