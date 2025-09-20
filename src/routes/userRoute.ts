@@ -32,7 +32,7 @@ router
   );
 
 router
-  .route("/getInterests")
+  .route("/interests")
   .get(
     getInterestsLimiterMiddleware,
     isAuthenticated,
