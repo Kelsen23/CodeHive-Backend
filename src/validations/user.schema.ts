@@ -2,6 +2,8 @@ import { createRequire } from "module";
 
 import z from "zod";
 
+import interests from "../utils/interests.js";
+
 const require = createRequire(import.meta.url);
 const leoProfanity = require("leo-profanity");
 
@@ -30,4 +32,19 @@ const updateProfileSchema = z.object({
     }),
 });
 
-export { updateProfileSchema };
+const saveInterestsSchema = z.object({
+  interests: z
+    .array(z.string())
+    .nonempty({ message: "You must select at least one interest" })
+    .superRefine((arr, ctx) => {
+      const invalid = arr.filter((i) => !interests.includes(i));
+      if (invalid.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Invalid interests: ${invalid.join(", ")}`,
+        });
+      }
+    }),
+});
+
+export { updateProfileSchema, saveInterestsSchema };
