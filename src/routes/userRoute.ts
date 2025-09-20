@@ -13,6 +13,7 @@ import isAuthenticated, {
 import validate from "../middlewares/validateMiddleware.js";
 
 import { updateProfileSchema } from "../validations/user.schema.js";
+import { saveInterestsSchema } from "../validations/user.schema.js";
 
 import { updateProfileLimiterMiddleware } from "../middlewares/rateLimiters/userRateLimiters.js";
 import { getInterestsLimiterMiddleware } from "../middlewares/rateLimiters/userRateLimiters.js";
@@ -47,6 +48,7 @@ router
     isAuthenticated,
     isVerified,
     isTerminated,
+    validate(saveInterestsSchema),
     saveInterests,
   );
 
