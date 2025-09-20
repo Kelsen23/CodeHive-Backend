@@ -16,7 +16,7 @@ const router = express.Router();
 
 router
   .route("/updateProfile")
-  .post(
+  .put(
     updateProfileLimiterMiddleware,
     isAuthenticated,
     isVerified,
