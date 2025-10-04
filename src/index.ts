@@ -9,6 +9,10 @@ import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@as-integrations/express5";
 import bodyParser from "body-parser";
 
+import authenticateGraphQLUser from "./middlewares/graphqlAuth.js";
+
+import UserWithoutSensitiveInfo from "./types/userWithoutSesitiveInfo.js";
+
 import createUserLoader from "./dataloaders/userLoader.js";
 
 import typeDefs from "./graphql/typeDefs/index.js";
@@ -56,17 +60,26 @@ app.use("/api/user", userRoute);
 
 app.use(
   "/graphql",
-  cors<cors.CorsRequest>(),
+  cors<cors.CorsRequest>({
+    credentials: true,
+  }),
   bodyParser.json(),
   expressMiddleware(apolloServer, {
-    context: async ({ req }) => ({
-      token: req.headers.authorization,
-      prisma,
-      redisClient,
-      loaders: {
-        userLoader: createUserLoader(),
-      },
-    }),
+    context: async ({ req }) => {
+      const user: UserWithoutSensitiveInfo = await authenticateGraphQLUser(
+        req as any,
+      );
+
+      return {
+        token: req.headers.authorization,
+        prisma,
+        redisClient,
+        user,
+        loaders: {
+          userLoader: createUserLoader(),
+        },
+      };
+    },
   }),
 );
 
