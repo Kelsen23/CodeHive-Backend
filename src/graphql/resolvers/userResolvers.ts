@@ -31,7 +31,7 @@ const userResolvers = {
         `user:${id}`,
         JSON.stringify(userWithoutSensitiveInfo),
         "EX",
-        60 * 60,
+        60 * 20,
       );
 
       return userWithoutSensitiveInfo;
