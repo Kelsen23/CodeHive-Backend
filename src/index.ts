@@ -8,7 +8,8 @@ import express from "express";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@as-integrations/express5";
 import bodyParser from "body-parser";
-import DataLoader from "dataloader";
+
+import createUserLoader from "./dataloaders/userLoader.js";
 
 import typeDefs from "./graphql/typeDefs/index.js";
 import resolvers from "./graphql/resolvers/index.js";
@@ -62,6 +63,9 @@ app.use(
       token: req.headers.authorization,
       prisma,
       redisClient,
+      loaders: {
+        userLoader: createUserLoader(),
+      },
     }),
   }),
 );
