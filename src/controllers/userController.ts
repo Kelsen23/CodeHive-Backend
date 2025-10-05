@@ -53,7 +53,7 @@ const updateProfile = asyncHandler(
       `user:${updatedUser.id}`,
       JSON.stringify(userWithoutSensitiveInfo),
       "EX",
-      60 * 60,
+      60 * 20,
     );
 
     return res.status(200).json({
@@ -76,6 +76,26 @@ const saveInterests = asyncHandler(
       where: { id: userId },
       data: { interests },
     });
+
+    const {
+      password,
+      profilePictureKey,
+      otp,
+      otpResendAvailableAt,
+      otpExpireAt,
+      resetPasswordOtp,
+      resetPasswordOtpVerified,
+      resetPasswordOtpResendAvailableAt,
+      resetPasswordOtpExpireAt,
+      ...userWithoutSensitiveInfo
+    } = updatedUser;
+
+    await redisClient.set(
+      `user:${updatedUser.id}`,
+      JSON.stringify(userWithoutSensitiveInfo),
+      "EX",
+      60 * 20,
+    );
 
     return res.status(200).json({
       message: "Successfully saved interests",
