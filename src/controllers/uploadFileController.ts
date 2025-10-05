@@ -14,6 +14,7 @@ import makeCircle from "../utils/makeCircle.js";
 import { Response, Request } from "express";
 
 import { prisma } from "../index.js";
+import { redisClient } from "../config/redis.js";
 
 interface AuthenticatedRequest extends Request {
   cookies: {
@@ -106,6 +107,26 @@ const changeProfilePicture = asyncHandler(
         where: { id: userId },
         data: { profilePictureUrl: imageUrl, profilePictureKey: objectKey },
       });
+
+      const {
+        password,
+        profilePictureKey,
+        otp,
+        otpResendAvailableAt,
+        otpExpireAt,
+        resetPasswordOtp,
+        resetPasswordOtpVerified,
+        resetPasswordOtpResendAvailableAt,
+        resetPasswordOtpExpireAt,
+        ...userWithoutSensitiveInfo
+      } = updatedUser;
+
+      await redisClient.set(
+        `user:${updatedUser.id}`,
+        JSON.stringify(userWithoutSensitiveInfo),
+        "EX",
+        60 * 20,
+      );
 
       return res.status(200).json({
         message: "Successfully changed profile picture",

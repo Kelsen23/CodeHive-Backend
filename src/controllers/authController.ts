@@ -16,6 +16,7 @@ import {
 } from "../utils/renderTemplate.js";
 
 import { prisma } from "../index.js";
+import { redisClient } from "../config/redis.js";
 
 import HttpError from "../utils/httpError.js";
 
@@ -204,7 +205,7 @@ const registerOrLogin = asyncHandler(async (req: Request, res: Response) => {
 const verifyEmail = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user;
-    const { otp } = req.body;
+    const { otp: inputOtp } = req.body;
 
     const foundUser = await prisma.user.findUnique({ where: { id: userId } });
 
@@ -224,7 +225,7 @@ const verifyEmail = asyncHandler(
       throw new HttpError("OTP expired", 400);
     }
 
-    if (foundUser.otp !== otp) throw new HttpError("Invalid OTP", 400);
+    if (foundUser.otp !== inputOtp) throw new HttpError("Invalid OTP", 400);
 
     const verifiedUser = await prisma.user.update({
       where: { id: userId },
@@ -235,6 +236,26 @@ const verifyEmail = asyncHandler(
         otpResendAvailableAt: null,
       },
     });
+
+    const {
+      password,
+      profilePictureKey,
+      otp,
+      otpResendAvailableAt,
+      otpExpireAt,
+      resetPasswordOtp,
+      resetPasswordOtpVerified,
+      resetPasswordOtpResendAvailableAt,
+      resetPasswordOtpExpireAt,
+      ...userWithoutSensitiveInfo
+    } = verifiedUser;
+
+    await redisClient.set(
+      `user:${verifiedUser.id}`,
+      JSON.stringify(userWithoutSensitiveInfo),
+      "EX",
+      60 * 20,
+    );
 
     res.status(200).json({
       message: "Successfully verified",
