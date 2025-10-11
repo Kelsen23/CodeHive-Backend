@@ -12,7 +12,6 @@ import isAuthenticated, {
 import { createQuestionLimiterMiddleware } from "../middlewares/rateLimiters/questionRateLimitiers.js";
 
 import validate from "../middlewares/validateMiddleware.js";
-import { create } from "domain";
 
 const router = express.Router();
 
