@@ -45,4 +45,21 @@ const createQuestionSchema = z
     }
   });
 
-export { createQuestionSchema };
+const createAnswerOnQuestionSchema = z
+  .object({
+    body: z
+      .string()
+      .min(10, "Body must be at least 10 characters")
+      .max(5000, "Body must be at most 5000 characters"),
+  })
+  .superRefine((data, ctx) => {
+    if (leoProfanity.check(data.body)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["body"],
+        message: "Body contains inappropriate language",
+      });
+    }
+  });
+
+export { createQuestionSchema, createAnswerOnQuestionSchema };
