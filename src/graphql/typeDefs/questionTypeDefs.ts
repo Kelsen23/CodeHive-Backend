@@ -13,8 +13,52 @@ const questionTypeDefs = gql`
     user: User!
   }
 
+  type Reply {
+    id: ID!
+    userId: String!
+    body: String!
+    upvotes: Int!
+    downvotes: Int!
+    isActive: Boolean!
+    isDeleted: Boolean!
+    createdAt: String!
+    user: User!
+  }
+
+  type Answer {
+    id: ID!
+    userId: String!
+    body: String!
+    upvotes: Int!
+    downvotes: Int!
+    replyCount: Int!
+    replies: [Reply!]!
+    isTopAnswer: Boolean!
+    isActive: Boolean!
+    isDeleted: Boolean!
+    createdAt: String!
+    user: User!
+  }
+
+  type QuestionDetails {
+    id: ID!
+    askerId: String!
+    title: String!
+    body: String!
+    tags: [String]!
+    upvotes: Int!
+    downvotes: Int!
+    answerCount: Int!
+    topAnswer: Answer
+    isActive: Boolean!
+    isDeleted: Boolean!
+    createdAt: String!
+    user: User!
+  }
+
   type Query {
     getRecommendedQuestions(skipCount: Int): [Question!]!
+    getQuestionById(id: ID!): QuestionDetails!
   }
 `;
 
