@@ -21,7 +21,7 @@ import resolvers from "./graphql/resolvers/index.js";
 import authRoute from "./routes/authRoute.js";
 import uploadFileRoute from "./routes/uploadFileRoute.js";
 import userRoute from "./routes/userRoute.js";
-import questionRoute from "./routes/questionRoutes.js";
+import questionRoute from "./routes/questionRoute.js";
 
 import cookieParser from "cookie-parser";
 
