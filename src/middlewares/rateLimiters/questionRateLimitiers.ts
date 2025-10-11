@@ -10,9 +10,24 @@ const createQuestionLimiter = new RateLimiterRedis({
   duration: 60 * 30,
 });
 
+const createAnswerOnQuestionLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "createAnswerOnQuestion",
+  points: 3,
+  duration: 60 * 30,
+});
+
 const createQuestionLimiterMiddleware = createRateLimiterMiddleware(
   createQuestionLimiter,
   "Too many questions created, try again after half an hour",
 );
 
-export { createQuestionLimiterMiddleware };
+const createAnswerOnQuestionLimiterMiddleware = createRateLimiterMiddleware(
+  createAnswerOnQuestionLimiter,
+  "Too many answers created, try again after half an hour",
+);
+
+export {
+  createQuestionLimiterMiddleware,
+  createAnswerOnQuestionLimiterMiddleware,
+};
