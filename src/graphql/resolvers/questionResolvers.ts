@@ -149,7 +149,9 @@ const questionResolvers = {
           },
         },
 
-        { $addFields: { answerCount: { $size: "$answers" } } },
+        {
+          $addFields: { answerCount: { $size: { $ifNull: ["$answers", []] } } },
+        },
 
         {
           $lookup: {
@@ -257,7 +259,12 @@ const questionResolvers = {
                     },
                     in: {
                       $cond: {
-                        if: { $gt: [{ $size: "$filteredTop" }, 0] },
+                        if: {
+                          $gt: [
+                            { $size: { $ifNull: ["$filteredTop", []] } },
+                            0,
+                          ],
+                        },
                         then: { $first: "$filteredTop" },
                         else: {
                           $first: {
