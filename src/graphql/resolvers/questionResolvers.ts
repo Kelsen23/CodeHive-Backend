@@ -154,6 +154,38 @@ const questionResolvers = {
         {
           $lookup: {
             from: "votes",
+            localField: "_id",
+            foreignField: "targetId",
+            as: "questionVotes",
+          },
+        },
+
+        {
+          $addFields: {
+            upvotes: {
+              $size: {
+                $filter: {
+                  input: "$questionVotes",
+                  as: "v",
+                  cond: { $eq: ["$$v.voteType", "upvote"] },
+                },
+              },
+            },
+            downvotes: {
+              $size: {
+                $filter: {
+                  input: "$questionVotes",
+                  as: "v",
+                  cond: { $eq: ["$$v.voteType", "downvote"] },
+                },
+              },
+            },
+          },
+        },
+
+        {
+          $lookup: {
+            from: "votes",
             localField: "answers._id",
             foreignField: "targetId",
             as: "answerVotes",
@@ -209,25 +241,31 @@ const questionResolvers = {
         {
           $addFields: {
             topAnswer: {
-              $let: {
-                vars: {
-                  filteredTop: {
-                    $filter: {
-                      input: "$answers",
-                      as: "a",
-                      cond: { $eq: ["$$a.isTopAnswer", true] },
-                    },
-                  },
-                },
-                in: {
-                  $cond: {
-                    if: { $gt: [{ $size: "$$filteredTop" }, 0] },
-                    then: { $first: "$$filteredTop" },
-                    else: {
-                      $first: {
-                        $sortArray: {
+              $cond: {
+                if: { $eq: [{ $size: "$answers" }, 0] },
+                then: null,
+                else: {
+                  $let: {
+                    vars: {
+                      filteredTop: {
+                        $filter: {
                           input: "$answers",
-                          sortBy: { upvotes: -1, createdAt: 1 },
+                          as: "a",
+                          cond: { $eq: ["$a.isTopAnswer", true] },
+                        },
+                      },
+                    },
+                    in: {
+                      $cond: {
+                        if: { $gt: [{ $size: "$filteredTop" }, 0] },
+                        then: { $first: "$filteredTop" },
+                        else: {
+                          $first: {
+                            $sortArray: {
+                              input: "$answers",
+                              sortBy: { upvotes: -1, createdAt: 1 },
+                            },
+                          },
                         },
                       },
                     },
@@ -240,7 +278,7 @@ const questionResolvers = {
 
         {
           $lookup: {
-            from: "replys",
+            from: "replies",
             let: { topAnswerId: "$topAnswer._id" },
             pipeline: [
               { $match: { $expr: { $eq: ["$answerId", "$$topAnswerId"] } } },
@@ -275,59 +313,125 @@ const questionResolvers = {
                 },
               },
               { $sort: { upvotes: -1, createdAt: 1 } },
-              { $limit: 1 },
             ],
-            as: "topAnswer.replies",
+            as: "topReplies",
           },
         },
 
         {
           $project: {
-            _id: 1,
+            id: "$_id",
+            userId: 1,
             title: 1,
             body: 1,
             tags: 1,
             upvotes: 1,
             downvotes: 1,
-            isDeleted: 1,
-            isActive: 1,
-            createdAt: 1,
-            topAnswer: 1,
-            answers: 1,
             answerCount: 1,
-            askerId: 1,
+            isActive: 1,
+            isDeleted: 1,
+            createdAt: 1,
+            topAnswer: {
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ["$topAnswer", null] },
+                    { $ne: ["$topAnswer._id", null] },
+                  ],
+                },
+                then: {
+                  id: "$topAnswer._id",
+                  userId: "$topAnswer.userId",
+                  body: "$topAnswer.body",
+                  upvotes: "$topAnswer.upvotes",
+                  downvotes: "$topAnswer.downvotes",
+                  isTopAnswer: "$topAnswer.isTopAnswer",
+                  isActive: "$topAnswer.isActive",
+                  isDeleted: "$topAnswer.isDeleted",
+                  createdAt: "$topAnswer.createdAt",
+                  replyCount: { $size: "$topReplies" },
+                  replies: {
+                    $map: {
+                      input: "$topReplies",
+                      as: "reply",
+                      in: {
+                        id: "$$reply._id",
+                        userId: "$$reply.userId",
+                        body: "$$reply.body",
+                        upvotes: "$$reply.upvotes",
+                        downvotes: "$$reply.downvotes",
+                        isActive: "$$reply.isActive",
+                        isDeleted: "$$reply.isDeleted",
+                        createdAt: "$$reply.createdAt",
+                      },
+                    },
+                  },
+                },
+                else: null,
+              },
+            },
           },
         },
       ]);
 
       const question = questionData[0];
 
-      const questionUserIds = [question.askerId];
-      const answerUserIds = question.answers.map((a: any) => a.userId);
-      const replyUserIds =
-        question.topAnswer?.replies.map((r: any) => r.userId) || [];
+      if (!question) {
+        return null;
+      }
 
-      const allUserIds = [
-        ...new Set([...questionUserIds, ...answerUserIds, ...replyUserIds]),
-      ];
+      const userIds = new Set<string>();
 
-      const users = await loaders.userLoader.loadMany(allUserIds);
-      const userMap = new Map();
-      users.forEach((u: any) => userMap.set(u.id.toString(), u));
+      if (question.userId) {
+        userIds.add(question.userId.toString());
+      }
 
-      question.user = userMap.get(question.askerId.toString());
-      question.answers = question.answers.map((a: any) => ({
-        ...a,
-        user: userMap.get(a.userId.toString()),
-      }));
+      if (question.topAnswer?.userId) {
+        userIds.add(question.topAnswer.userId.toString());
+      }
 
-      if (question.topAnswer) {
-        question.topAnswer.replies = question.topAnswer.replies.map(
-          (r: any) => ({
-            ...r,
-            user: userMap.get(r.userId.toString()),
-          }),
-        );
+      if (
+        question.topAnswer?.replies &&
+        Array.isArray(question.topAnswer.replies)
+      ) {
+        question.topAnswer.replies.forEach((r: any) => {
+          if (r?.userId) userIds.add(r.userId.toString());
+        });
+      }
+
+      const allUserIds = Array.from(userIds);
+
+      if (allUserIds.length > 0) {
+        const users = await loaders.userLoader.loadMany(allUserIds);
+        const userMap = new Map();
+
+        users.forEach((u: any) => {
+          if (u && !u.error && u.id) {
+            userMap.set(u.id.toString(), u);
+          }
+        });
+
+        if (question.userId) {
+          question.user = userMap.get(question.userId.toString());
+        }
+
+        if (question.topAnswer?.userId) {
+          question.topAnswer.user = userMap.get(
+            question.topAnswer.userId.toString(),
+          );
+        }
+
+        if (
+          question.topAnswer?.replies &&
+          Array.isArray(question.topAnswer.replies)
+        ) {
+          question.topAnswer.replies = question.topAnswer.replies.map(
+            (r: any) => ({
+              ...r,
+              user: r?.userId ? userMap.get(r.userId.toString()) : null,
+            }),
+          );
+        }
       }
 
       await redisClient.set(
@@ -336,6 +440,10 @@ const questionResolvers = {
         "EX",
         60 * 15,
       );
+
+      if (question.topAnswer && !question.topAnswer.id) {
+        question.topAnswer = null;
+      }
 
       return question;
     },
