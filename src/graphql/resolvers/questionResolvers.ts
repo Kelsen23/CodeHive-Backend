@@ -1,7 +1,4 @@
-import HttpError from "../../utils/httpError.js";
-
 import Question from "../../models/questionModel.js";
-import Vote from "../../models/voteModel.js";
 
 import UserWithoutSensitiveInfo from "../../types/userWithoutSesitiveInfo.js";
 
