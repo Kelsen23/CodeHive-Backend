@@ -3,16 +3,19 @@ import express from "express";
 import {
   createQuestion,
   createAnswerOnQuestion,
+  createReplyOnAnswer,
 } from "../controllers/questionController.js";
 
 import {
   createQuestionSchema,
   createAnswerOnQuestionSchema,
+  createReplyOnAnswerShchema,
 } from "../validations/question.schema.js";
 
 import {
   createQuestionLimiterMiddleware,
   createAnswerOnQuestionLimiterMiddleware,
+  createReplyOnAnswerLimiterMiddleware,
 } from "../middlewares/rateLimiters/questionRateLimitiers.js";
 
 import isAuthenticated, {
@@ -44,6 +47,17 @@ router
     isTerminated,
     validate(createAnswerOnQuestionSchema),
     createAnswerOnQuestion,
+  );
+
+router
+  .route("/create/reply/:answerId")
+  .post(
+    createReplyOnAnswerLimiterMiddleware,
+    isAuthenticated,
+    isVerified,
+    isTerminated,
+    validate(createReplyOnAnswerShchema),
+    createReplyOnAnswer,
   );
 
 export default router;
