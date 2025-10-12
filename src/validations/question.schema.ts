@@ -40,7 +40,7 @@ const createQuestionSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["body"],
-        message: "Body contains inappropriate language",
+        message: "Question contains inappropriate language",
       });
     }
   });
@@ -49,17 +49,38 @@ const createAnswerOnQuestionSchema = z
   .object({
     body: z
       .string()
-      .min(10, "Body must be at least 10 characters")
-      .max(5000, "Body must be at most 5000 characters"),
+      .min(10, "Answer must be at least 10 characters")
+      .max(5000, "Answer must be at most 5000 characters"),
   })
   .superRefine((data, ctx) => {
     if (leoProfanity.check(data.body)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["body"],
-        message: "Body contains inappropriate language",
+        message: "Answer contains inappropriate language",
       });
     }
   });
 
-export { createQuestionSchema, createAnswerOnQuestionSchema };
+const createReplyOnAnswerShchema = z
+  .object({
+    body: z
+      .string()
+      .min(1, "Reply must be at least 1 character")
+      .max(2000, "Reply must be at most 2000 characters"),
+  })
+  .superRefine((data, ctx) => {
+    if (leoProfanity.check(data.body)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["body"],
+        message: "Reply contains inappropriate language",
+      });
+    }
+  });
+
+export {
+  createQuestionSchema,
+  createAnswerOnQuestionSchema,
+  createReplyOnAnswerShchema,
+};

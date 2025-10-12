@@ -42,7 +42,7 @@ const questionTypeDefs = gql`
 
   type QuestionDetails {
     id: ID!
-    askerId: String!
+    userId: String!
     title: String!
     body: String!
     tags: [String]!
