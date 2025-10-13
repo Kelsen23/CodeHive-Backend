@@ -24,6 +24,13 @@ const createReplyOnAnswerLimiter = new RateLimiterRedis({
   duration: 60 * 15,
 });
 
+const voteLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "vote",
+  points: 20,
+  duration: 60 * 15,
+});
+
 const createQuestionLimiterMiddleware = createRateLimiterMiddleware(
   createQuestionLimiter,
   "Too many questions created, try again after half an hour",
@@ -39,8 +46,14 @@ const createReplyOnAnswerLimiterMiddleware = createRateLimiterMiddleware(
   "Too many replies created, try again after half 15 minutes",
 );
 
+const voteLimiterMiddleware = createRateLimiterMiddleware(
+  voteLimiter,
+  "Too many votes, try again after 15 minutes",
+);
+
 export {
   createQuestionLimiterMiddleware,
   createAnswerOnQuestionLimiterMiddleware,
   createReplyOnAnswerLimiterMiddleware,
+  voteLimiterMiddleware,
 };

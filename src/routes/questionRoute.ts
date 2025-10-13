@@ -4,18 +4,21 @@ import {
   createQuestion,
   createAnswerOnQuestion,
   createReplyOnAnswer,
+  vote,
 } from "../controllers/questionController.js";
 
 import {
   createQuestionSchema,
   createAnswerOnQuestionSchema,
-  createReplyOnAnswerShchema,
+  createReplyOnAnswerSchema,
+  voteSchema
 } from "../validations/question.schema.js";
 
 import {
   createQuestionLimiterMiddleware,
   createAnswerOnQuestionLimiterMiddleware,
   createReplyOnAnswerLimiterMiddleware,
+  voteLimiterMiddleware,
 } from "../middlewares/rateLimiters/questionRateLimitiers.js";
 
 import isAuthenticated, {
@@ -56,8 +59,19 @@ router
     isAuthenticated,
     isVerified,
     isTerminated,
-    validate(createReplyOnAnswerShchema),
+    validate(createReplyOnAnswerSchema),
     createReplyOnAnswer,
+  );
+
+router
+  .route("/vote")
+  .post(
+    voteLimiterMiddleware,
+    isAuthenticated,
+    isVerified,
+    isTerminated,
+    validate(voteSchema),
+    vote,
   );
 
 export default router;
