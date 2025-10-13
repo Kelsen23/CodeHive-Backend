@@ -62,7 +62,7 @@ const createAnswerOnQuestionSchema = z
     }
   });
 
-const createReplyOnAnswerShchema = z
+const createReplyOnAnswerSchema = z
   .object({
     body: z
       .string()
@@ -79,8 +79,15 @@ const createReplyOnAnswerShchema = z
     }
   });
 
+const voteSchema = z.object({
+  targetType: z.enum(["Question", "Answer", "Reply"], "Target type is either 'Question', 'Answer' or 'Reply'"),
+  targetId: z.string().min(1, "targetId is required"),
+  voteType: z.enum(["upvote", "downvote"], "Vote type must be either 'upvote' or 'downvote'"),
+});
+
 export {
   createQuestionSchema,
   createAnswerOnQuestionSchema,
-  createReplyOnAnswerShchema,
+  createReplyOnAnswerSchema,
+  voteSchema,
 };
