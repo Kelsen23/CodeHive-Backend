@@ -4,6 +4,8 @@ import { Request, Response } from "express";
 
 import AuthenticatedRequest from "../types/authenticatedRequest.js";
 
+import invalidateCacheOnUnvote from "../utils/invalidateCacheOnUnvote.js";
+
 import Question from "../models/questionModel.js";
 import Answer from "../models/answerModel.js";
 import Reply from "../models/replyModel.js";
@@ -213,4 +215,27 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-export { createQuestion, createAnswerOnQuestion, createReplyOnAnswer, vote };
+const unvote = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user;
+    const { targetType, targetId } = req.body;
+
+    const foundVote = await Vote.findOne({ userId, targetType, targetId });
+
+    if (!foundVote) throw new HttpError("Vote not found", 404);
+
+    await Vote.deleteOne({ userId, targetType, targetId });
+
+    await invalidateCacheOnUnvote(targetType, targetId);
+
+    return res.status(200).json({ message: "Sucessfully unvoted" });
+  },
+);
+
+export {
+  createQuestion,
+  createAnswerOnQuestion,
+  createReplyOnAnswer,
+  vote,
+  unvote,
+};
