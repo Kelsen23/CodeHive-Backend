@@ -5,13 +5,15 @@ import {
   createAnswerOnQuestion,
   createReplyOnAnswer,
   vote,
+  unvote,
 } from "../controllers/questionController.js";
 
 import {
   createQuestionSchema,
   createAnswerOnQuestionSchema,
   createReplyOnAnswerSchema,
-  voteSchema
+  voteSchema,
+  unvoteSchema,
 } from "../validations/question.schema.js";
 
 import {
@@ -72,6 +74,16 @@ router
     isTerminated,
     validate(voteSchema),
     vote,
+  );
+
+router
+  .route("/unvote")
+  .delete(
+    isAuthenticated,
+    isVerified,
+    isTerminated,
+    validate(unvoteSchema),
+    unvote,
   );
 
 export default router;
