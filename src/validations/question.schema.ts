@@ -80,9 +80,23 @@ const createReplyOnAnswerSchema = z
   });
 
 const voteSchema = z.object({
-  targetType: z.enum(["Question", "Answer", "Reply"], "Target type is either 'Question', 'Answer' or 'Reply'"),
+  targetType: z.enum(
+    ["Question", "Answer", "Reply"],
+    "Target type is either 'Question', 'Answer' or 'Reply'",
+  ),
   targetId: z.string().min(1, "targetId is required"),
-  voteType: z.enum(["upvote", "downvote"], "Vote type must be either 'upvote' or 'downvote'"),
+  voteType: z.enum(
+    ["upvote", "downvote"],
+    "Vote type must be either 'upvote' or 'downvote'",
+  ),
+});
+
+const unvoteSchema = z.object({
+  targetType: z.enum(
+    ["Question", "Answer", "Reply"],
+    "Target type is either 'Question', 'Answer' or 'Reply'",
+  ),
+  targetId: z.string().min(1, "targetId is required"),
 });
 
 export {
@@ -90,4 +104,5 @@ export {
   createAnswerOnQuestionSchema,
   createReplyOnAnswerSchema,
   voteSchema,
+  unvoteSchema,
 };
