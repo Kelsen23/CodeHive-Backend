@@ -9,7 +9,6 @@ const AnswerSchema: Schema = new Schema(
     },
     userId: { type: String, required: true },
     body: { type: String, required: true, maxlength: 5000 },
-    isTopAnswer: { type: Boolean, default: false },
     isBestAnswerByAsker: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
