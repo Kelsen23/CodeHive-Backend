@@ -250,7 +250,7 @@ const questionResolvers = {
                         $filter: {
                           input: "$answers",
                           as: "a",
-                          cond: { $eq: ["$a.isTopAnswer", true] },
+                          cond: { $eq: ["$a.isBestAnswerByAsker", true] },
                         },
                       },
                     },
@@ -349,7 +349,7 @@ const questionResolvers = {
                   body: "$topAnswer.body",
                   upvotes: "$topAnswer.upvotes",
                   downvotes: "$topAnswer.downvotes",
-                  isTopAnswer: "$topAnswer.isTopAnswer",
+                  isBestAnswerByAsker: "$topAnswer.isBestAnswerByAsker",
                   isActive: "$topAnswer.isActive",
                   isDeleted: "$topAnswer.isDeleted",
                   createdAt: "$topAnswer.createdAt",
