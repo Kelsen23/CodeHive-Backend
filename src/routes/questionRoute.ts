@@ -21,7 +21,7 @@ import {
   createAnswerOnQuestionLimiterMiddleware,
   createReplyOnAnswerLimiterMiddleware,
   voteLimiterMiddleware,
-} from "../middlewares/rateLimiters/questionRateLimitiers.js";
+} from "../middlewares/rateLimiters/questionRateLimiters.js";
 
 import isAuthenticated, {
   isTerminated,
