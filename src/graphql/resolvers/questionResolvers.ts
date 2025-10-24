@@ -1,6 +1,6 @@
 import Question from "../../models/questionModel.js";
 
-import UserWithoutSensitiveInfo from "../../types/userWithoutSesitiveInfo.js";
+import UserWithoutSensitiveInfo from "../../types/userWithoutSensitiveInfo.js";
 
 import mongoose from "mongoose";
 

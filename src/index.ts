@@ -11,7 +11,7 @@ import bodyParser from "body-parser";
 
 import authenticateGraphQLUser from "./middlewares/graphqlAuth.js";
 
-import UserWithoutSensitiveInfo from "./types/userWithoutSesitiveInfo.js";
+import UserWithoutSensitiveInfo from "./types/userWithoutSensitiveInfo.js";
 
 import createUserLoader from "./dataloaders/userLoader.js";
 

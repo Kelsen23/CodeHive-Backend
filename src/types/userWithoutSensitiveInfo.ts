@@ -1,6 +1,6 @@
 import { Role, Status, Interest } from "../generated/prisma/index.js";
 
-interface Achievment {
+interface Achievement {
   id: string;
   userId: string;
   name: string;
@@ -20,7 +20,7 @@ interface UserWithoutSensitiveInfo {
   questionsAsked: number;
   answersGiven: number;
   bestAnswers: number;
-  achievments: Achievment[];
+  achievements: Achievement[];
   status: Status;
   createdAt: string;
 }
