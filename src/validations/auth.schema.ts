@@ -29,7 +29,7 @@ const registerSchema = z.object({
     .max(345, "Email must be at most 345 characters"),
   password: z
     .string()
-    .min(8, "Password must be atleast 8 characters")
+    .min(8, "Password must be at least 8 characters")
     .max(60, "Password must be at most 60 characters")
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
@@ -47,7 +47,7 @@ const loginSchema = z.object({
     .max(345, "Email must be at most 345 characters"),
   password: z
     .string()
-    .min(8, "Password must be atleast 8 characters")
+    .min(8, "Password must be at least 8 characters")
     .max(60, "Password must be at most 60 characters")
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
@@ -66,7 +66,7 @@ const googleSchema = z.object({
     .max(345, "Email must be at most 345 characters"),
   name: z
     .string()
-    .min(3, "Username must be atleast 3 characters")
+    .min(3, "Username must be at least 3 characters")
     .max(15, "Username must be at most 15 characters"),
   picture: z.string().url("Invalid picture url"),
   email_verified: z.boolean(),
@@ -81,7 +81,7 @@ const githubSchema = z.object({
     .max(345, "Email must be at most 345 characters"),
   name: z
     .string()
-    .min(3, "Username must be atleast 3 characters")
+    .min(3, "Username must be at least 3 characters")
     .max(15, "Username must be at most 15 characters"),
   avatar_url: z.string().url("Invalid picture url"),
 });
@@ -96,7 +96,7 @@ const verifyEmailSchema = z.object({
 const resetPasswordSchema = z.object({
   newPassword: z
     .string()
-    .min(8, "Password must be atleast 8 characters")
+    .min(8, "Password must be at least 8 characters")
     .max(60, "Password must be at most 60 characters")
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
