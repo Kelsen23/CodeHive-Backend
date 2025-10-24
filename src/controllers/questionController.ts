@@ -228,7 +228,7 @@ const unvote = asyncHandler(
 
     await invalidateCacheOnUnvote(targetType, targetId);
 
-    return res.status(200).json({ message: "Sucessfully unvoted" });
+    return res.status(200).json({ message: "Successfully unvoted" });
   },
 );
 
