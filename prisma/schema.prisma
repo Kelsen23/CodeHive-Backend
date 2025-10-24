@@ -93,33 +93,33 @@ enum Interest {
 }
 
 model User {
-  id                                String       @id @default(uuid())
-  username                          String       @unique @db.VarChar(15)
-  email                             String       @unique @db.VarChar(345)
-  password                          String?      @db.VarChar(60)
+  id                                String        @id @default(uuid())
+  username                          String        @unique @db.VarChar(15)
+  email                             String        @unique @db.VarChar(345)
+  password                          String?       @db.VarChar(60)
   profilePictureUrl                 String?
   profilePictureKey                 String?
-  bio                               String?      @db.VarChar(150)
+  bio                               String?       @db.VarChar(150)
   interests                         Interest[]
-  reputationPoints                  Int          @default(0)
-  role                              Role         @default(USER)
-  questionsAsked                    Int          @default(0)
-  answersGiven                      Int          @default(0)
-  bestAnswers                       Int          @default(0)
-  achievments                       Achievment[]
-  status                            Status       @default(ACTIVE)
-  otp                               String?      @db.Char(6)
+  reputationPoints                  Int           @default(0)
+  role                              Role          @default(USER)
+  questionsAsked                    Int           @default(0)
+  answersGiven                      Int           @default(0)
+  bestAnswers                       Int           @default(0)
+  achievements                      Achievement[]
+  status                            Status        @default(ACTIVE)
+  otp                               String?       @db.Char(6)
   otpResendAvailableAt              DateTime?
   otpExpireAt                       DateTime?
-  resetPasswordOtp                  String?      @db.Char(6)
+  resetPasswordOtp                  String?       @db.Char(6)
   resetPasswordOtpVerified          Boolean?
   resetPasswordOtpResendAvailableAt DateTime?
   resetPasswordOtpExpireAt          DateTime?
-  isVerified                        Boolean      @default(false)
-  createdAt                         DateTime     @default(now())
+  isVerified                        Boolean       @default(false)
+  createdAt                         DateTime      @default(now())
 }
 
-model Achievment {
+model Achievement {
   id          String   @id @default(uuid())
   user        User     @relation(fields: [userId], references: [id])
   userId      String
