@@ -102,7 +102,7 @@ const questionResolvers = {
             questionsAsked: 0,
             answersGiven: 0,
             bestAnswers: 0,
-            achievments: [],
+            achievements: [],
             status: "TERMINATED",
             isVerified: false,
             createdAt: new Date(0).toISOString(),
