@@ -536,8 +536,22 @@ const isAuth = asyncHandler(
 
     if (!foundUser) throw new HttpError("User not found", 404);
 
+    const {
+      password,
+      profilePictureKey,
+      otp,
+      otpResendAvailableAt,
+      otpExpireAt,
+      resetPasswordOtp,
+      resetPasswordOtpVerified,
+      resetPasswordOtpResendAvailableAt,
+      resetPasswordOtpExpireAt,
+      ...userWithoutSensitiveInfo
+    } = foundUser;
+
     return res.status(200).json({
       message: "Successfully authenticated",
+      user: userWithoutSensitiveInfo,
     });
   },
 );
