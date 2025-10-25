@@ -250,7 +250,7 @@ const questionResolvers = {
                         $filter: {
                           input: "$answers",
                           as: "a",
-                          cond: { $eq: ["$a.isBestAnswerByAsker", true] },
+                          cond: { $eq: ["$$a.isBestAnswerByAsker", true] },
                         },
                       },
                     },
@@ -258,11 +258,11 @@ const questionResolvers = {
                       $cond: {
                         if: {
                           $gt: [
-                            { $size: { $ifNull: ["$filteredTop", []] } },
+                            { $size: { $ifNull: ["$$filteredTop", []] } },
                             0,
                           ],
                         },
-                        then: { $first: "$filteredTop" },
+                        then: { $first: "$$filteredTop" },
                         else: {
                           $first: {
                             $sortArray: {
