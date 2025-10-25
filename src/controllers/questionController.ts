@@ -5,14 +5,14 @@ import { Request, Response } from "express";
 import AuthenticatedRequest from "../types/authenticatedRequest.js";
 
 import invalidateCacheOnUnvote from "../utils/invalidateCacheOnUnvote.js";
+import HttpError from "../utils/httpError.js";
 
 import Question from "../models/questionModel.js";
 import Answer from "../models/answerModel.js";
 import Reply from "../models/replyModel.js";
 import Vote from "../models/voteModel.js";
 
-import HttpError from "../utils/httpError.js";
-
+import { prisma } from "../index.js";
 import { redisClient } from "../config/redis.js";
 
 const createQuestion = asyncHandler(
@@ -92,7 +92,11 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { targetType, targetId, voteType } = req.body;
 
   if (targetType === "Question") {
-    const foundQuestion = await Question.findById(targetId);
+    const cachedQuestion = await redisClient.get(`question:${targetId}`);
+
+    const foundQuestion = cachedQuestion
+      ? JSON.parse(cachedQuestion)
+      : await Question.findById(targetId);
 
     if (!foundQuestion) throw new HttpError("Question not found", 404);
 
@@ -122,6 +126,12 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       targetId,
       voteType,
     });
+
+    if (voteType === "upvote")
+      await prisma.user.update({
+        where: { id: foundQuestion.userId as string },
+        data: { reputationPoints: { increment: 10 } },
+      });
 
     await redisClient.del(`question:${targetId}`);
 
@@ -162,6 +172,12 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       targetId,
       voteType,
     });
+
+    if (voteType === "upvote")
+      await prisma.user.update({
+        where: { id: foundAnswer.userId as string },
+        data: { reputationPoints: { increment: 10 } },
+      });
 
     await redisClient.del(`question:${foundAnswer.questionId}`);
 
@@ -206,6 +222,12 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       voteType,
     });
 
+    if (voteType === "upvote")
+      await prisma.user.update({
+        where: { id: foundReply.userId as string },
+        data: { reputationPoints: { increment: 5 } },
+      });
+
     await redisClient.del(`question:${foundAnswer.questionId}`);
 
     return res.status(200).json({
@@ -225,6 +247,52 @@ const unvote = asyncHandler(
     if (!foundVote) throw new HttpError("Vote not found", 404);
 
     await Vote.deleteOne({ userId, targetType, targetId });
+
+    if (targetType === "Question" && foundVote.voteType === "upvote") {
+      const cachedQuestion = await redisClient.get(`question:${targetId}`);
+
+      const foundQuestion = cachedQuestion
+        ? JSON.parse(cachedQuestion)
+        : await Question.findById(targetId);
+
+      if (!foundQuestion) throw new HttpError("Question not found", 404);
+
+      if (foundQuestion.isDeleted || !foundQuestion.isActive)
+        throw new HttpError("Question not active", 410);
+
+      await prisma.user.update({
+        where: { id: foundQuestion.userId as string },
+        data: { reputationPoints: { decrement: 10 } },
+      });
+    }
+
+    if (targetType === "Answer" && foundVote.voteType === "upvote") {
+      const foundAnswer = await Answer.findById(targetId);
+
+      if (!foundAnswer) throw new HttpError("Question not found", 404);
+
+      if (foundAnswer.isDeleted || !foundAnswer.isActive)
+        throw new HttpError("Question not active", 410);
+
+      await prisma.user.update({
+        where: { id: foundAnswer.userId as string },
+        data: { reputationPoints: { decrement: 10 } },
+      });
+    }
+
+    if (targetType === "Reply" && foundVote.voteType === "upvote") {
+      const foundReply = await Reply.findById(targetId);
+
+      if (!foundReply) throw new HttpError("Question not found", 404);
+
+      if (foundReply.isDeleted || !foundReply.isActive)
+        throw new HttpError("Question not active", 410);
+
+      await prisma.user.update({
+        where: { id: foundReply.userId as string },
+        data: { reputationPoints: { decrement: 5 } },
+      });
+    }
 
     await invalidateCacheOnUnvote(targetType, targetId);
 
