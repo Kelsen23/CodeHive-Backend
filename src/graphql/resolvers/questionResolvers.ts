@@ -194,6 +194,23 @@ const questionResolvers = {
         {
           $addFields: {
             answers: {
+              $filter: {
+                input: "$answers",
+                as: "a",
+                cond: {
+                  $and: [
+                    { $eq: ["$$a.isActive", true] },
+                    { $eq: ["$$a.isDeleted", false] },
+                  ],
+                },
+              },
+            },
+          },
+        },
+
+        {
+          $addFields: {
+            answers: {
               $map: {
                 input: "$answers",
                 as: "ans",
@@ -285,7 +302,13 @@ const questionResolvers = {
             from: "replies",
             let: { topAnswerId: "$topAnswer._id" },
             pipeline: [
-              { $match: { $expr: { $eq: ["$answerId", "$$topAnswerId"] } } },
+              {
+                $match: {
+                  $expr: { $eq: ["$answerId", "$$topAnswerId"] },
+                  isActive: true,
+                  isDeleted: false,
+                },
+              },
               {
                 $lookup: {
                   from: "votes",
