@@ -300,10 +300,83 @@ const unvote = asyncHandler(
   },
 );
 
+const markAnswerAsBest = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user;
+    const { answerId } = req.params;
+
+    const foundAnswer = await Answer.findById(answerId);
+
+    if (!foundAnswer) throw new HttpError("Answer not found", 404);
+
+    if (foundAnswer.isDeleted || !foundAnswer.isActive)
+      throw new HttpError("Answer not active", 410);
+
+    if (foundAnswer.isBestAnswerByAsker) {
+      return res.status(200).json({
+        message: "Answer is already marked as best",
+        answer: foundAnswer,
+      });
+    }
+
+    const cachedQuestion = await redisClient.get(
+      `question:${foundAnswer.questionId}`,
+    );
+
+    const foundQuestion = cachedQuestion
+      ? JSON.parse(cachedQuestion)
+      : await Question.findById(foundAnswer.questionId);
+
+    if (!foundQuestion) throw new HttpError("Question not found", 404);
+
+    if (foundQuestion.userId !== userId)
+      throw new HttpError("Unauthorized to mark as best answer", 403);
+
+    if (foundQuestion.isDeleted || !foundQuestion.isActive)
+      throw new HttpError("Question not active", 410);
+
+    const bestAnswer = await Answer.findOne({
+      questionId: foundAnswer.questionId,
+      isBestAnswerByAsker: true,
+    });
+
+    if (bestAnswer) {
+      await Answer.findByIdAndUpdate(bestAnswer._id, {
+        $set: { isBestAnswerByAsker: false },
+      });
+
+      await prisma.user.update({
+        where: { id: bestAnswer.userId as string },
+        data: { reputationPoints: { decrement: 15 } },
+      });
+    }
+
+    const newBestAnswer = await Answer.findByIdAndUpdate(foundAnswer._id, {
+      $set: { isBestAnswerByAsker: true },
+    });
+
+    if (!newBestAnswer)
+      throw new HttpError("Error marking answer as best", 500);
+
+    await prisma.user.update({
+      where: { id: newBestAnswer.userId as string },
+      data: { reputationPoints: { increment: 15 } },
+    });
+
+    await redisClient.del(`question:${foundAnswer.questionId}`);
+
+    return res.status(200).json({
+      message: "Successfully marked answer as best",
+      answer: newBestAnswer,
+    });
+  },
+);
+
 export {
   createQuestion,
   createAnswerOnQuestion,
   createReplyOnAnswer,
   vote,
   unvote,
+  markAnswerAsBest,
 };

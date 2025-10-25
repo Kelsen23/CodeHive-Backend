@@ -6,6 +6,7 @@ import {
   createReplyOnAnswer,
   vote,
   unvote,
+  markAnswerAsBest,
 } from "../controllers/questionController.js";
 
 import {
@@ -21,6 +22,7 @@ import {
   createAnswerOnQuestionLimiterMiddleware,
   createReplyOnAnswerLimiterMiddleware,
   voteLimiterMiddleware,
+  markAnswerAsBestLimiterMiddleware,
 } from "../middlewares/rateLimiters/questionRateLimiters.js";
 
 import isAuthenticated, {
@@ -85,5 +87,13 @@ router
     validate(unvoteSchema),
     unvote,
   );
+
+router.route("/answer/markAsBest/:answerId").post(
+  markAnswerAsBestLimiterMiddleware,
+  isAuthenticated,
+  isVerified,
+  isTerminated,
+  markAnswerAsBest,
+)
 
 export default router;
