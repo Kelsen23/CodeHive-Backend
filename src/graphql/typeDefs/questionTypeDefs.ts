@@ -33,7 +33,7 @@ const questionTypeDefs = gql`
     downvotes: Int!
     replyCount: Int!
     replies: [Reply!]!
-    isTopAnswer: Boolean!
+    isBestAnswerByAsker: Boolean!
     isActive: Boolean!
     isDeleted: Boolean!
     createdAt: String!
