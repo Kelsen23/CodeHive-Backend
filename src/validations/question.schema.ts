@@ -91,18 +91,9 @@ const voteSchema = z.object({
   ),
 });
 
-const unvoteSchema = z.object({
-  targetType: z.enum(
-    ["Question", "Answer", "Reply"],
-    "Target type is either 'Question', 'Answer' or 'Reply'",
-  ),
-  targetId: z.string().min(1, "targetId is required"),
-});
-
 export {
   createQuestionSchema,
   createAnswerOnQuestionSchema,
   createReplyOnAnswerSchema,
   voteSchema,
-  unvoteSchema,
 };

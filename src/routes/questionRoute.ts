@@ -15,7 +15,6 @@ import {
   createAnswerOnQuestionSchema,
   createReplyOnAnswerSchema,
   voteSchema,
-  unvoteSchema,
 } from "../validations/question.schema.js";
 
 import {
@@ -80,14 +79,8 @@ router
   );
 
 router
-  .route("/unvote")
-  .delete(
-    isAuthenticated,
-    isVerified,
-    isTerminated,
-    validate(unvoteSchema),
-    unvote,
-  );
+  .route("/unvote/:targetType/:targetId")
+  .delete(isAuthenticated, isVerified, isTerminated, unvote);
 
 router
   .route("/answer/markAsBest/:answerId")
@@ -101,11 +94,6 @@ router
 
 router
   .route("/:targetType/:targetId")
-  .delete(
-    isAuthenticated,
-    isVerified,
-    isTerminated,
-    deleteContent,
-  );
+  .delete(isAuthenticated, isVerified, isTerminated, deleteContent);
 
 export default router;
