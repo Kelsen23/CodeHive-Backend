@@ -241,7 +241,25 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
 const unvote = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user;
-    const { targetType, targetId } = req.body;
+
+    let { targetType } = req.params;
+    const { targetId } = req.params;
+
+    if (
+      targetType !== "question" &&
+      targetType !== "answer" &&
+      targetType !== "reply"
+    )
+      throw new HttpError("Invalid target type", 400);
+
+    targetType = targetType.charAt(0).toUpperCase() + targetType.slice(1);
+
+    if (
+      typeof targetId !== "string" ||
+      !mongoose.Types.ObjectId.isValid(targetId)
+    ) {
+      throw new HttpError("Invalid targetId", 400);
+    }
 
     const foundVote = await Vote.findOne({ userId, targetType, targetId });
 
@@ -295,7 +313,10 @@ const unvote = asyncHandler(
       });
     }
 
-    await invalidateCacheOnUnvote(targetType, targetId);
+    await invalidateCacheOnUnvote(
+      targetType as "Question" | "Answer" | "Reply",
+      targetId,
+    );
 
     return res.status(200).json({ message: "Successfully unvoted" });
   },
