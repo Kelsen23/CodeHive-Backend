@@ -7,6 +7,7 @@ import AuthenticatedRequest from "../types/authenticatedRequest.js";
 import invalidateCacheOnUnvote from "../utils/invalidateCacheOnUnvote.js";
 import HttpError from "../utils/httpError.js";
 
+import mongoose from "mongoose";
 import Question from "../models/questionModel.js";
 import Answer from "../models/answerModel.js";
 import Reply from "../models/replyModel.js";
@@ -372,6 +373,101 @@ const markAnswerAsBest = asyncHandler(
   },
 );
 
+const deleteContent = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user;
+    const { targetType, targetId } = req.params;
+
+    const validTargetTypes = ["question", "answer", "reply"] as const;
+    type TargetType = (typeof validTargetTypes)[number];
+
+    if (!validTargetTypes.includes(targetType as TargetType)) {
+      throw new HttpError("Invalid target type", 400);
+    }
+
+    if (
+      typeof targetId !== "string" ||
+      !mongoose.Types.ObjectId.isValid(targetId)
+    ) {
+      throw new HttpError("Invalid targetId", 400);
+    }
+
+    if (targetType === "question") {
+      const cachedQuestion = await redisClient.get(`question:${targetId}`);
+
+      const foundQuestion = cachedQuestion
+        ? JSON.parse(cachedQuestion)
+        : await Question.findById(targetId);
+
+      if (!foundQuestion) throw new HttpError("Question not found", 404);
+
+      if (foundQuestion.userId !== userId)
+        throw new HttpError("Unauthorized to delete question", 403);
+
+      if (foundQuestion.isDeleted || !foundQuestion.isActive)
+        throw new HttpError("Question not active", 410);
+
+      await Question.findByIdAndUpdate(foundQuestion._id, {
+        $set: { isDeleted: true, isActive: false },
+      });
+
+      await redisClient.del(`question:${targetId}`);
+
+      return res.status(200).json({
+        message: "Successfully deleted question",
+      });
+    }
+
+    if (targetType === "answer") {
+      const foundAnswer = await Answer.findById(targetId);
+
+      if (!foundAnswer) throw new HttpError("Answer not found", 404);
+
+      if (foundAnswer.userId !== userId)
+        throw new HttpError("Unauthorized to delete answer", 403);
+
+      if (foundAnswer.isDeleted || !foundAnswer.isActive)
+        throw new HttpError("Answer not active", 410);
+
+      await Answer.findByIdAndUpdate(foundAnswer._id, {
+        $set: { isDeleted: true, isActive: false },
+      });
+
+      await redisClient.del(`question:${foundAnswer.questionId}`);
+
+      return res.status(200).json({
+        message: "Successfully deleted answer",
+      });
+    }
+
+    if (targetType === "reply") {
+      const foundReply = await Reply.findById(targetId);
+
+      if (!foundReply) throw new HttpError("Reply not found", 404);
+
+      if (foundReply.userId !== userId)
+        throw new HttpError("Unauthorized to delete reply", 403);
+
+      if (foundReply.isDeleted || !foundReply.isActive)
+        throw new HttpError("Reply not active", 410);
+
+      await Reply.findByIdAndUpdate(foundReply._id, {
+        $set: { isDeleted: true, isActive: false },
+      });
+
+      const foundAnswer = await Answer.findById(foundReply.answerId);
+
+      if (!foundAnswer) throw new HttpError("Parent answer not found", 404);
+
+      await redisClient.del(`question:${foundAnswer.questionId}`);
+
+      return res.status(200).json({
+        message: "Successfully deleted reply",
+      });
+    }
+  },
+);
+
 export {
   createQuestion,
   createAnswerOnQuestion,
@@ -379,4 +475,5 @@ export {
   vote,
   unvote,
   markAnswerAsBest,
+  deleteContent,
 };
