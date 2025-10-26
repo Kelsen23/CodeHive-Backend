@@ -7,6 +7,7 @@ import {
   vote,
   unvote,
   markAnswerAsBest,
+  unmarkAnswerAsBest,
   deleteContent,
 } from "../controllers/questionController.js";
 
@@ -91,6 +92,10 @@ router
     isTerminated,
     markAnswerAsBest,
   );
+
+router
+  .route("/answer/unmarkAsBest/:answerId")
+  .patch(isAuthenticated, isVerified, isTerminated, unmarkAnswerAsBest);
 
 router
   .route("/:targetType/:targetId")
