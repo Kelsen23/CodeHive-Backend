@@ -28,6 +28,11 @@ const createQuestion = asyncHandler(
       tags,
     });
 
+    await prisma.user.update({
+      where: { id: userId },
+      data: { questionsAsked: { increment: 1 } },
+    });
+
     return res.status(201).json({
       message: "Successfully created question",
       question: createdQuestion,
@@ -51,6 +56,14 @@ const createAnswerOnQuestion = asyncHandler(
     const newAnswer = await Answer.create({ questionId, body, userId });
 
     await redisClient.del(`question:${questionId}`);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        answersGiven: { increment: 1 },
+        reputationPoints: { increment: 2 },
+      },
+    });
 
     return res
       .status(201)
@@ -369,7 +382,10 @@ const markAnswerAsBest = asyncHandler(
 
       await prisma.user.update({
         where: { id: bestAnswer.userId as string },
-        data: { reputationPoints: { decrement: 15 } },
+        data: {
+          reputationPoints: { decrement: 15 },
+          bestAnswers: { decrement: 1 },
+        },
       });
     }
 
@@ -382,7 +398,10 @@ const markAnswerAsBest = asyncHandler(
 
     await prisma.user.update({
       where: { id: newBestAnswer.userId as string },
-      data: { reputationPoints: { increment: 15 } },
+      data: {
+        reputationPoints: { increment: 15 },
+        bestAnswers: { increment: 1 },
+      },
     });
 
     await redisClient.del(`question:${foundAnswer.questionId}`);
@@ -427,6 +446,14 @@ const unmarkAnswerAsBest = asyncHandler(
       },
       { new: true },
     );
+
+    await prisma.user.update({
+      where: { id: foundAnswer.userId as string },
+      data: {
+        reputationPoints: { decrement: 15 },
+        bestAnswers: { decrement: 1 },
+      },
+    });
 
     await redisClient.del(`question:${foundAnswer.questionId}`);
 
@@ -475,6 +502,11 @@ const deleteContent = asyncHandler(
         $set: { isDeleted: true, isActive: false },
       });
 
+      await prisma.user.update({
+        where: { id: userId as string },
+        data: { questionsAsked: { decrement: 1 } },
+      });
+
       await redisClient.del(`question:${targetId}`);
 
       return res.status(200).json({
@@ -495,6 +527,14 @@ const deleteContent = asyncHandler(
 
       await Answer.findByIdAndUpdate(foundAnswer._id, {
         $set: { isDeleted: true, isActive: false },
+      });
+
+      await prisma.user.update({
+        where: { id: userId as string },
+        data: {
+          answersGiven: { decrement: 1 },
+          reputationPoints: { decrement: 2 },
+        },
       });
 
       await redisClient.del(`question:${foundAnswer.questionId}`);
