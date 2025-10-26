@@ -7,6 +7,7 @@ import {
   vote,
   unvote,
   markAnswerAsBest,
+  unmarkAnswerAsBest,
   deleteContent,
 } from "../controllers/questionController.js";
 
@@ -84,13 +85,17 @@ router
 
 router
   .route("/answer/markAsBest/:answerId")
-  .post(
+  .patch(
     markAnswerAsBestLimiterMiddleware,
     isAuthenticated,
     isVerified,
     isTerminated,
     markAnswerAsBest,
   );
+
+router
+  .route("/answer/unmarkAsBest/:answerId")
+  .patch(isAuthenticated, isVerified, isTerminated, unmarkAnswerAsBest);
 
 router
   .route("/:targetType/:targetId")

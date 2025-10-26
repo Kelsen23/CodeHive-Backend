@@ -351,7 +351,7 @@ const markAnswerAsBest = asyncHandler(
 
     if (!foundQuestion) throw new HttpError("Question not found", 404);
 
-    if (foundQuestion.userId !== userId)
+    if (foundQuestion.userId.toString() !== userId)
       throw new HttpError("Unauthorized to mark as best answer", 403);
 
     if (foundQuestion.isDeleted || !foundQuestion.isActive)
@@ -394,6 +394,49 @@ const markAnswerAsBest = asyncHandler(
   },
 );
 
+const unmarkAnswerAsBest = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user;
+    const { answerId } = req.params;
+
+    const foundAnswer = await Answer.findById(answerId);
+
+    if (!foundAnswer) throw new HttpError("Answer not found", 404);
+
+    const cachedQuestion = await redisClient.get(
+      `question:${foundAnswer.questionId}`,
+    );
+    const foundQuestion = cachedQuestion
+      ? JSON.parse(cachedQuestion)
+      : await Question.findById(foundAnswer.questionId);
+
+    if (foundQuestion.userId.toString() !== userId)
+      throw new HttpError("Unauthorized to unmark best answer", 403);
+
+    if (!foundAnswer.isBestAnswerByAsker) {
+      return res.status(200).json({
+        message: "Answer is already unmarked as best",
+        answer: foundAnswer,
+      });
+    }
+
+    const updatedAnswer = await Answer.findByIdAndUpdate(
+      foundAnswer._id,
+      {
+        $set: { isBestAnswerByAsker: false },
+      },
+      { new: true },
+    );
+
+    await redisClient.del(`question:${foundAnswer.questionId}`);
+
+    return res.status(200).json({
+      message: "Successfully unmarked answer as best",
+      answer: updatedAnswer,
+    });
+  },
+);
+
 const deleteContent = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user;
@@ -422,7 +465,7 @@ const deleteContent = asyncHandler(
 
       if (!foundQuestion) throw new HttpError("Question not found", 404);
 
-      if (foundQuestion.userId !== userId)
+      if (foundQuestion.userId.toString() !== userId)
         throw new HttpError("Unauthorized to delete question", 403);
 
       if (foundQuestion.isDeleted || !foundQuestion.isActive)
@@ -444,7 +487,7 @@ const deleteContent = asyncHandler(
 
       if (!foundAnswer) throw new HttpError("Answer not found", 404);
 
-      if (foundAnswer.userId !== userId)
+      if (foundAnswer.userId?.toString() !== userId)
         throw new HttpError("Unauthorized to delete answer", 403);
 
       if (foundAnswer.isDeleted || !foundAnswer.isActive)
@@ -466,7 +509,7 @@ const deleteContent = asyncHandler(
 
       if (!foundReply) throw new HttpError("Reply not found", 404);
 
-      if (foundReply.userId !== userId)
+      if (foundReply.userId?.toString() !== userId)
         throw new HttpError("Unauthorized to delete reply", 403);
 
       if (foundReply.isDeleted || !foundReply.isActive)
@@ -496,5 +539,6 @@ export {
   vote,
   unvote,
   markAnswerAsBest,
+  unmarkAnswerAsBest,
   deleteContent,
 };
