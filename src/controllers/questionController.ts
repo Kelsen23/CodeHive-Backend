@@ -351,7 +351,7 @@ const markAnswerAsBest = asyncHandler(
 
     if (!foundQuestion) throw new HttpError("Question not found", 404);
 
-    if (foundQuestion.userId !== userId)
+    if (foundQuestion.userId.toString() !== userId)
       throw new HttpError("Unauthorized to mark as best answer", 403);
 
     if (foundQuestion.isDeleted || !foundQuestion.isActive)
@@ -465,7 +465,7 @@ const deleteContent = asyncHandler(
 
       if (!foundQuestion) throw new HttpError("Question not found", 404);
 
-      if (foundQuestion.userId !== userId)
+      if (foundQuestion.userId.toString() !== userId)
         throw new HttpError("Unauthorized to delete question", 403);
 
       if (foundQuestion.isDeleted || !foundQuestion.isActive)
@@ -487,7 +487,7 @@ const deleteContent = asyncHandler(
 
       if (!foundAnswer) throw new HttpError("Answer not found", 404);
 
-      if (foundAnswer.userId !== userId)
+      if (foundAnswer.userId?.toString() !== userId)
         throw new HttpError("Unauthorized to delete answer", 403);
 
       if (foundAnswer.isDeleted || !foundAnswer.isActive)
@@ -509,7 +509,7 @@ const deleteContent = asyncHandler(
 
       if (!foundReply) throw new HttpError("Reply not found", 404);
 
-      if (foundReply.userId !== userId)
+      if (foundReply.userId?.toString() !== userId)
         throw new HttpError("Unauthorized to delete reply", 403);
 
       if (foundReply.isDeleted || !foundReply.isActive)
