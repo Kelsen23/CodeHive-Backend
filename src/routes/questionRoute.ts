@@ -85,7 +85,7 @@ router
 
 router
   .route("/answer/markAsBest/:answerId")
-  .post(
+  .patch(
     markAnswerAsBestLimiterMiddleware,
     isAuthenticated,
     isVerified,
