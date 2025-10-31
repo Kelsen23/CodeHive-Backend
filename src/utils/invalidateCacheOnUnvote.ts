@@ -1,6 +1,9 @@
 import { redisClient } from "../config/redis.js";
+
 import Answer from "../models/answerModel.js";
 import Reply from "../models/replyModel.js";
+
+import clearAnswerCache from "./clearAnswersCache.js";
 
 async function invalidateCacheOnUnvote(
   targetType: "Question" | "Answer" | "Reply",
@@ -11,16 +14,20 @@ async function invalidateCacheOnUnvote(
   } else if (targetType === "Answer") {
     const foundAnswer = await Answer.findById(targetId);
 
-    if (foundAnswer)
+    if (foundAnswer) {
       await redisClient.del(`question:${foundAnswer.questionId}`);
+      await clearAnswerCache(foundAnswer.questionId as string);
+    }
   } else if (targetType === "Reply") {
     const foundReply = await Reply.findById(targetId);
 
     if (foundReply) {
       const foundAnswer = await Answer.findById(foundReply.answerId);
 
-      if (foundAnswer)
+      if (foundAnswer) {
         await redisClient.del(`question:${foundAnswer.questionId}`);
+        await clearAnswerCache(foundAnswer.questionId as string);
+      }
     }
   }
 }
