@@ -5,6 +5,7 @@ import { Request, Response } from "express";
 import AuthenticatedRequest from "../types/authenticatedRequest.js";
 
 import invalidateCacheOnUnvote from "../utils/invalidateCacheOnUnvote.js";
+import clearAnswerCache from "../utils/clearAnswersCache.js";
 import HttpError from "../utils/httpError.js";
 
 import mongoose from "mongoose";
@@ -56,6 +57,7 @@ const createAnswerOnQuestion = asyncHandler(
     const newAnswer = await Answer.create({ questionId, body, userId });
 
     await redisClient.del(`question:${questionId}`);
+    await clearAnswerCache(questionId);
 
     await prisma.user.update({
       where: { id: userId },
@@ -94,6 +96,7 @@ const createReplyOnAnswer = asyncHandler(
     const newReply = await Reply.create({ answerId, userId, body });
 
     await redisClient.del(`question:${foundAnswer.questionId}`);
+    await clearAnswerCache(foundAnswer.questionId as string);
 
     return res
       .status(201)
@@ -174,6 +177,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       await existingVote.save();
 
       await redisClient.del(`question:${foundAnswer.questionId}`);
+      await clearAnswerCache(foundAnswer.questionId as string);
 
       return res
         .status(200)
@@ -194,6 +198,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       });
 
     await redisClient.del(`question:${foundAnswer.questionId}`);
+    await clearAnswerCache(foundAnswer.questionId as string);
 
     return res.status(200).json({
       message: `Successfully ${voteType === "upvote" ? "upvoted" : "downvoted"} answer`,
@@ -223,6 +228,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       await existingVote.save();
 
       await redisClient.del(`question:${foundAnswer.questionId}`);
+      await clearAnswerCache(foundAnswer.questionId as string);
 
       return res
         .status(200)
@@ -243,6 +249,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       });
 
     await redisClient.del(`question:${foundAnswer.questionId}`);
+    await clearAnswerCache(foundAnswer.questionId as string);
 
     return res.status(200).json({
       message: `Successfully ${voteType === "upvote" ? "upvoted" : "downvoted"} reply`,
@@ -405,6 +412,7 @@ const markAnswerAsBest = asyncHandler(
     });
 
     await redisClient.del(`question:${foundAnswer.questionId}`);
+    await clearAnswerCache(foundAnswer.questionId as string);
 
     return res.status(200).json({
       message: "Successfully marked answer as best",
@@ -456,6 +464,7 @@ const unmarkAnswerAsBest = asyncHandler(
     });
 
     await redisClient.del(`question:${foundAnswer.questionId}`);
+    await clearAnswerCache(foundAnswer.questionId as string);
 
     return res.status(200).json({
       message: "Successfully unmarked answer as best",
@@ -538,6 +547,7 @@ const deleteContent = asyncHandler(
       });
 
       await redisClient.del(`question:${foundAnswer.questionId}`);
+      await clearAnswerCache(foundAnswer.questionId as string);
 
       return res.status(200).json({
         message: "Successfully deleted answer",
@@ -564,6 +574,7 @@ const deleteContent = asyncHandler(
       if (!foundAnswer) throw new HttpError("Parent answer not found", 404);
 
       await redisClient.del(`question:${foundAnswer.questionId}`);
+      await clearAnswerCache(foundAnswer.questionId as string);
 
       return res.status(200).json({
         message: "Successfully deleted reply",

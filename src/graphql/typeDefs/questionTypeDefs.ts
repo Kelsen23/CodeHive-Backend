@@ -6,6 +6,8 @@ const questionTypeDefs = gql`
     userId: String!
     title: String!
     body: String!
+    upvotes: Int!
+    downvotes: Int!
     tags: [String]!
     isDeleted: Boolean!
     isActive: Boolean!
@@ -59,6 +61,12 @@ const questionTypeDefs = gql`
   type Query {
     getRecommendedQuestions(skipCount: Int): [Question!]!
     getQuestionById(id: ID!): QuestionDetails!
+    loadMoreAnswers(
+      questionId: ID!
+      topAnswerId: ID
+      skipCount: Int
+      limitCount: Int
+    ): [Answer!]!
   }
 `;
 

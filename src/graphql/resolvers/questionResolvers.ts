@@ -1,8 +1,9 @@
+import mongoose from "mongoose";
+
 import Question from "../../models/questionModel.js";
+import Answer from "../../models/answerModel.js";
 
 import UserWithoutSensitiveInfo from "../../types/userWithoutSensitiveInfo.js";
-
-import mongoose from "mongoose";
 
 const questionResolvers = {
   Query: {
@@ -473,6 +474,177 @@ const questionResolvers = {
       }
 
       return question;
+    },
+
+    loadMoreAnswers: async (
+      _: any,
+      {
+        questionId,
+        topAnswerId,
+        skipCount = 0,
+        limitCount = 10,
+      }: {
+        questionId: string;
+        topAnswerId: string;
+        skipCount: number;
+        limitCount: number;
+      },
+      {
+        user,
+        loaders,
+        redisClient,
+      }: { user: any; loaders: any; redisClient: any },
+    ) => {
+      const cachedAnswers = await redisClient.get(
+        `answers:${questionId}:${skipCount}`,
+      );
+      if (cachedAnswers) return JSON.parse(cachedAnswers);
+
+      const matchStage: Record<string, any> = {
+        questionId: new mongoose.Types.ObjectId(questionId),
+        isDeleted: false,
+        isActive: true,
+      };
+
+      if (topAnswerId)
+        matchStage._id = { $ne: new mongoose.Types.ObjectId(topAnswerId) };
+
+      const answers = await Answer.aggregate([
+        {
+          $match: matchStage,
+        },
+
+        {
+          $lookup: {
+            from: "replies",
+            localField: "_id",
+            foreignField: "answerId",
+            as: "replies",
+            pipeline: [{ $match: { isDeleted: false, isActive: true } }],
+          },
+        },
+        {
+          $addFields: {
+            replyCount: { $size: "$replies" },
+          },
+        },
+
+        {
+          $lookup: {
+            from: "votes",
+            localField: "_id",
+            foreignField: "targetId",
+            as: "votes",
+          },
+        },
+
+        {
+          $addFields: {
+            upvotes: {
+              $size: {
+                $filter: {
+                  input: "$votes",
+                  as: "v",
+                  cond: {
+                    $and: [
+                      { $eq: ["$$v.voteType", "upvote"] },
+                      { $eq: ["$$v.targetType", "Answer"] },
+                    ],
+                  },
+                },
+              },
+            },
+            downvotes: {
+              $size: {
+                $filter: {
+                  input: "$votes",
+                  as: "v",
+                  cond: {
+                    $and: [
+                      { $eq: ["$$v.voteType", "downvote"] },
+                      { $eq: ["$$v.targetType", "Answer"] },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+
+        {
+          $addFields: {
+            score: { $subtract: ["$upvotes", "$downvotes"] },
+          },
+        },
+
+        {
+          $sort: {
+            score: -1,
+            replyCount: -1,
+            createdAt: -1,
+          },
+        },
+
+        { $skip: skipCount },
+        { $limit: limitCount },
+
+        { $addFields: { id: "$_id" } },
+
+        {
+          $project: {
+            id: 1,
+            userId: 1,
+            body: 1,
+            replies: [],
+            replyCount: 1,
+            isBestAnswerByAsker: 1,
+            upvotes: 1,
+            downvotes: 1,
+            isDeleted: 1,
+            isActive: 1,
+            createdAt: 1,
+          },
+        },
+      ]);
+
+      const userIds = answers.map((a) => a.userId);
+      const uniqueUserIds = [...new Set(userIds)];
+
+      const users = await loaders.userLoader.loadMany(uniqueUserIds);
+
+      const answersWithUsers = answers.map((a) => {
+        let user = users.find((u: any) => u && u.id === a.userId);
+
+        if (!user) {
+          user = {
+            id: a.userId,
+            username: "Deleted User",
+            email: "deleted@user.com",
+            profilePictureUrl: null,
+            bio: null,
+            reputationPoints: 0,
+            role: "USER",
+            questionsAsked: 0,
+            answersGiven: 0,
+            bestAnswers: 0,
+            achievements: [],
+            status: "TERMINATED",
+            isVerified: false,
+            createdAt: new Date(0).toISOString(),
+          };
+        }
+
+        return { ...a, user };
+      });
+
+      await redisClient.set(
+        `answers:${questionId}:${skipCount}`,
+        JSON.stringify(answersWithUsers),
+        "EX",
+        60 * 5,
+      );
+
+      return answersWithUsers;
     },
   },
 };
