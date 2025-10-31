@@ -1,6 +1,12 @@
 import { gql } from "graphql-tag";
 
 const userTypeDefs = gql`
+  enum Role {
+    ADMIN
+    MOD
+    USER
+  }
+  
   type Achievment {
     id: ID!
     userId: String!
@@ -16,7 +22,7 @@ const userTypeDefs = gql`
     profilePictureUrl: String
     bio: String
     reputationPoints: Int!
-    role: Boolean!
+    role: Role!
     questionsAsked: Int!
     answersGiven: Int!
     bestAnswers: Int!
