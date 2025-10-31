@@ -59,6 +59,7 @@ const questionTypeDefs = gql`
   type Query {
     getRecommendedQuestions(skipCount: Int): [Question!]!
     getQuestionById(id: ID!): QuestionDetails!
+    loadMoreAnswers(questionId: ID!, topAnswerId: ID, skipCount: Int, limitCount: Int): [Answer!]!
   }
 `;
 
