@@ -532,75 +532,41 @@ const questionResolvers = {
         {
           $lookup: {
             from: "votes",
-            let: { answerId: "$_id" },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
+            localField: "_id",
+            foreignField: "targetId",
+            as: "votes",
+          },
+        },
+
+        {
+          $addFields: {
+            upvotes: {
+              $size: {
+                $filter: {
+                  input: "$votes",
+                  as: "v",
+                  cond: {
                     $and: [
-                      { $eq: ["$targetId", "$$answerId"] },
-                      { $eq: ["$targetType", "answer"] },
+                      { $eq: ["$$v.voteType", "upvote"] },
+                      { $eq: ["$$v.targetType", "Answer"] },
                     ],
                   },
                 },
               },
-              {
-                $group: {
-                  _id: "$voteType",
-                  count: { $sum: 1 },
-                },
-              },
-            ],
-            as: "votes",
-          },
-        },
-        {
-          $addFields: {
-            upvotes: {
-              $ifNull: [
-                {
-                  $let: {
-                    vars: {
-                      up: {
-                        $arrayElemAt: [
-                          {
-                            $filter: {
-                              input: "$votes",
-                              cond: { $eq: ["$$this._id", "upvote"] },
-                            },
-                          },
-                          0,
-                        ],
-                      },
-                    },
-                    in: "$$up.count",
-                  },
-                },
-                0,
-              ],
             },
             downvotes: {
-              $ifNull: [
-                {
-                  $let: {
-                    vars: {
-                      down: {
-                        $arrayElemAt: [
-                          {
-                            $filter: {
-                              input: "$votes",
-                              cond: { $eq: ["$$this._id", "downvote"] },
-                            },
-                          },
-                          0,
-                        ],
-                      },
-                    },
-                    in: "$$down.count",
+              $size: {
+                $filter: {
+                  input: "$votes",
+                  as: "v",
+                  cond: {
+                    $and: [
+                      { $eq: ["$$v.voteType", "downvote"] },
+                      { $eq: ["$$v.targetType", "Answer"] },
+                    ],
                   },
                 },
-                0,
-              ],
+              },
             },
           },
         },
@@ -629,7 +595,7 @@ const questionResolvers = {
             id: 1,
             userId: 1,
             body: 1,
-            replies: 1,
+            replies: [],
             replyCount: 1,
             isBestAnswerByAsker: 1,
             upvotes: 1,
