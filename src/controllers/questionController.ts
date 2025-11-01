@@ -5,7 +5,7 @@ import { Request, Response } from "express";
 import AuthenticatedRequest from "../types/authenticatedRequest.js";
 
 import invalidateCacheOnUnvote from "../utils/invalidateCacheOnUnvote.js";
-import clearAnswerCache from "../utils/clearAnswersCache.js";
+import { clearAnswerCache, clearReplyCache } from "../utils/clearCache.js";
 import HttpError from "../utils/httpError.js";
 
 import mongoose from "mongoose";
@@ -97,6 +97,7 @@ const createReplyOnAnswer = asyncHandler(
 
     await redisClient.del(`question:${foundAnswer.questionId}`);
     await clearAnswerCache(foundAnswer.questionId as string);
+    await clearReplyCache(foundAnswer._id as string);
 
     return res
       .status(201)
@@ -229,6 +230,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
 
       await redisClient.del(`question:${foundAnswer.questionId}`);
       await clearAnswerCache(foundAnswer.questionId as string);
+      await clearReplyCache(foundAnswer._id as string);
 
       return res
         .status(200)
@@ -250,6 +252,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
 
     await redisClient.del(`question:${foundAnswer.questionId}`);
     await clearAnswerCache(foundAnswer.questionId as string);
+    await clearReplyCache(foundAnswer._id as string);
 
     return res.status(200).json({
       message: `Successfully ${voteType === "upvote" ? "upvoted" : "downvoted"} reply`,
@@ -575,6 +578,7 @@ const deleteContent = asyncHandler(
 
       await redisClient.del(`question:${foundAnswer.questionId}`);
       await clearAnswerCache(foundAnswer.questionId as string);
+      await clearReplyCache(foundAnswer._id as string);
 
       return res.status(200).json({
         message: "Successfully deleted reply",
