@@ -7,7 +7,7 @@ const userTypeDefs = gql`
     USER
   }
   
-  type Achievment {
+  type Achievement {
     id: ID!
     userId: String!
     name: String!
@@ -26,7 +26,7 @@ const userTypeDefs = gql`
     questionsAsked: Int!
     answersGiven: Int!
     bestAnswers: Int!
-    achievments: [Achievment!]!
+    achievements: [Achievement!]!
     status: String!
     isVerified: Boolean!
     createdAt: String!
