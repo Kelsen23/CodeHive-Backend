@@ -85,12 +85,14 @@ const questionResolvers = {
         },
       ]);
 
-      const userIds = questions.map((q) => q.userId);
-      const uniqueUserIds = [...new Set(userIds)];
+      const uniqueUserIds = [...new Set(questions.map((q) => q.userId))];
+
       const users = await loaders.userLoader.loadMany(uniqueUserIds);
 
+      const userMap = new Map(users.map((u: any) => [u?.id, u]));
+
       const questionsWithUsers = questions.map((q) => {
-        let user = users.find((u: any) => u && u.id === q.userId);
+        let user = userMap.get(q.userId);
 
         if (!user) {
           user = {
@@ -589,11 +591,9 @@ const questionResolvers = {
         { $skip: skipCount },
         { $limit: limitCount },
 
-        { $addFields: { id: "$_id" } },
-
         {
           $project: {
-            id: 1,
+            id: "$_id",
             userId: 1,
             body: 1,
             replies: [],
@@ -608,13 +608,14 @@ const questionResolvers = {
         },
       ]);
 
-      const userIds = answers.map((a) => a.userId);
-      const uniqueUserIds = [...new Set(userIds)];
+      const uniqueUserIds = [...new Set(answers.map((a) => a.userId))];
 
       const users = await loaders.userLoader.loadMany(uniqueUserIds);
 
+      const userMap = new Map(users.map((u: any) => [u?.id, u]));
+
       const answersWithUsers = answers.map((a) => {
-        let user = users.find((u: any) => u && u.id === a.userId);
+        let user = userMap.get(a.userId);
 
         if (!user) {
           user = {
@@ -734,10 +735,8 @@ const questionResolvers = {
         { $skip: skipCount },
         { $limit: limitCount },
 
-
         {
           $project: {
-            _id: 0,
             id: "$_id",
             userId: 1,
             body: 1,
