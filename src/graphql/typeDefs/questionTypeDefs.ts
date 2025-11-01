@@ -67,6 +67,7 @@ const questionTypeDefs = gql`
       skipCount: Int
       limitCount: Int
     ): [Answer!]!
+    loadMoreReplies(answerId: Int! skipCount: Int limitCount: Int): [Reply!]!
   }
 `;
 
