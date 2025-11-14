@@ -8,7 +8,18 @@ const ReplySchema: Schema = new Schema(
     isDeleted: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      versionKeys: false,
+      transform: (_, ret: any) => {
+        ret.id = ret._id;
+        delete ret._id;
+        return ret;
+      },
+    },
+  },
 );
 
 export default mongoose.model("Reply", ReplySchema);

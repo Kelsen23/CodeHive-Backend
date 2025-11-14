@@ -9,7 +9,18 @@ const QuestionSchema: Schema = new Schema(
     isDeleted: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      versionKey: false,
+      transform: (_, ret: any) => {
+        ret.id = ret._id;
+        delete ret._id;
+        return ret;
+      },
+    },
+  },
 );
 
 export default mongoose.model("Question", QuestionSchema);
