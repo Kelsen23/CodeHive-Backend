@@ -55,6 +55,9 @@ const createAnswerOnQuestion = asyncHandler(
       throw new HttpError("Question not active", 410);
 
     const newAnswer = await Answer.create({ questionId, body, userId });
+    await Question.findByIdAndUpdate(foundQuestion._id, {
+      $inc: { answerCount: 1 },
+    });
 
     await redisClient.del(`question:${questionId}`);
     await clearAnswerCache(questionId);
@@ -95,6 +98,10 @@ const createReplyOnAnswer = asyncHandler(
 
     const newReply = await Reply.create({ answerId, userId, body });
 
+    await Answer.findByIdAndUpdate(foundAnswer._id, {
+      $inc: { replyCount: 1 },
+    });
+
     await redisClient.del(`question:${foundAnswer.questionId}`);
     await clearAnswerCache(foundAnswer.questionId as string);
     await clearReplyCache(foundAnswer._id as string);
@@ -128,6 +135,28 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     });
 
     if (existingVote) {
+      if (existingVote.voteType === "downvote" && voteType === "upvote") {
+        await Question.findByIdAndUpdate(foundQuestion._id, {
+          $inc: { upvoteCount: 1, downvoteCount: -1 },
+        });
+
+        await prisma.user.update({
+          where: { id: foundQuestion.userId as string },
+          data: { reputationPoints: { increment: 20 } },
+        });
+      }
+
+      if (existingVote.voteType === "upvote" && voteType === "downvote") {
+        await Question.findByIdAndUpdate(foundQuestion._id, {
+          $inc: { upvoteCount: -1, downvoteCount: 1 },
+        });
+
+        await prisma.user.update({
+          where: { id: foundQuestion.userId as string },
+          data: { reputationPoints: { decrement: 20 } },
+        });
+      }
+
       existingVote.voteType = voteType;
       await existingVote.save();
 
@@ -145,11 +174,27 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       voteType,
     });
 
-    if (voteType === "upvote")
+    if (voteType === "upvote") {
       await prisma.user.update({
         where: { id: foundQuestion.userId as string },
         data: { reputationPoints: { increment: 10 } },
       });
+
+      await Question.findByIdAndUpdate(foundQuestion._id, {
+        $inc: { upvoteCount: 1 },
+      });
+    }
+
+    if (voteType === "downvote") {
+      await prisma.user.update({
+        where: { id: foundQuestion.userId as string },
+        data: { reputationPoints: { decrement: 10 } },
+      });
+
+      await Question.findByIdAndUpdate(foundQuestion._id, {
+        $inc: { downvoteCount: 1 },
+      });
+    }
 
     await redisClient.del(`question:${targetId}`);
 
@@ -174,6 +219,28 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     });
 
     if (existingVote) {
+      if (existingVote.voteType === "downvote" && voteType === "upvote") {
+        await Answer.findByIdAndUpdate(foundAnswer._id, {
+          $inc: { upvoteCount: 1, downvoteCount: -1 },
+        });
+
+        await prisma.user.update({
+          where: { id: foundAnswer.userId as string },
+          data: { reputationPoints: { increment: 20 } },
+        });
+      }
+
+      if (existingVote.voteType === "upvote" && voteType === "downvote") {
+        await Answer.findByIdAndUpdate(foundAnswer._id, {
+          $inc: { upvoteCount: -1, downvoteCount: 1 },
+        });
+
+        await prisma.user.update({
+          where: { id: foundAnswer.userId as string },
+          data: { reputationPoints: { decrement: 20 } },
+        });
+      }
+
       existingVote.voteType = voteType;
       await existingVote.save();
 
@@ -192,11 +259,27 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       voteType,
     });
 
-    if (voteType === "upvote")
+    if (voteType === "upvote") {
       await prisma.user.update({
         where: { id: foundAnswer.userId as string },
         data: { reputationPoints: { increment: 10 } },
       });
+
+      await Answer.findByIdAndUpdate(foundAnswer._id, {
+        $inc: { upvoteCount: 1 },
+      });
+    }
+
+    if (voteType === "downvote") {
+      await prisma.user.update({
+        where: { id: foundAnswer.userId as string },
+        data: { reputationPoints: { decrement: 10 } },
+      });
+
+      await Answer.findByIdAndUpdate(foundAnswer._id, {
+        $inc: { downvoteCount: 1 },
+      });
+    }
 
     await redisClient.del(`question:${foundAnswer.questionId}`);
     await clearAnswerCache(foundAnswer.questionId as string);
@@ -225,6 +308,29 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     });
 
     if (existingVote) {
+      if (existingVote.voteType === "downvote" && voteType === "upvote") {
+        await Reply.findByIdAndUpdate(foundReply._id, {
+          $inc: { upvoteCount: 1, downvoteCount: -1 },
+        });
+
+        await prisma.user.update({
+          where: { id: foundReply.userId as string },
+          data: { reputationPoints: { increment: 10 } },
+        });
+      }
+
+      if (existingVote.voteType === "upvote" && voteType === "downvote") {
+        await Reply.findByIdAndUpdate(foundReply._id, {
+          $inc: { upvoteCount: -1, downvoteCount: 1 },
+        });
+
+        await prisma.user.update({
+          where: { id: foundReply.userId as string },
+          data: { reputationPoints: { decrement: 10 } },
+        });
+      }
+        
+
       existingVote.voteType = voteType;
       await existingVote.save();
 
@@ -244,11 +350,27 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       voteType,
     });
 
-    if (voteType === "upvote")
+    if (voteType === "upvote") {
       await prisma.user.update({
         where: { id: foundReply.userId as string },
         data: { reputationPoints: { increment: 5 } },
       });
+
+      await Reply.findByIdAndUpdate(foundReply._id, {
+        $inc: { upvoteCount: 1 },
+      });
+    }
+
+    if (voteType === "downvote") {
+      await prisma.user.update({
+        where: { id: foundReply.userId as string },
+        data: { reputationPoints: { decrement: 5 } },
+      });
+
+      await Reply.findByIdAndUpdate(foundReply._id, {
+        $inc: { downvoteCount: 1 },
+      });
+    }
 
     await redisClient.del(`question:${foundAnswer.questionId}`);
     await clearAnswerCache(foundAnswer.questionId as string);
@@ -290,7 +412,7 @@ const unvote = asyncHandler(
 
     await Vote.deleteOne({ userId, targetType, targetId });
 
-    if (targetType === "Question" && foundVote.voteType === "upvote") {
+    if (targetType === "Question") {
       const cachedQuestion = await redisClient.get(`question:${targetId}`);
 
       const foundQuestion = cachedQuestion
@@ -302,38 +424,80 @@ const unvote = asyncHandler(
       if (foundQuestion.isDeleted || !foundQuestion.isActive)
         throw new HttpError("Question not active", 410);
 
-      await prisma.user.update({
-        where: { id: foundQuestion.userId as string },
-        data: { reputationPoints: { decrement: 10 } },
-      });
+      const updateField =
+        foundVote.voteType === "upvote"
+          ? { $inc: { upvoteCount: -1 } }
+          : { $inc: { downvoteCount: -1 } };
+
+      await Question.findByIdAndUpdate(foundQuestion._id, updateField);
+
+      if (foundVote.voteType === "upvote") {
+        await prisma.user.update({
+          where: { id: foundQuestion.userId as string },
+          data: { reputationPoints: { decrement: 10 } },
+        });
+      } else {
+        await prisma.user.update({
+          where: { id: foundQuestion.userId as string },
+          data: { reputationPoints: { increment: 10 } },
+        });
+      }
     }
 
-    if (targetType === "Answer" && foundVote.voteType === "upvote") {
+    if (targetType === "Answer") {
       const foundAnswer = await Answer.findById(targetId);
 
-      if (!foundAnswer) throw new HttpError("Question not found", 404);
+      if (!foundAnswer) throw new HttpError("Answer not found", 404);
 
       if (foundAnswer.isDeleted || !foundAnswer.isActive)
-        throw new HttpError("Question not active", 410);
+        throw new HttpError("Answer not active", 410);
 
-      await prisma.user.update({
-        where: { id: foundAnswer.userId as string },
-        data: { reputationPoints: { decrement: 10 } },
-      });
+      const updateField =
+        foundVote.voteType === "upvote"
+          ? { $inc: { upvoteCount: -1 } }
+          : { $inc: { downvoteCount: -1 } };
+
+      await Answer.findByIdAndUpdate(foundAnswer._id, updateField);
+
+      if (foundVote.voteType === "upvote") {
+        await prisma.user.update({
+          where: { id: foundAnswer.userId as string },
+          data: { reputationPoints: { decrement: 10 } },
+        });
+      } else {
+        await prisma.user.update({
+          where: { id: foundAnswer.userId as string },
+          data: { reputationPoints: { increment: 10 } },
+        });
+      }
     }
 
-    if (targetType === "Reply" && foundVote.voteType === "upvote") {
+    if (targetType === "Reply") {
       const foundReply = await Reply.findById(targetId);
 
-      if (!foundReply) throw new HttpError("Question not found", 404);
+      if (!foundReply) throw new HttpError("Reply not found", 404);
 
       if (foundReply.isDeleted || !foundReply.isActive)
-        throw new HttpError("Question not active", 410);
+        throw new HttpError("Reply not active", 410);
 
-      await prisma.user.update({
-        where: { id: foundReply.userId as string },
-        data: { reputationPoints: { decrement: 5 } },
-      });
+      const updateField =
+        foundVote.voteType === "upvote"
+          ? { $inc: { upvoteCount: -1 } }
+          : { $inc: { downvoteCount: -1 } };
+
+      await Reply.findByIdAndUpdate(foundReply._id, updateField);
+
+      if (foundVote.voteType === "upvote") {
+        await prisma.user.update({
+          where: { id: foundReply.userId as string },
+          data: { reputationPoints: { decrement: 5 } },
+        });
+      } else {
+        await prisma.user.update({
+          where: { id: foundReply.userId as string },
+          data: { reputationPoints: { increment: 5 } },
+        });
+      }
     }
 
     await invalidateCacheOnUnvote(
@@ -440,6 +604,8 @@ const unmarkAnswerAsBest = asyncHandler(
       ? JSON.parse(cachedQuestion)
       : await Question.findById(foundAnswer.questionId);
 
+    if (!foundQuestion) throw new HttpError("Question not found", 404);
+
     if (foundQuestion.userId.toString() !== userId)
       throw new HttpError("Unauthorized to unmark best answer", 403);
 
@@ -541,6 +707,10 @@ const deleteContent = asyncHandler(
         $set: { isDeleted: true, isActive: false },
       });
 
+      await Question.findByIdAndUpdate(foundAnswer.questionId, {
+        $inc: { answerCount: -1 },
+      });
+
       await prisma.user.update({
         where: { id: userId as string },
         data: {
@@ -575,6 +745,10 @@ const deleteContent = asyncHandler(
       const foundAnswer = await Answer.findById(foundReply.answerId);
 
       if (!foundAnswer) throw new HttpError("Parent answer not found", 404);
+
+      await Answer.findByIdAndUpdate(foundAnswer._id, {
+        $inc: { replyCount: -1 },
+      });
 
       await redisClient.del(`question:${foundAnswer.questionId}`);
       await clearAnswerCache(foundAnswer.questionId as string);

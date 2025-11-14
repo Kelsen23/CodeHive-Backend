@@ -35,37 +35,7 @@ const questionResolvers = {
       const questions = await Question.aggregate([
         { $match: matchStage },
 
-        {
-          $lookup: {
-            from: "votes",
-            localField: "_id",
-            foreignField: "targetId",
-            as: "votes",
-          },
-        },
-
-        {
-          $addFields: {
-            upvotes: {
-              $size: {
-                $filter: {
-                  input: "$votes",
-                  cond: { $eq: ["$$this.voteType", "upvote"] },
-                },
-              },
-            },
-            downvotes: {
-              $size: {
-                $filter: {
-                  input: "$votes",
-                  cond: { $eq: ["$$this.voteType", "downvote"] },
-                },
-              },
-            },
-          },
-        },
-
-        { $sort: { upvotes: -1 } },
+        { $sort: { upvoteCount: -1, answerCount: -1 } },
         { $skip: skipCount * 10 },
         { $limit: 10 },
 
@@ -76,8 +46,9 @@ const questionResolvers = {
             body: 1,
             tags: 1,
             userId: 1,
-            upvotes: 1,
-            downvotes: 1,
+            upvotes: "$upvoteCount",
+            downvotes: "$downvoteCount",
+            answerCount: 1,
             isDeleted: 1,
             isActive: 1,
             createdAt: 1,
@@ -151,51 +122,6 @@ const questionResolvers = {
         },
 
         {
-          $addFields: { answerCount: { $size: { $ifNull: ["$answers", []] } } },
-        },
-
-        {
-          $lookup: {
-            from: "votes",
-            localField: "_id",
-            foreignField: "targetId",
-            as: "questionVotes",
-          },
-        },
-
-        {
-          $addFields: {
-            upvotes: {
-              $size: {
-                $filter: {
-                  input: "$questionVotes",
-                  as: "v",
-                  cond: { $eq: ["$$v.voteType", "upvote"] },
-                },
-              },
-            },
-            downvotes: {
-              $size: {
-                $filter: {
-                  input: "$questionVotes",
-                  as: "v",
-                  cond: { $eq: ["$$v.voteType", "downvote"] },
-                },
-              },
-            },
-          },
-        },
-
-        {
-          $lookup: {
-            from: "votes",
-            localField: "answers._id",
-            foreignField: "targetId",
-            as: "answerVotes",
-          },
-        },
-
-        {
           $addFields: {
             answers: {
               $filter: {
@@ -205,52 +131,6 @@ const questionResolvers = {
                   $and: [
                     { $eq: ["$$a.isActive", true] },
                     { $eq: ["$$a.isDeleted", false] },
-                  ],
-                },
-              },
-            },
-          },
-        },
-
-        {
-          $addFields: {
-            answers: {
-              $map: {
-                input: "$answers",
-                as: "ans",
-                in: {
-                  $mergeObjects: [
-                    "$$ans",
-                    {
-                      upvotes: {
-                        $size: {
-                          $filter: {
-                            input: "$answerVotes",
-                            as: "v",
-                            cond: {
-                              $and: [
-                                { $eq: ["$$v.targetId", "$$ans._id"] },
-                                { $eq: ["$$v.voteType", "upvote"] },
-                              ],
-                            },
-                          },
-                        },
-                      },
-                      downvotes: {
-                        $size: {
-                          $filter: {
-                            input: "$answerVotes",
-                            as: "v",
-                            cond: {
-                              $and: [
-                                { $eq: ["$$v.targetId", "$$ans._id"] },
-                                { $eq: ["$$v.voteType", "downvote"] },
-                              ],
-                            },
-                          },
-                        },
-                      },
-                    },
                   ],
                 },
               },
@@ -288,7 +168,7 @@ const questionResolvers = {
                           $first: {
                             $sortArray: {
                               input: "$answers",
-                              sortBy: { upvotes: -1, createdAt: 1 },
+                              sortBy: { upvoteCount: -1, createdAt: 1 },
                             },
                           },
                         },
@@ -313,37 +193,7 @@ const questionResolvers = {
                   isDeleted: false,
                 },
               },
-              {
-                $lookup: {
-                  from: "votes",
-                  localField: "_id",
-                  foreignField: "targetId",
-                  as: "votes",
-                },
-              },
-              {
-                $addFields: {
-                  upvotes: {
-                    $size: {
-                      $filter: {
-                        input: "$votes",
-                        as: "v",
-                        cond: { $eq: ["$$v.voteType", "upvote"] },
-                      },
-                    },
-                  },
-                  downvotes: {
-                    $size: {
-                      $filter: {
-                        input: "$votes",
-                        as: "v",
-                        cond: { $eq: ["$$v.voteType", "downvote"] },
-                      },
-                    },
-                  },
-                },
-              },
-              { $sort: { upvotes: -1, createdAt: 1 } },
+              { $sort: { upvoteCount: -1, createdAt: 1 } },
             ],
             as: "topReplies",
           },
@@ -356,8 +206,8 @@ const questionResolvers = {
             title: 1,
             body: 1,
             tags: 1,
-            upvotes: 1,
-            downvotes: 1,
+            upvotes: "$upvoteCount",
+            downvotes: "$downvoteCount",
             answerCount: 1,
             isActive: 1,
             isDeleted: 1,
@@ -374,13 +224,13 @@ const questionResolvers = {
                   id: "$topAnswer._id",
                   userId: "$topAnswer.userId",
                   body: "$topAnswer.body",
-                  upvotes: "$topAnswer.upvotes",
-                  downvotes: "$topAnswer.downvotes",
+                  upvotes: "$topAnswer.upvoteCount",
+                  downvotes: "$topAnswer.downvoteCount",
                   isBestAnswerByAsker: "$topAnswer.isBestAnswerByAsker",
                   isActive: "$topAnswer.isActive",
                   isDeleted: "$topAnswer.isDeleted",
                   createdAt: "$topAnswer.createdAt",
-                  replyCount: { $size: "$topReplies" },
+                  replyCount: "$topAnswer.replyCount",
                   replies: {
                     $map: {
                       input: "$topReplies",
@@ -389,8 +239,8 @@ const questionResolvers = {
                         id: "$$reply._id",
                         userId: "$$reply.userId",
                         body: "$$reply.body",
-                        upvotes: "$$reply.upvotes",
-                        downvotes: "$$reply.downvotes",
+                        upvotes: "$$reply.upvoteCount",
+                        downvotes: "$$reply.downvoteCount",
                         isActive: "$$reply.isActive",
                         isDeleted: "$$reply.isDeleted",
                         createdAt: "$$reply.createdAt",
@@ -518,65 +368,8 @@ const questionResolvers = {
         },
 
         {
-          $lookup: {
-            from: "replies",
-            localField: "_id",
-            foreignField: "answerId",
-            as: "replies",
-            pipeline: [{ $match: { isDeleted: false, isActive: true } }],
-          },
-        },
-        {
           $addFields: {
-            replyCount: { $size: "$replies" },
-          },
-        },
-
-        {
-          $lookup: {
-            from: "votes",
-            localField: "_id",
-            foreignField: "targetId",
-            as: "votes",
-          },
-        },
-
-        {
-          $addFields: {
-            upvotes: {
-              $size: {
-                $filter: {
-                  input: "$votes",
-                  as: "v",
-                  cond: {
-                    $and: [
-                      { $eq: ["$$v.voteType", "upvote"] },
-                      { $eq: ["$$v.targetType", "Answer"] },
-                    ],
-                  },
-                },
-              },
-            },
-            downvotes: {
-              $size: {
-                $filter: {
-                  input: "$votes",
-                  as: "v",
-                  cond: {
-                    $and: [
-                      { $eq: ["$$v.voteType", "downvote"] },
-                      { $eq: ["$$v.targetType", "Answer"] },
-                    ],
-                  },
-                },
-              },
-            },
-          },
-        },
-
-        {
-          $addFields: {
-            score: { $subtract: ["$upvotes", "$downvotes"] },
+            score: { $subtract: ["$upvoteCount", "$downvoteCount"] },
           },
         },
 
@@ -599,8 +392,8 @@ const questionResolvers = {
             replies: [],
             replyCount: 1,
             isBestAnswerByAsker: 1,
-            upvotes: 1,
-            downvotes: 1,
+            upvotes: "$upvoteCount",
+            downvotes: "$downvoteCount",
             isDeleted: 1,
             isActive: 1,
             createdAt: 1,
@@ -678,50 +471,8 @@ const questionResolvers = {
         },
 
         {
-          $lookup: {
-            from: "votes",
-            localField: "_id",
-            foreignField: "targetId",
-            as: "votes",
-          },
-        },
-
-        {
           $addFields: {
-            upvotes: {
-              $size: {
-                $filter: {
-                  input: "$votes",
-                  as: "v",
-                  cond: {
-                    $and: [
-                      { $eq: ["$$v.voteType", "upvote"] },
-                      { $eq: ["$$v.targetType", "Reply"] },
-                    ],
-                  },
-                },
-              },
-            },
-            downvotes: {
-              $size: {
-                $filter: {
-                  input: "$votes",
-                  as: "v",
-                  cond: {
-                    $and: [
-                      { $eq: ["$$v.voteType", "downvote"] },
-                      { $eq: ["$$v.targetType", "Reply"] },
-                    ],
-                  },
-                },
-              },
-            },
-          },
-        },
-
-        {
-          $addFields: {
-            score: { $subtract: ["$upvotes", "$downvotes"] },
+            score: { $subtract: ["$upvoteCount", "$downvoteCount"] },
           },
         },
 
@@ -740,8 +491,8 @@ const questionResolvers = {
             id: "$_id",
             userId: 1,
             body: 1,
-            upvotes: 1,
-            downvotes: 1,
+            upvotes: "$upvoteCount",
+            downvotes: "$downvoteCount",
             isActive: 1,
             isDeleted: 1,
             createdAt: 1,

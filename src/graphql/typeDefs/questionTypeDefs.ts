@@ -9,6 +9,7 @@ const questionTypeDefs = gql`
     upvotes: Int!
     downvotes: Int!
     tags: [String]!
+    answerCount: Int!
     isDeleted: Boolean!
     isActive: Boolean!
     createdAt: String!
