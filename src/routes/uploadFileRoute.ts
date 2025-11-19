@@ -1,6 +1,6 @@
 import express from "express";
-
 import multer from "multer";
+
 import { changeProfilePicture } from "../controllers/uploadFileController.js";
 
 import isAuthenticated, { isTerminated, isVerified } from "../middlewares/authMiddleware.js";
