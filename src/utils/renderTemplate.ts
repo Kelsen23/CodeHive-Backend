@@ -28,7 +28,6 @@ const verificationHtml = (
     otp,
     deviceName,
     ip: deviceIp,
-    year: new Date().getFullYear().toString(),
   });
 };
 
@@ -43,7 +42,6 @@ const resetPasswordHtml = (
     resetPasswordOtp,
     deviceName,
     ip: deviceIp,
-    year: new Date().getFullYear().toString(),
   });
 };
 
