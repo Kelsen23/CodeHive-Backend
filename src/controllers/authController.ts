@@ -68,13 +68,6 @@ const register = asyncHandler(async (req: Request, res: Response) => {
       to: email,
       subject: "Verify Email",
       html: htmlContent,
-      attachments: [
-        {
-          filename: "CodeHive logo.png",
-          path: path.join(process.cwd(), "assets/CodeHive logo.png"),
-          cid: "codehive-logo",
-        },
-      ],
     });
   } catch (error) {
     throw new HttpError(`Failed to send verification email: ${error}`, 500);
@@ -377,13 +370,6 @@ const sendResetPasswordEmail = asyncHandler(
         to: updatedUser.email,
         subject: "Reset Password Request",
         html: htmlContent,
-        attachments: [
-          {
-            filename: "CodeHive logo.png",
-            path: path.join(process.cwd(), "assets/CodeHive logo.png"),
-            cid: "codehive-logo",
-          },
-        ],
       });
     } catch (error) {
       throw new HttpError(`Failed to send reset password email: ${error}`, 500);
@@ -449,13 +435,6 @@ const resendResetPasswordEmail = asyncHandler(
         to: updatedUser.email,
         subject: "Reset Password Request",
         html: htmlContent,
-        attachments: [
-          {
-            filename: "CodeHive logo.png",
-            path: path.join(process.cwd(), "assets/CodeHive logo.png"),
-            cid: "codehive-logo",
-          },
-        ],
       });
     } catch (error) {
       throw new HttpError(`Failed to send reset password email: ${error}`, 500);
