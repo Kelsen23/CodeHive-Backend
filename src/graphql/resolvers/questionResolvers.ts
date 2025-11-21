@@ -29,13 +29,42 @@ const questionResolvers = {
       );
       if (cachedQuestions) return JSON.parse(cachedQuestions);
 
-      const matchStage: any = { isDeleted: false, isActive: true };
-      if (interests.length > 0) matchStage.tags = { $in: interests };
+      const searchStage = interests.length
+        ? ({
+            $search: {
+              index: "recommended_index",
+              compound: {
+                should: interests.map((interest) => ({
+                  text: {
+                    query: interest,
+                    path: ["title", "body", "tags"],
+                    fuzzy: { maxEdits: 1, prefixLength: 2 },
+                  },
+                })),
+                minimumShouldMatch: 1,
+              },
+            },
+          } as any)
+        : null;
 
-      const questions = await Question.aggregate([
-        { $match: matchStage },
+      const pipeline: any[] = [];
 
-        { $sort: { upvoteCount: -1, answerCount: -1 } },
+      if (searchStage) pipeline.push(searchStage);
+
+      pipeline.push(
+        {
+          $match: {
+            isDeleted: false,
+            isActive: true,
+          },
+        },
+        {
+          $sort: {
+            upvoteCount: -1,
+            createdAt: -1,
+          } as any,
+        },
+
         { $skip: skipCount * 10 },
         { $limit: 10 },
 
@@ -54,7 +83,9 @@ const questionResolvers = {
             createdAt: 1,
           },
         },
-      ]);
+      );
+
+      const questions = await Question.aggregate(pipeline);
 
       const uniqueUserIds = [...new Set(questions.map((q) => q.userId))];
 
