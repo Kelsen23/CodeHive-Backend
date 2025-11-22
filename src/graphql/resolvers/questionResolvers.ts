@@ -10,7 +10,10 @@ const questionResolvers = {
   Query: {
     getRecommendedQuestions: async (
       _: any,
-      { skipCount }: { skipCount: number },
+      {
+        skipCount = 0,
+        limitCount = 10,
+      }: { skipCount: number; limitCount: number },
       {
         user,
         redisClient,
@@ -65,8 +68,8 @@ const questionResolvers = {
           } as any,
         },
 
-        { $skip: skipCount * 10 },
-        { $limit: 10 },
+        { $skip: skipCount },
+        { $limit: limitCount },
 
         {
           $project: {
