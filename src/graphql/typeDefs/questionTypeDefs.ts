@@ -61,6 +61,7 @@ const questionTypeDefs = gql`
 
   type Query {
     getRecommendedQuestions(skipCount: Int, limitCount: Int): [Question!]!
+
     getQuestionById(id: ID!): QuestionDetails!
     loadMoreAnswers(
       questionId: ID!
@@ -69,6 +70,8 @@ const questionTypeDefs = gql`
       limitCount: Int
     ): [Answer!]!
     loadMoreReplies(answerId: Int!, skipCount: Int, limitCount: Int): [Reply!]!
+
+    getSearchSuggestions(searchKeyword: String!, limitCount: Int): [String!]!
   }
 `;
 
