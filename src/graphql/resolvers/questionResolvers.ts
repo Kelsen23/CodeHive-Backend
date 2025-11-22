@@ -6,6 +6,20 @@ import Reply from "../../models/replyModel.js";
 
 import UserWithoutSensitiveInfo from "../../types/userWithoutSensitiveInfo.js";
 
+import HttpError from "../../utils/httpError.js";
+import interests from "../../utils/interests.js";
+
+interface SearchQuestionStage {
+  $search: {
+    index: string;
+    compound: {
+      must: any[];
+      should?: any[];
+      minimumShouldMatch?: number;
+    };
+  };
+}
+
 const questionResolvers = {
   Query: {
     getRecommendedQuestions: async (
@@ -603,7 +617,7 @@ const questionResolvers = {
 
         {
           $group: {
-            _id: "$title", 
+            _id: "$title",
             title: { $first: "$title" },
           },
         },
@@ -623,6 +637,141 @@ const questionResolvers = {
       );
 
       return suggestions;
+    },
+
+    searchQuestions: async (
+      _: any,
+      {
+        searchKeyword,
+        tags,
+        sortOption,
+        skipCount = 0,
+        limitCount = 15,
+      }: {
+        searchKeyword: string;
+        limitCount: number;
+        tags: string[];
+        sortOption: string;
+        skipCount: number;
+      },
+      { redisClient, loaders }: { redisClient: any; loaders: any },
+    ) => {
+      if (!["LATEST", "INTERACTED"].includes(sortOption))
+        throw new HttpError(
+          `Invalid sort option. Allowed values: ${["LATEST", "INTERACTED"].join(", ")}`,
+          400,
+        );
+
+      const invalidTags = tags.filter((tag) => !interests.includes(tag));
+
+      if (invalidTags.length > 0)
+        throw new HttpError(`Invalid tags: ${invalidTags.join(", ")}`, 400);
+
+      const cachedQuestions = await redisClient.get(
+        `searchQuestions:${searchKeyword}:${tags.sort().join(", ")}:${sortOption}:${skipCount}`,
+      );
+
+      if (cachedQuestions) return JSON.parse(cachedQuestions);
+
+      const sortMapping: Record<string, any> = {
+        LATEST: { createdAt: -1 },
+        INTERACTED: { answerCount: -1, upvoteCount: -1, downvoteCount: -1 },
+      };
+
+      const searchStage: SearchQuestionStage = {
+        $search: {
+          index: "search_index",
+          compound: {
+            must: [
+              {
+                text: {
+                  query: searchKeyword,
+                  path: ["title", "body"],
+                  fuzzy: { maxEdits: 1, prefixLength: 2 },
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      if (tags.length > 0) {
+        searchStage.$search.compound.should = tags.map((tag) => ({
+          text: {
+            query: tag,
+            path: ["title", "body", "tags"],
+            fuzzy: { maxEdits: 1, prefixLength: 2 },
+          },
+        }));
+
+        searchStage.$search.compound.minimumShouldMatch = 1;
+      }
+
+      const questions = await Question.aggregate([
+        searchStage,
+
+        { $match: { isDeleted: false, isActive: true } },
+
+        { $sort: sortMapping[sortOption] },
+        { $skip: skipCount },
+        { $limit: limitCount },
+
+        {
+          $project: {
+            id: "$_id",
+            title: 1,
+            body: 1,
+            tags: 1,
+            userId: 1,
+            upvotes: "$upvoteCount",
+            downvotes: "$downvoteCount",
+            answerCount: 1,
+            isDeleted: 1,
+            isActive: 1,
+            createdAt: 1,
+          },
+        },
+      ]);
+
+      const uniqueUserIds = [...new Set(questions.map((q) => q.userId))];
+
+      const users = await loaders.userLoader.loadMany(uniqueUserIds);
+
+      const userMap = new Map(users.map((u: any) => [u?.id, u]));
+
+      const questionsWithUsers = questions.map((q) => {
+        let user = userMap.get(q.userId);
+
+        if (!user) {
+          user = {
+            id: q.userId,
+            username: "Deleted User",
+            email: "deleted@user.com",
+            profilePictureUrl: null,
+            bio: null,
+            reputationPoints: 0,
+            role: "USER",
+            questionsAsked: 0,
+            answersGiven: 0,
+            bestAnswers: 0,
+            achievements: [],
+            status: "TERMINATED",
+            isVerified: false,
+            createdAt: new Date(0).toISOString(),
+          };
+        }
+
+        return { ...q, user };
+      });
+
+      await redisClient.set(
+        `searchQuestions:${searchKeyword}:${tags.sort().join(", ")}:${sortOption}:${skipCount}`,
+        JSON.stringify(questionsWithUsers),
+        "EX",
+        60 * 15,
+      );
+
+      return questionsWithUsers;
     },
   },
 };
