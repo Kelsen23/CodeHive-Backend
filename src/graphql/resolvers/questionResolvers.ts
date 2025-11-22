@@ -9,6 +9,17 @@ import UserWithoutSensitiveInfo from "../../types/userWithoutSensitiveInfo.js";
 import HttpError from "../../utils/httpError.js";
 import interests from "../../utils/interests.js";
 
+interface SearchQuestionStage {
+  $search: {
+    index: string;
+    compound: {
+      must: any[];
+      should?: any[];
+      minimumShouldMatch?: number;
+    };
+  };
+}
+
 const questionResolvers = {
   Query: {
     getRecommendedQuestions: async (
@@ -667,31 +678,39 @@ const questionResolvers = {
         INTERACTED: { answerCount: -1, upvoteCount: -1, downvoteCount: -1 },
       };
 
-      const questions = await Question.aggregate([
-        {
-          $search: {
-            index: "search_index",
-            compound: {
-              should: tags.map((tag) => ({
-                text: {
-                  query: tag,
-                  path: ["title", "body", "tags"],
-                  fuzzy: { maxEdits: 1, prefixLength: 2 },
-                },
-                minimumShouldMatch: 1,
-              })),
-
-              must: {
+      const searchStage: SearchQuestionStage = {
+        $search: {
+          index: "search_index",
+          compound: {
+            must: [
+              {
                 text: {
                   query: searchKeyword,
                   path: ["title", "body"],
                   fuzzy: { maxEdits: 1, prefixLength: 2 },
                 },
-                minimumShouldMatch: 1,
               },
-            },
+            ],
           },
         },
+      };
+
+      if (tags.length > 0) {
+        searchStage.$search.compound.should = tags.map((tag) => ({
+          text: {
+            query: tag,
+            path: ["title", "body", "tags"],
+            fuzzy: { maxEdits: 1, prefixLength: 2 },
+          },
+        }));
+
+        searchStage.$search.compound.minimumShouldMatch = 1;
+      }
+
+      const questions = await Question.aggregate([
+        searchStage,
+
+        { $match: { isDeleted: false, isActive: true } },
 
         { $sort: sortMapping[sortOption] },
         { $skip: skipCount },
@@ -716,7 +735,7 @@ const questionResolvers = {
 
       const uniqueUserIds = [...new Set(questions.map((q) => q.userId))];
 
-      const users = await loaders.dataloader.loadMany(uniqueUserIds);
+      const users = await loaders.userLoader.loadMany(uniqueUserIds);
 
       const userMap = new Map(users.map((u: any) => [u?.id, u]));
 
@@ -751,6 +770,8 @@ const questionResolvers = {
         "EX",
         60 * 15,
       );
+
+      return questionsWithUsers;
     },
   },
 };
