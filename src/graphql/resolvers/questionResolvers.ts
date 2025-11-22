@@ -24,10 +24,7 @@ const questionResolvers = {
   Query: {
     getRecommendedQuestions: async (
       _: any,
-      {
-        skipCount = 0,
-        limitCount = 10,
-      }: { skipCount: number; limitCount: number },
+      { cursor, limitCount = 10 }: { cursor?: string; limitCount: number },
       {
         user,
         redisClient,
@@ -42,7 +39,7 @@ const questionResolvers = {
       const sortedInterests = [...interests].sort().join(",");
 
       const cachedQuestions = await redisClient.get(
-        `recommendedQuestions:${sortedInterests}:${skipCount}`,
+        `recommendedQuestions:${sortedInterests}:${cursor || "initial"}`,
       );
       if (cachedQuestions) return JSON.parse(cachedQuestions);
 
@@ -68,23 +65,27 @@ const questionResolvers = {
 
       if (searchStage) pipeline.push(searchStage);
 
+      const matchStage: any = {
+        isDeleted: false,
+        isActive: true,
+      };
+
+      if (cursor) {
+        matchStage._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+      }
+
       pipeline.push(
-        {
-          $match: {
-            isDeleted: false,
-            isActive: true,
-          },
-        },
+        { $match: matchStage },
+
         {
           $sort: {
             upvoteCount: -1,
-            createdAt: -1,
+            _id: -1, 
           } as any,
         },
 
-        { $skip: skipCount },
         { $limit: limitCount },
-
+        
         {
           $project: {
             id: "$_id",
@@ -135,14 +136,23 @@ const questionResolvers = {
         return { ...q, user };
       });
 
+      const result = {
+        questions: questionsWithUsers,
+        nextCursor:
+          questionsWithUsers.length === limitCount
+            ? questionsWithUsers[questionsWithUsers.length - 1].id
+            : null,
+        hasMore: questionsWithUsers.length === limitCount,
+      };
+
       await redisClient.set(
-        `recommendedQuestions:${sortedInterests}:${skipCount}`,
-        JSON.stringify(questionsWithUsers),
+        `recommendedQuestions:${sortedInterests}:${cursor || "initial"}`,
+        JSON.stringify(result),
         "EX",
         60 * 5,
       );
 
-      return questionsWithUsers;
+      return result;
     },
 
     getQuestionById: async (
@@ -241,7 +251,7 @@ const questionResolvers = {
                   isDeleted: false,
                 },
               },
-              { $sort: { upvoteCount: -1, createdAt: 1 } },
+              { $sort: { upvoteCount: -1, _id: -1 } },
             ],
             as: "topReplies",
           },
@@ -341,13 +351,43 @@ const questionResolvers = {
         });
 
         if (question.userId) {
-          question.user = userMap.get(question.userId.toString());
+          question.user = userMap.get(question.userId.toString()) || {
+            id: question.userId,
+            username: "Deleted User",
+            email: "deleted@user.com",
+            profilePictureUrl: null,
+            bio: null,
+            reputationPoints: 0,
+            role: "USER",
+            questionsAsked: 0,
+            answersGiven: 0,
+            bestAnswers: 0,
+            achievements: [],
+            status: "TERMINATED",
+            isVerified: false,
+            createdAt: new Date(0).toISOString(),
+          };
         }
 
         if (question.topAnswer?.userId) {
           question.topAnswer.user = userMap.get(
             question.topAnswer.userId.toString(),
-          );
+          ) || {
+            id: question.topAnswer.userId,
+            username: "Deleted User",
+            email: "deleted@user.com",
+            profilePictureUrl: null,
+            bio: null,
+            reputationPoints: 0,
+            role: "USER",
+            questionsAsked: 0,
+            answersGiven: 0,
+            bestAnswers: 0,
+            achievements: [],
+            status: "TERMINATED",
+            isVerified: false,
+            createdAt: new Date(0).toISOString(),
+          };
         }
 
         if (
@@ -357,7 +397,24 @@ const questionResolvers = {
           question.topAnswer.replies = question.topAnswer.replies.map(
             (r: any) => ({
               ...r,
-              user: r?.userId ? userMap.get(r.userId.toString()) : null,
+              user: r?.userId
+                ? userMap.get(r.userId.toString()) || {
+                    id: r.userId,
+                    username: "Deleted User",
+                    email: "deleted@user.com",
+                    profilePictureUrl: null,
+                    bio: null,
+                    reputationPoints: 0,
+                    role: "USER",
+                    questionsAsked: 0,
+                    answersGiven: 0,
+                    bestAnswers: 0,
+                    achievements: [],
+                    status: "TERMINATED",
+                    isVerified: false,
+                    createdAt: new Date(0).toISOString(),
+                  }
+                : null,
             }),
           );
         }
@@ -382,12 +439,12 @@ const questionResolvers = {
       {
         questionId,
         topAnswerId,
-        skipCount = 0,
+        cursor,
         limitCount = 10,
       }: {
         questionId: string;
         topAnswerId: string;
-        skipCount: number;
+        cursor?: string;
         limitCount: number;
       },
       {
@@ -397,7 +454,7 @@ const questionResolvers = {
       }: { user: any; loaders: any; redisClient: any },
     ) => {
       const cachedAnswers = await redisClient.get(
-        `answers:${questionId}:${skipCount}`,
+        `answers:${questionId}:${cursor || "initial"}`,
       );
       if (cachedAnswers) return JSON.parse(cachedAnswers);
 
@@ -407,13 +464,30 @@ const questionResolvers = {
         isActive: true,
       };
 
-      if (topAnswerId)
-        matchStage._id = { $ne: new mongoose.Types.ObjectId(topAnswerId) };
+      const idConditions: any[] = [];
+
+      if (topAnswerId) {
+        idConditions.push({
+          _id: { $ne: new mongoose.Types.ObjectId(topAnswerId) },
+        });
+      }
+
+      if (cursor) {
+        idConditions.push({
+          _id: { $lt: new mongoose.Types.ObjectId(cursor) },
+        });
+      }
+
+      if (idConditions.length > 0) {
+        if (idConditions.length === 1) {
+          Object.assign(matchStage, idConditions[0]);
+        } else {
+          matchStage.$and = idConditions;
+        }
+      }
 
       const answers = await Answer.aggregate([
-        {
-          $match: matchStage,
-        },
+        { $match: matchStage },
 
         {
           $addFields: {
@@ -425,11 +499,10 @@ const questionResolvers = {
           $sort: {
             score: -1,
             replyCount: -1,
-            createdAt: -1,
+            _id: -1, 
           },
         },
 
-        { $skip: skipCount },
         { $limit: limitCount },
 
         {
@@ -480,23 +553,32 @@ const questionResolvers = {
         return { ...a, user };
       });
 
+      const result = {
+        answers: answersWithUsers,
+        nextCursor:
+          answersWithUsers.length === limitCount
+            ? answersWithUsers[answersWithUsers.length - 1].id
+            : null,
+        hasMore: answersWithUsers.length === limitCount,
+      };
+
       await redisClient.set(
-        `answers:${questionId}:${skipCount}`,
-        JSON.stringify(answersWithUsers),
+        `answers:${questionId}:${cursor || "initial"}`,
+        JSON.stringify(result),
         "EX",
         60 * 5,
       );
 
-      return answersWithUsers;
+      return result;
     },
 
     loadMoreReplies: async (
       _: any,
       {
         answerId,
-        skipCount = 0,
+        cursor,
         limitCount = 10,
-      }: { answerId: string; skipCount: number; limitCount: number },
+      }: { answerId: string; cursor?: string; limitCount: number },
       {
         user,
         loaders,
@@ -504,19 +586,23 @@ const questionResolvers = {
       }: { user: any; loaders: any; redisClient: any },
     ) => {
       const cachedReplies = await redisClient.get(
-        `replies:${answerId}:${skipCount}`,
+        `replies:${answerId}:${cursor || "initial"}`,
       );
 
       if (cachedReplies) return JSON.parse(cachedReplies);
 
+      const matchStage: any = {
+        answerId: new mongoose.Types.ObjectId(answerId),
+        isDeleted: false,
+        isActive: true,
+      };
+
+      if (cursor) {
+        matchStage._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+      }
+
       const replies = await Reply.aggregate([
-        {
-          $match: {
-            answerId: new mongoose.Types.ObjectId(answerId),
-            isDeleted: false,
-            isActive: true,
-          },
-        },
+        { $match: matchStage },
 
         {
           $addFields: {
@@ -527,11 +613,10 @@ const questionResolvers = {
         {
           $sort: {
             score: -1,
-            createdAt: -1,
+            _id: -1, 
           },
         },
 
-        { $skip: skipCount },
         { $limit: limitCount },
 
         {
@@ -579,14 +664,23 @@ const questionResolvers = {
         return { ...r, user };
       });
 
+      const result = {
+        replies: repliesWithUsers,
+        nextCursor:
+          repliesWithUsers.length === limitCount
+            ? repliesWithUsers[repliesWithUsers.length - 1].id
+            : null,
+        hasMore: repliesWithUsers.length === limitCount,
+      };
+
       await redisClient.set(
-        `replies:${answerId}:${skipCount}`,
-        JSON.stringify(repliesWithUsers),
+        `replies:${answerId}:${cursor || "initial"}`,
+        JSON.stringify(result),
         "EX",
         5 * 60,
       );
 
-      return repliesWithUsers;
+      return result;
     },
 
     getSearchSuggestions: async (
@@ -645,14 +739,14 @@ const questionResolvers = {
         searchKeyword,
         tags,
         sortOption,
-        skipCount = 0,
-        limitCount = 15,
+        cursor,
+        limitCount = 1,
       }: {
         searchKeyword: string;
         limitCount: number;
         tags: string[];
         sortOption: string;
-        skipCount: number;
+        cursor?: string;
       },
       { redisClient, loaders }: { redisClient: any; loaders: any },
     ) => {
@@ -668,14 +762,19 @@ const questionResolvers = {
         throw new HttpError(`Invalid tags: ${invalidTags.join(", ")}`, 400);
 
       const cachedQuestions = await redisClient.get(
-        `searchQuestions:${searchKeyword}:${tags.sort().join(", ")}:${sortOption}:${skipCount}`,
+        `searchQuestions:${searchKeyword}:${tags.sort().join(", ")}:${sortOption}:${cursor || "initial"}`,
       );
 
       if (cachedQuestions) return JSON.parse(cachedQuestions);
 
       const sortMapping: Record<string, any> = {
-        LATEST: { createdAt: -1 },
-        INTERACTED: { answerCount: -1, upvoteCount: -1, downvoteCount: -1 },
+        LATEST: { createdAt: -1, _id: -1 },
+        INTERACTED: {
+          answerCount: -1,
+          upvoteCount: -1,
+          downvoteCount: -1,
+          _id: -1,
+        },
       };
 
       const searchStage: SearchQuestionStage = {
@@ -707,13 +806,22 @@ const questionResolvers = {
         searchStage.$search.compound.minimumShouldMatch = 1;
       }
 
+      const matchStage: any = {
+        isDeleted: false,
+        isActive: true,
+      };
+
+      if (cursor) {
+        matchStage._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+      }
+
       const questions = await Question.aggregate([
         searchStage,
 
-        { $match: { isDeleted: false, isActive: true } },
+        { $match: matchStage },
 
         { $sort: sortMapping[sortOption] },
-        { $skip: skipCount },
+        
         { $limit: limitCount },
 
         {
@@ -764,14 +872,23 @@ const questionResolvers = {
         return { ...q, user };
       });
 
+      const result = {
+        questions: questionsWithUsers,
+        nextCursor:
+          questionsWithUsers.length === limitCount
+            ? questionsWithUsers[questionsWithUsers.length - 1].id
+            : null,
+        hasMore: questionsWithUsers.length === limitCount,
+      };
+
       await redisClient.set(
-        `searchQuestions:${searchKeyword}:${tags.sort().join(", ")}:${sortOption}:${skipCount}`,
-        JSON.stringify(questionsWithUsers),
+        `searchQuestions:${searchKeyword}:${tags.sort().join(", ")}:${sortOption}:${cursor || "initial"}`,
+        JSON.stringify(result),
         "EX",
         60 * 15,
       );
 
-      return questionsWithUsers;
+      return result;
     },
   },
 };
