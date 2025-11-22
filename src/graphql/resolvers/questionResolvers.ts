@@ -574,6 +574,56 @@ const questionResolvers = {
 
       return repliesWithUsers;
     },
+
+    getSearchSuggestions: async (
+      _: any,
+      {
+        searchKeyword,
+        limitCount = 10,
+      }: { searchKeyword: string; limitCount: number },
+      { redisClient }: { redisClient: any },
+    ) => {
+      const cachedSuggestions = await redisClient.get(
+        `searchSuggestions:${searchKeyword}`,
+      );
+
+      if (cachedSuggestions) return JSON.parse(cachedSuggestions);
+
+      const results = await Question.aggregate([
+        {
+          $search: {
+            index: "questions_autocomplete",
+            autocomplete: {
+              query: searchKeyword,
+              path: "title",
+              fuzzy: { maxEdits: 1 },
+            },
+          },
+        },
+
+        {
+          $group: {
+            _id: "$title", 
+            title: { $first: "$title" },
+          },
+        },
+
+        { $limit: limitCount },
+
+        { $project: { _id: 0, title: 1 } },
+      ]);
+
+      const suggestions = results.map((r) => r.title);
+
+      await redisClient.set(
+        `searchSuggestions:${searchKeyword}`,
+        JSON.stringify(suggestions),
+        "EX",
+        60 * 60,
+      );
+
+      return suggestions;
+    },
   },
 };
 
