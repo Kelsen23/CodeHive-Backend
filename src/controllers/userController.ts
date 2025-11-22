@@ -2,18 +2,13 @@ import { Request, Response, NextFunction } from "express";
 
 import asyncHandler from "../middlewares/asyncHandler.js";
 
-import { prisma } from "../index.js";
-import { redisClient } from "../config/redis.js";
+import AuthenticatedRequest from "../types/authenticatedRequest.js";
 
 import HttpError from "../utils/httpError.js";
 import interests from "../utils/interests.js";
 
-interface AuthenticatedRequest extends Request {
-  cookies: {
-    token?: any;
-  };
-  user?: any;
-}
+import { prisma } from "../index.js";
+import { redisClient } from "../config/redis.js";
 
 const updateProfile = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {

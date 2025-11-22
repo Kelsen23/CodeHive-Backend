@@ -1,3 +1,9 @@
+import { Response, Request } from "express";
+
+import asyncHandler from "../middlewares/asyncHandler.js";
+
+import AuthenticatedRequest from "../types/authenticatedRequest.js";
+
 import {
   S3Client,
   DeleteObjectCommand,
@@ -6,22 +12,11 @@ import {
   PutObjectRequest,
 } from "@aws-sdk/client-s3";
 
-import asyncHandler from "../middlewares/asyncHandler.js";
-
 import HttpError from "../utils/httpError.js";
 import makeCircle from "../utils/makeCircle.js";
 
-import { Response, Request } from "express";
-
 import { prisma } from "../index.js";
 import { redisClient } from "../config/redis.js";
-
-interface AuthenticatedRequest extends Request {
-  cookies: {
-    token?: any;
-  };
-  user?: any;
-}
 
 const bucketName = process.env.BUCKET_NAME;
 const bucketRegion = process.env.BUCKET_REGION;

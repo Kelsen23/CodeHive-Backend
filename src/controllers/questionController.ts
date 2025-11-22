@@ -1,6 +1,6 @@
-import asyncHandler from "../middlewares/asyncHandler.js";
-
 import { Request, Response } from "express";
+
+import asyncHandler from "../middlewares/asyncHandler.js";
 
 import AuthenticatedRequest from "../types/authenticatedRequest.js";
 
@@ -329,7 +329,6 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
           data: { reputationPoints: { decrement: 10 } },
         });
       }
-        
 
       existingVote.voteType = voteType;
       await existingVote.save();

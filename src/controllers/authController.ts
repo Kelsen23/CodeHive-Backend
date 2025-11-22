@@ -1,10 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 
+import asyncHandler from "../middlewares/asyncHandler.js";
+
+import AuthenticatedRequest from "../types/authenticatedRequest.js";
+
 import path from "path";
 
 import bcrypt from "bcrypt";
 
-import asyncHandler from "../middlewares/asyncHandler.js";
 import generateToken from "../utils/generateToken.js";
 import transporter from "../config/nodemailer.js";
 import getDeviceInfo from "../utils/getDeviceInfo.js";
@@ -15,17 +18,10 @@ import {
   verificationHtml,
 } from "../utils/renderTemplate.js";
 
-import { prisma } from "../index.js";
-import { redisClient } from "../config/redis.js";
-
 import HttpError from "../utils/httpError.js";
 
-interface AuthenticatedRequest extends Request {
-  cookies: {
-    token?: any;
-  };
-  user?: any;
-}
+import { prisma } from "../index.js";
+import { redisClient } from "../config/redis.js";
 
 const register = asyncHandler(async (req: Request, res: Response) => {
   const { username, email, password } = req.body;
