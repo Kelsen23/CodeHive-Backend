@@ -74,7 +74,7 @@ const questionTypeDefs = gql`
     getSearchSuggestions(searchKeyword: String!, limitCount: Int): [String!]!
     searchQuestions(
       searchKeyword: String!
-      tags: [String!]!
+      tags: [String]!
       sortOption: String!
       skipCount: Int
       limitCount: Int
