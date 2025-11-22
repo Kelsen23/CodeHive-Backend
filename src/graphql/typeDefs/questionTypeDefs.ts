@@ -59,26 +59,54 @@ const questionTypeDefs = gql`
     user: User!
   }
 
+  type QuestionConnection {
+    questions: [Question!]!
+    nextCursor: String
+    hasMore: Boolean!
+  }
+
+  type AnswerConnection {
+    answers: [Answer!]!
+    nextCursor: String
+    hasMore: Boolean!
+  }
+
+  type ReplyConnection {
+    replies: [Reply!]!
+    nextCursor: String
+    hasMore: Boolean!
+  }
+
   type Query {
-    getRecommendedQuestions(skipCount: Int, limitCount: Int): [Question!]!
+    getRecommendedQuestions(
+      cursor: String
+      limitCount: Int
+    ): QuestionConnection!
 
     getQuestionById(id: ID!): QuestionDetails!
+
     loadMoreAnswers(
       questionId: ID!
       topAnswerId: ID
-      skipCount: Int
+      cursor: String
       limitCount: Int
-    ): [Answer!]!
-    loadMoreReplies(answerId: Int!, skipCount: Int, limitCount: Int): [Reply!]!
+    ): AnswerConnection!
+
+    loadMoreReplies(
+      answerId: ID!
+      cursor: String
+      limitCount: Int
+    ): ReplyConnection!
 
     getSearchSuggestions(searchKeyword: String!, limitCount: Int): [String!]!
+
     searchQuestions(
       searchKeyword: String!
       tags: [String]!
       sortOption: String!
-      skipCount: Int
+      cursor: String
       limitCount: Int
-    ): [Question!]!
+    ): QuestionConnection!
   }
 `;
 
