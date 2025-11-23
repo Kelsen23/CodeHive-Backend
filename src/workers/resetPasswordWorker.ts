@@ -1,5 +1,6 @@
 import { Worker } from "bullmq";
 import { redisConnection } from "../config/redis.js";
+
 import transporter from "../config/nodemailer.js";
 
 new Worker(
