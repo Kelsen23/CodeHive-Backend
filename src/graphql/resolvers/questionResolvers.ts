@@ -80,12 +80,12 @@ const questionResolvers = {
         {
           $sort: {
             upvoteCount: -1,
-            _id: -1, 
+            _id: -1,
           } as any,
         },
 
         { $limit: limitCount },
-        
+
         {
           $project: {
             id: "$_id",
@@ -499,7 +499,7 @@ const questionResolvers = {
           $sort: {
             score: -1,
             replyCount: -1,
-            _id: -1, 
+            _id: -1,
           },
         },
 
@@ -613,7 +613,7 @@ const questionResolvers = {
         {
           $sort: {
             score: -1,
-            _id: -1, 
+            _id: -1,
           },
         },
 
@@ -820,7 +820,7 @@ const questionResolvers = {
         { $match: matchStage },
 
         { $sort: sortMapping[sortOption] },
-        
+
         { $limit: limitCount },
 
         {

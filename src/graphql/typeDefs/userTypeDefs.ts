@@ -6,7 +6,7 @@ const userTypeDefs = gql`
     MOD
     USER
   }
-  
+
   type Achievement {
     id: ID!
     userId: String!

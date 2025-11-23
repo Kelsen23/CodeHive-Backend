@@ -3,7 +3,10 @@ import multer from "multer";
 
 import { changeProfilePicture } from "../controllers/uploadFileController.js";
 
-import isAuthenticated, { isTerminated, isVerified } from "../middlewares/authMiddleware.js";
+import isAuthenticated, {
+  isTerminated,
+  isVerified,
+} from "../middlewares/authMiddleware.js";
 
 import { uploadProfilePictureLimiterMiddleware } from "../middlewares/rateLimiters/uploadFileLimiters.js";
 
