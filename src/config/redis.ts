@@ -1,8 +1,12 @@
 import { Redis } from "ioredis";
 
 const redisClient = new Redis(
-  process.env.REDIS_CLI || "redis://localhost:6379",
+  process.env.REDIS_URL || "redis://localhost:6379",
 );
+
+const redisConnection = {
+  url: process.env.REDIS_URL,
+};
 
 const checkRedisConnection = async () => {
   try {
@@ -14,4 +18,4 @@ const checkRedisConnection = async () => {
   }
 };
 
-export { redisClient, checkRedisConnection };
+export { redisClient, redisConnection, checkRedisConnection };
