@@ -28,6 +28,7 @@
     "@aws-sdk/s3-request-presigner": "^3.882.0",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
+    "bullmq": "^5.64.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dataloader": "^2.2.3",
