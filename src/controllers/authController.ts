@@ -4,12 +4,9 @@ import asyncHandler from "../middlewares/asyncHandler.js";
 
 import AuthenticatedRequest from "../types/authenticatedRequest.js";
 
-import path from "path";
-
 import bcrypt from "bcrypt";
 
 import generateToken from "../utils/generateToken.js";
-import transporter from "../config/nodemailer.js";
 import getDeviceInfo from "../utils/getDeviceInfo.js";
 import generateUniqueUsername from "../utils/generateUniqueUsername.js";
 
@@ -22,6 +19,9 @@ import HttpError from "../utils/httpError.js";
 
 import { prisma } from "../index.js";
 import { redisClient } from "../config/redis.js";
+
+import verificationQueue from "../queues/verificationQueue.js";
+import resetPasswordQueue from "../queues/resetPasswordQueue.js";
 
 const register = asyncHandler(async (req: Request, res: Response) => {
   const { username, email, password } = req.body;
@@ -58,16 +58,14 @@ const register = asyncHandler(async (req: Request, res: Response) => {
     deviceInfo.ip || "Unknown IP",
   );
 
-  try {
-    await transporter.sendMail({
-      from: `'CodeHive' <${process.env.CODEHIVE_EMAIL}>`,
-      to: email,
-      subject: "Verify Email",
-      html: htmlContent,
-    });
-  } catch (error) {
-    throw new HttpError(`Failed to send verification email: ${error}`, 500);
-  }
+  await verificationQueue.add(
+    "sendVerificationEmail",
+    {
+      email: updatedUser.email,
+      htmlContent,
+    },
+    { removeOnComplete: true, removeOnFail: true },
+  );
 
   return res.status(200).json({
     message: "Successfully registered",
@@ -300,23 +298,14 @@ const resendVerifyEmail = asyncHandler(
       deviceInfo.ip || "Unknown IP",
     );
 
-    try {
-      await transporter.sendMail({
-        from: `'CodeHive' <${process.env.CODEHIVE_EMAIL}>`,
-        to: foundUser.email,
-        subject: "Verify Email",
-        html: htmlContent,
-        attachments: [
-          {
-            filename: "CodeHive logo.png",
-            path: path.join(process.cwd(), "assets/CodeHive logo.png"),
-            cid: "codehive-logo",
-          },
-        ],
-      });
-    } catch (error) {
-      throw new HttpError(`Failed to send verification email: ${error}`, 500);
-    }
+    await verificationQueue.add(
+      "resendVerificationEmail",
+      {
+        email: updatedUser.email,
+        htmlContent,
+      },
+      { removeOnComplete: true, removeOnFail: true },
+    );
 
     return res.status(200).json({
       message: "Successfully sent another OTP to your email address",
@@ -360,16 +349,14 @@ const sendResetPasswordEmail = asyncHandler(
       deviceInfo.ip || "Unknown IP",
     );
 
-    try {
-      await transporter.sendMail({
-        from: `'CodeHive' <${process.env.CODEHIVE_EMAIL}>`,
-        to: updatedUser.email,
-        subject: "Reset Password Request",
-        html: htmlContent,
-      });
-    } catch (error) {
-      throw new HttpError(`Failed to send reset password email: ${error}`, 500);
-    }
+    await resetPasswordQueue.add(
+      "sendResetPasswordEmail",
+      {
+        email: updatedUser.email,
+        htmlContent,
+      },
+      { removeOnComplete: true, removeOnFail: true },
+    );
 
     return res
       .status(200)
@@ -425,16 +412,14 @@ const resendResetPasswordEmail = asyncHandler(
       deviceInfo.ip || "Unknown IP",
     );
 
-    try {
-      await transporter.sendMail({
-        from: `'CodeHive' <${process.env.CODEHIVE_EMAIL}>`,
-        to: updatedUser.email,
-        subject: "Reset Password Request",
-        html: htmlContent,
-      });
-    } catch (error) {
-      throw new HttpError(`Failed to send reset password email: ${error}`, 500);
-    }
+    await resetPasswordQueue.add(
+      "resendResetPasswordEmail",
+      {
+        email: updatedUser.email,
+        htmlContent,
+      },
+      { removeOnComplete: true, removeOnFail: true },
+    );
 
     return res
       .status(200)
