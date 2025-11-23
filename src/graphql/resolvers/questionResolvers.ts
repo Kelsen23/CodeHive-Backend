@@ -750,9 +750,9 @@ const questionResolvers = {
       },
       { redisClient, loaders }: { redisClient: any; loaders: any },
     ) => {
-      if (!["LATEST", "INTERACTED"].includes(sortOption))
+      if (!["LATEST", "TOP"].includes(sortOption))
         throw new HttpError(
-          `Invalid sort option. Allowed values: ${["LATEST", "INTERACTED"].join(", ")}`,
+          `Invalid sort option. Allowed values: ${["LATEST", "TOP"].join(", ")}`,
           400,
         );
 
@@ -769,10 +769,9 @@ const questionResolvers = {
 
       const sortMapping: Record<string, any> = {
         LATEST: { createdAt: -1, _id: -1 },
-        INTERACTED: {
+        TOP: {
           answerCount: -1,
           upvoteCount: -1,
-          downvoteCount: -1,
           _id: -1,
         },
       };
