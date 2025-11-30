@@ -122,7 +122,7 @@ model User {
   status       Status    @default(ACTIVE)
   isBanned     Boolean   @default(false)
   banType      BanType?
-  banReason    String?   @db.VarChar(150)
+  banReasons   String[] 
   bannedAt     DateTime?
   banExpiresAt DateTime?
   bannedBy     BannedBy?
