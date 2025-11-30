@@ -41,7 +41,7 @@ const ReportSchema = new mongoose.Schema(
       ],
       default: ["UNCERTAIN"],
     },
-    aiConfidence: { type: Number, min: 0, max: 1, default: null },
+    aiConfidence: { type: Number, min: 0, max: 1, default: 0 },
     aiReasons: {
       type: [String],
       minlength: 3,
