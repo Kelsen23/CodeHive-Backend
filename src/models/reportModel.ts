@@ -30,8 +30,8 @@ const ReportSchema = new mongoose.Schema(
       default: null,
     },
 
-    aiDecision: {
-      type: String,
+    aiDecisions: {
+      type: [String],
       enum: [
         "REMOVE_CONTENT",
         "BAN_USER_TEMP",
@@ -39,10 +39,15 @@ const ReportSchema = new mongoose.Schema(
         "IGNORE",
         "UNCERTAIN",
       ],
-      default: "UNCERTAIN",
+      default: ["UNCERTAIN"],
     },
     aiConfidence: { type: Number, min: 0, max: 1, default: null },
-    aiReason: { type: String, minlength: 3, maxlength: 150, default: null },
+    aiReasons: {
+      type: [String],
+      minlength: 3,
+      maxlength: 150,
+      default: [],
+    },
 
     status: {
       type: String,
