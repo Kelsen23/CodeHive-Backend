@@ -98,7 +98,7 @@ enum BanType {
 enum BannedBy {
   ADMIN
   MOD
-  AI
+  AI_MODERATION
 }
 
 model User {
