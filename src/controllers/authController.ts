@@ -20,8 +20,8 @@ import HttpError from "../utils/httpError.js";
 import { prisma } from "../index.js";
 import { redisClient } from "../config/redis.js";
 
-import verificationQueue from "../queues/verificationQueue.js";
-import resetPasswordQueue from "../queues/resetPasswordQueue.js";
+import verificationQueue from "../queues/emails/verificationQueue.js";
+import resetPasswordQueue from "../queues/emails/resetPasswordQueue.js";
 
 const register = asyncHandler(async (req: Request, res: Response) => {
   const { username, email, password } = req.body;
