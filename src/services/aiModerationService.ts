@@ -9,7 +9,7 @@ type AiDecision =
 
 interface AiModerationResult {
   decisions: AiDecision[];
-  confidence: number | null;
+  confidence: number;
   reasons: string[];
 }
 
@@ -67,7 +67,7 @@ const aiModerateReport = async (
     console.error("AI moderation error:", err);
     return {
       decisions: ["UNCERTAIN"],
-      confidence: null,
+      confidence: 0,
       reasons: [],
     };
   }
