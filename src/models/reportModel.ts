@@ -4,12 +4,12 @@ const ReportSchema = new mongoose.Schema(
   {
     reportedBy: { type: String, required: true },
     targetId: { type: String, required: true },
+    targetUserId: { type: String, required: true },
     targetType: {
       type: String,
       required: true,
-      enum: ["User", "Question", "Answer", "Reply"],
+      enum: ["Question", "Answer", "Reply"],
     },
-    targetUserId: { type: String, required: true },
 
     reportReason: {
       type: String,
@@ -30,6 +30,7 @@ const ReportSchema = new mongoose.Schema(
       default: null,
     },
 
+    severity: { type: Number, min: 1, max: 100, default: 0 },
     aiDecisions: {
       type: [String],
       enum: [
@@ -54,7 +55,8 @@ const ReportSchema = new mongoose.Schema(
       enum: ["PENDING", "REVIEWING", "RESOLVED", "DISMISSED"],
       default: "PENDING",
     },
-    actionTaken: {
+
+    actionsTaken: {
       type: [String],
       enum: [
         "REMOVE_CONTENT",
@@ -65,9 +67,20 @@ const ReportSchema = new mongoose.Schema(
       ],
       default: [],
     },
-    adminReason: { type: String, maxlength: 150, minlength: 3, default: null },
+    adminReasons: [{ type: String, maxlength: 150, minlength: 3 }],
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      versionKeys: false,
+      transform: (_, ret: any) => {
+        ret.id = ret._id;
+        delete ret._id;
+        return ret;
+      },
+    },
+  },
 );
 
 export default mongoose.model("Report", ReportSchema);
