@@ -21,10 +21,11 @@
     "dev:verification-worker": "tsx src/workers/emails/verificationWorker.ts",
     "dev:reset-worker": "tsx src/workers/emails/resetPasswordWorker.ts",
 
-    "dev:emails": "concurrently \"npm run dev:verification-worker\" \"npm run dev:reset-worker\"",
     "dev:moderation-worker": "tsx src/workers/moderations/reportModerationWorker.ts",
 
+    "dev:emails": "concurrently \"npm run dev:verification-worker\" \"npm run dev:reset-worker\"",
     "dev:moderation": "npm run dev:moderation-worker",
+    
     "dev:all-workers": "concurrently \"npm run dev:emails\" \"npm run dev:moderation\"",
 
     "build": "tsc",
