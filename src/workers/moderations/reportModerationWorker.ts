@@ -68,6 +68,11 @@ new Worker(
           },
         });
 
+        await prisma.user.update({
+          where: { id: report.targetUserId as string },
+          data: { status: "TERMINATED" },
+        });
+
         const targetUserSocketId = onlineUsers.get(report.targetUserId);
 
         if (targetUserSocketId) {
@@ -117,6 +122,11 @@ new Worker(
             expiresAt: new Date(Date.now() + tempBanMs),
             durationMs: tempBanMs,
           },
+        });
+
+        await prisma.user.update({
+          where: { id: report.targetUserId as string },
+          data: { status: "TERMINATED" },
         });
 
         const targetUserSocketId = onlineUsers.get(report.targetUserId);
