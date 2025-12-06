@@ -17,7 +17,7 @@ import {
 
 import HttpError from "../utils/httpError.js";
 
-import { prisma } from "../index.js";
+import prisma from "../config/prisma.js";
 import { redisClient } from "../config/redis.js";
 
 import verificationQueue from "../queues/emails/verificationQueue.js";

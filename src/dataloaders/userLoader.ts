@@ -1,5 +1,6 @@
 import DataLoader from "dataloader";
-import { prisma } from "../index.js";
+
+import prisma from "../config/prisma.js";
 
 const batchUsers = async (userIds: readonly string[]) => {
   const users = await prisma.user.findMany({

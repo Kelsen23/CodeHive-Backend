@@ -15,7 +15,7 @@ import {
 import HttpError from "../utils/httpError.js";
 import makeCircle from "../utils/makeCircle.js";
 
-import { prisma } from "../index.js";
+import prisma from "../config/prisma.js";
 import { redisClient } from "../config/redis.js";
 
 const bucketName = process.env.BUCKET_NAME;
