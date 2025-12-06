@@ -13,7 +13,7 @@
         color: #000000;
         letter-spacing: 16px;
         background-color: #f8f8f8;
-        padding: 20px 8px 30px 30px;
+        padding: 30px 46px 30px 30px;
         border-radius: 8px;
         display: inline-block;
         margin: 0 auto;
@@ -68,11 +68,7 @@
         <mj-divider border-color="#e5e5e5" border-width="1px" padding="10px 0 20px 0" />
 
         <mj-text font-size="13px" color="#666666" padding="0 0 0 0" line-height="170%">
-          If you didn't attempt to sign in but received this email, or if the location doesn't match, please ignore this email. Don't share or forward the 6-digit code with anyone. Our customer service will never ask for it. Do not read this code out loud. Be cautious of phishing attempts and always verify the sender and domain before acting. If you are concerned about your account's safety, please contact our support team.
-        </mj-text>
-
-        <mj-text font-size="15px" color="#dc3545" padding="15px 0 0 0">
-          If this wasn't you, please secure your account immediately.
+          If you didn't attempt to sign in but received this email, or if the location doesn't match, please ignore this email. Don't share or forward the 6-digit code with anyone. Our customer service will never ask for it. Do not read this code out loud. Be cautious of phishing attempts and always verify the sender and domain before acting.
         </mj-text>
       </mj-column>
     </mj-section>
