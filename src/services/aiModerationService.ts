@@ -60,8 +60,8 @@ const aiModerateReport = async (
     }
 
     return { confidence: maxConfidence, reasons, severity };
-  } catch (err: any) {
-    console.error("AI moderation error:", err);
+  } catch (error: any) {
+    console.error("AI moderation error:", error);
     return { confidence: 0, reasons: [], severity: 50 };
   }
 };
