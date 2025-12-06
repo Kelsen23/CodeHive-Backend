@@ -10,7 +10,9 @@ import Answer from "../../models/answerModel.js";
 import Reply from "../../models/replyModel.js";
 import Report from "../../models/reportModel.js";
 
-import { io, onlineUsers, prisma } from "../../index.js";
+import prisma from "../../config/prisma.js";
+
+import { io, onlineUsers } from "../../index.js";
 
 const mapSeverityToDecision = (severity: number) => {
   if (severity >= 90) return "BAN_USER_PERM";
