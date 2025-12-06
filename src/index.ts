@@ -44,7 +44,7 @@ await apolloServer.start();
 const app = express();
 const server = http.createServer(app);
 
-const onlineUsers = new Map<string, string>();
+export const onlineUsers = new Map<string, string>();
 
 export const io = new SocketServer(server, {
   cors: {
