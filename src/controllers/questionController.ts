@@ -14,7 +14,7 @@ import Answer from "../models/answerModel.js";
 import Reply from "../models/replyModel.js";
 import Vote from "../models/voteModel.js";
 
-import { prisma } from "../index.js";
+import prisma from "../config/prisma.js";
 import { redisClient } from "../config/redis.js";
 
 const createQuestion = asyncHandler(

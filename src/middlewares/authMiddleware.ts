@@ -6,7 +6,7 @@ import { NextFunction, Request, Response } from "express";
 
 import HttpError from "../utils/httpError.js";
 
-import { prisma } from "../index.js";
+import prisma from "../config/prisma.js";
 
 interface AuthenticatedRequest extends Request {
   cookies: {

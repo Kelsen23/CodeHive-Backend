@@ -7,8 +7,8 @@ import AuthenticatedRequest from "../types/authenticatedRequest.js";
 import HttpError from "../utils/httpError.js";
 import interests from "../utils/interests.js";
 
-import { prisma } from "../index.js";
 import { redisClient } from "../config/redis.js";
+import prisma from "../config/prisma.js";
 
 const updateProfile = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {

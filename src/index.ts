@@ -27,7 +27,7 @@ import questionRoute from "./routes/questionRoute.js";
 
 import cookieParser from "cookie-parser";
 
-import { PrismaClient } from "./generated/prisma/index.js";
+import prisma from "./config/prisma.js";
 
 import connectMongoDB from "./config/mongoDB.js";
 import { checkRedisConnection, redisClient } from "./config/redis.js";
@@ -64,8 +64,6 @@ io.on("connection", (socket: Socket) => {
     });
   });
 });
-
-export const prisma = new PrismaClient();
 
 connectMongoDB(process.env.MONGO_URI as string);
 checkRedisConnection();
