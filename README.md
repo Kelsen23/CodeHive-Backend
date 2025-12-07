@@ -13,9 +13,15 @@
 ## 🛠️ Tech Stack
 
 - **Node.js** + **Express**
-- **PostgreSQL** (users, data storage)
-- **MongoDB** (questions, answers, replies, nested data)
-- **Redis** (caching, sessions, rate limiting)
+- **PostgreSQL** – users, authentication, relational data
+- **MongoDB** – questions, answers, replies, nested documents
+- **Redis**
+  - Caching  
+  - Sessions  
+  - Rate limiting  
+  - **Pub/Sub messaging** for real-time events  
+- **Socket.IO** – real-time bidirectional communication (websocket layer)
+- **BullMQ** – scalable background job processing & task queues
 - **GraphQL / REST APIs**
 
 ---
