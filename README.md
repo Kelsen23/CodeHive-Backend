@@ -12,17 +12,35 @@
 
 ## 🛠️ Tech Stack
 
-- **Node.js** + **Express**
-- **PostgreSQL** – users, authentication, relational data
-- **MongoDB** – questions, answers, replies, nested documents
+### **Backend Framework**
+- Node.js + Express
+
+### **Databases**
+- **PostgreSQL** – relational data  
+  - ORM: **Prisma**
+- **MongoDB** – nested Q&A data  
+  - ODM: **Mongoose**
+
+### **Caching & Messaging**
 - **Redis**
-  - Caching  
-  - Sessions  
-  - Rate limiting  
-  - **Pub/Sub messaging** for real-time events  
-- **Socket.IO** – real-time bidirectional communication (websocket layer)
-- **BullMQ** – scalable background job processing & task queues
-- **GraphQL / REST APIs**
+  - Caching
+  - Sessions
+  - Rate limiting
+  - Pub/Sub messaging
+
+### **Background Jobs**
+- **BullMQ** – scalable job queues & scheduling
+
+### **Real-Time Layer**
+- **Socket.IO** – real-time updates & event streaming
+
+### **APIs**
+- **REST**
+- **GraphQL**
+
+### **Storage & CDN**
+- **AWS S3** – file & asset storage
+- **AWS CloudFront** – CDN for fast delivery and caching
 
 ---
 
