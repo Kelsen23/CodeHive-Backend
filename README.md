@@ -12,35 +12,32 @@
 
 ## 🛠️ Tech Stack
 
-### **Backend Framework**
+### Backend Framework
 - Node.js + Express
 
-### **Databases**
-- **PostgreSQL** – relational data  
-  - ORM: **Prisma**
-- **MongoDB** – nested Q&A data  
-  - ODM: **Mongoose**
+### Databases
+- **PostgreSQL** (Prisma ORM)
+- **MongoDB** (Mongoose ODM)
 
-### **Caching & Messaging**
-- **Redis**
-  - Caching
-  - Sessions
-  - Rate limiting
-  - Pub/Sub messaging
+### Caching & Messaging
+- Redis (caching, sessions, rate limiting, Pub/Sub)
 
-### **Background Jobs**
-- **BullMQ** – scalable job queues & scheduling
+### Background Jobs
+- BullMQ – job queues & scheduling
 
-### **Real-Time Layer**
-- **Socket.IO** – real-time updates & event streaming
+### Real-Time Communication
+- Socket.IO – event-based updates
 
-### **APIs**
-- **REST**
-- **GraphQL**
+### APIs
+- REST
+- GraphQL
 
-### **Storage & CDN**
-- **AWS S3** – file & asset storage
-- **AWS CloudFront** – CDN for fast delivery and caching
+### Validation
+- **Zod** – validation for REST request bodies
+
+### Storage & CDN
+- AWS S3 – file storage  
+- AWS CloudFront – CDN for fast global delivery
 
 ---
 
