@@ -12,7 +12,7 @@ import Report from "../../models/reportModel.js";
 
 import prisma from "../../config/prisma.js";
 
-import { io, onlineUsers } from "../../index.js";
+import emitToUser from "../../sockets/emitters/socketEmitter.js";
 
 const mapSeverityToDecision = (severity: number) => {
   if (severity >= 90) return "BAN_USER_PERM";
@@ -57,7 +57,7 @@ new Worker(
       const aiDecision = mapSeverityToDecision(severity);
 
       if (aiDecision === "BAN_USER_PERM") {
-        await prisma.ban.create({
+        const newBan = await prisma.ban.create({
           data: {
             userId: report.targetUserId as string,
             title: "Permanent Account Suspension",
@@ -73,18 +73,7 @@ new Worker(
           data: { status: "TERMINATED" },
         });
 
-        const targetUserSocketId = onlineUsers.get(report.targetUserId);
-
-        if (targetUserSocketId) {
-          io.to(targetUserSocketId).emit("banUser", {
-            userId: report.targetUserId as string,
-            title: "Permanent Account Suspension",
-            reasons: aiReasons,
-            banType: "PERM",
-            severity: "FIVE",
-            bannedBy: "AI_MODERATION",
-          });
-        }
+        emitToUser(report.targetUserId as string, "banUser", newBan);
 
         await Report.findOneAndUpdate(report._id, {
           severity,
@@ -97,21 +86,17 @@ new Worker(
             severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
         });
 
-        const reportedBySocketId = onlineUsers.get(report.reportedBy);
-
-        if (reportedBySocketId) {
-          io.to(reportedBySocketId).emit("reportStatusChanged", {
-            actionsTaken:
-              severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
-            status: "RESOLVED",
-          });
-        }
+        emitToUser(report.reportedBy as string, "reportStatusChanged", {
+          actionsTaken:
+            severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+          status: "RESOLVED",
+        });
       }
 
       if (aiDecision === "BAN_USER_TEMP") {
         const tempBanMs = calculateTempBanMs(severity, aiConfidence);
 
-        await prisma.ban.create({
+        const newBan = await prisma.ban.create({
           data: {
             userId: report.targetUserId as string,
             title: "Temporary Account Suspension",
@@ -129,18 +114,7 @@ new Worker(
           data: { status: "TERMINATED" },
         });
 
-        const targetUserSocketId = onlineUsers.get(report.targetUserId);
-
-        if (targetUserSocketId) {
-          io.to(targetUserSocketId).emit("banUser", {
-            userId: report.targetUserId as string,
-            title: "Temporary Account Suspension",
-            reasons: aiReasons,
-            banType: "TEMP",
-            severity: "FOUR",
-            bannedBy: "AI_MODERATION",
-          });
-        }
+        emitToUser(report.targetUserId as string, "banUser", newBan);
 
         await Report.findOneAndUpdate(report._id, {
           severity,
@@ -153,15 +127,11 @@ new Worker(
             severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
         });
 
-        const reportedBySocketId = onlineUsers.get(report.reportedBy);
-
-        if (reportedBySocketId) {
-          io.to(reportedBySocketId).emit("reportStatusChanged", {
-            actionsTaken:
-              severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
-            status: "RESOLVED",
-          });
-        }
+        emitToUser(report.reportedBy as string, "reportStatusChanged", {
+          actionsTaken:
+            severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+          status: "RESOLVED",
+        });
       }
 
       if (aiDecision === "WARN_USER") {
@@ -181,22 +151,7 @@ new Worker(
           },
         });
 
-        const targetUserSocketId = onlineUsers.get(report.targetUserId);
-
-        if (targetUserSocketId) {
-          io.to(targetUserSocketId).emit("warnUser", {
-            userId: report.targetUserId as string,
-            title,
-            reasons: aiReasons,
-            severity: "THREE",
-            warnedBy: "AI_MODERATION",
-          });
-
-          await prisma.warning.update({
-            where: { id: newWarning.id },
-            data: { delivered: true },
-          });
-        }
+        emitToUser(report.targetUserId as string, "warnUser", newWarning);
 
         await Report.findOneAndUpdate(report._id, {
           severity,
@@ -209,15 +164,11 @@ new Worker(
             severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
         });
 
-        const reportedBySocketId = onlineUsers.get(report.reportedBy);
-
-        if (reportedBySocketId) {
-          io.to(reportedBySocketId).emit("reportStatusChanged", {
-            actionsTaken:
-              severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
-            status: "RESOLVED",
-          });
-        }
+        emitToUser(report.reportedBy as string, "reportStatusChanged", {
+          actionsTaken:
+            severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+          status: "RESOLVED",
+        });
       }
 
       if (aiDecision === "UNCERTAIN") {
@@ -228,15 +179,11 @@ new Worker(
           status: "REVIEWING",
         });
 
-        const reportedBySocketId = onlineUsers.get(report.reportedBy);
-
-        if (reportedBySocketId) {
-          io.to(reportedBySocketId).emit("reportStatusChanged", {
-            aiDecisions:
-              severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
-            status: "REVIEWING",
-          });
-        }
+        emitToUser(report.reportedBy as string, "reportStatusChanged", {
+          actionsTaken:
+            severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+          status: "REVIEWING",
+        });
       }
 
       if (aiDecision === "IGNORE") {
@@ -249,14 +196,10 @@ new Worker(
           actionsTaken: "NO_ACTION",
         });
 
-        const reportedBySocketId = onlineUsers.get(report.reportedBy);
-
-        if (reportedBySocketId) {
-          io.to(reportedBySocketId).emit("reportStatusChanged", {
-            aiDecisions: [aiDecision],
-            status: "DISMISSED",
-          });
-        }
+        emitToUser(report.reportedBy as string, "reportStatusChanged", {
+          actionsTaken: [aiDecision],
+          status: "DISMISSED",
+        });
       }
 
       if (aiDecision)
