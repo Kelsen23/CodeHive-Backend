@@ -5,7 +5,7 @@ import cors from "cors";
 
 import express from "express";
 
-import { Server as SocketServer, Socket } from "socket.io";
+import initSocket from "./sockets/index.js";
 
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@as-integrations/express5";
@@ -44,26 +44,7 @@ await apolloServer.start();
 const app = express();
 const server = http.createServer(app);
 
-export const onlineUsers = new Map<string, string>();
-
-export const io = new SocketServer(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
-
-io.on("connection", (socket: Socket) => {
-  socket.on("registerUser", (userId: string) => {
-    onlineUsers.set(userId, socket.id);
-  });
-
-  socket.on("disconnect", () => {
-    onlineUsers.forEach((sid, uid) => {
-      if (sid === socket.id) onlineUsers.delete(uid);
-    });
-  });
-});
+initSocket(server);
 
 connectMongoDB(process.env.MONGO_URI as string);
 checkRedisConnection();
