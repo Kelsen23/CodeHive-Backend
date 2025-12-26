@@ -18,7 +18,7 @@ import {
 import HttpError from "../utils/httpError.js";
 
 import prisma from "../config/prisma.js";
-import { redisClient } from "../config/redis.js";
+import { redisCacheClient } from "../config/redis.js";
 
 import verificationQueue from "../queues/emails/verificationQueue.js";
 import resetPasswordQueue from "../queues/emails/resetPasswordQueue.js";
@@ -237,7 +237,7 @@ const verifyEmail = asyncHandler(
       ...userWithoutSensitiveInfo
     } = verifiedUser;
 
-    await redisClient.set(
+    await redisCacheClient.set(
       `user:${verifiedUser.id}`,
       JSON.stringify(userWithoutSensitiveInfo),
       "EX",

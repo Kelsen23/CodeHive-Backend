@@ -1,10 +1,10 @@
 import { RateLimiterRedis } from "rate-limiter-flexible";
-import { redisClient } from "../../config/redis.js";
+import { redisMessagingClient } from "../../config/redis.js";
 
 import createRateLimiterMiddleware from "../createRateLimiterMiddleware.js";
 
 const uploadProfilePictureLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: redisMessagingClient,
   keyPrefix: "uploadProfilePicture",
   points: 3,
   duration: 60 * 60,

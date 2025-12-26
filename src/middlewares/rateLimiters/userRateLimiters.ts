@@ -1,24 +1,24 @@
 import { RateLimiterRedis } from "rate-limiter-flexible";
-import { redisClient } from "../../config/redis.js";
+import { redisMessagingClient } from "../../config/redis.js";
 
 import createRateLimiterMiddleware from "../createRateLimiterMiddleware.js";
 
 const updateProfileLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: redisMessagingClient,
   keyPrefix: "updateProfile",
   points: 3,
   duration: 15 * 60,
 });
 
 const getInterestsLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: redisMessagingClient,
   keyPrefix: "getInterests",
   points: 10,
   duration: 2 * 60,
 });
 
 const saveInterestsLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: redisMessagingClient,
   keyPrefix: "saveInterests",
   points: 5,
   duration: 15 * 60,

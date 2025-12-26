@@ -7,7 +7,7 @@ import AuthenticatedRequest from "../types/authenticatedRequest.js";
 import HttpError from "../utils/httpError.js";
 import interests from "../utils/interests.js";
 
-import { redisClient } from "../config/redis.js";
+import { redisCacheClient } from "../config/redis.js";
 import prisma from "../config/prisma.js";
 
 const updateProfile = asyncHandler(
@@ -44,7 +44,7 @@ const updateProfile = asyncHandler(
       ...userWithoutSensitiveInfo
     } = updatedUser;
 
-    await redisClient.set(
+    await redisCacheClient.set(
       `user:${updatedUser.id}`,
       JSON.stringify(userWithoutSensitiveInfo),
       "EX",
@@ -85,7 +85,7 @@ const saveInterests = asyncHandler(
       ...userWithoutSensitiveInfo
     } = updatedUser;
 
-    await redisClient.set(
+    await redisCacheClient.set(
       `user:${updatedUser.id}`,
       JSON.stringify(userWithoutSensitiveInfo),
       "EX",

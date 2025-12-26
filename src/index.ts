@@ -30,7 +30,7 @@ import cookieParser from "cookie-parser";
 import prisma from "./config/prisma.js";
 
 import connectMongoDB from "./config/mongoDB.js";
-import { checkRedisConnection, redisClient } from "./config/redis.js";
+import { checkRedisConnection, redisCacheClient } from "./config/redis.js";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
@@ -77,7 +77,7 @@ app.use(
       return {
         token: req.headers.authorization,
         prisma,
-        redisClient,
+        redisCacheClient,
         user,
         loaders: {
           userLoader: createUserLoader(),
