@@ -457,6 +457,9 @@ const verifyResetPasswordOtp = asyncHandler(
       where: { id: foundUser.id },
       data: {
         resetPasswordOtpVerified: true,
+        resetPasswordOtp: null,
+        resetPasswordOtpExpireAt: null,
+        resetPasswordOtpResendAvailableAt: null,
       },
     });
 
