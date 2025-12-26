@@ -1,8 +1,8 @@
 import { Queue } from "bullmq";
-import { redisConnection } from "../../config/redis.js";
+import { redisMessagingClientConnection } from "../../config/redis.js";
 
 const resetPasswordQueue = new Queue("resetPasswordQueue", {
-  connection: redisConnection,
+  connection: redisMessagingClientConnection,
 });
 
 export default resetPasswordQueue;
