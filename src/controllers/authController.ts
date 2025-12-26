@@ -255,7 +255,7 @@ const verifyEmail = asyncHandler(
   },
 );
 
-const resendVerifyEmail = asyncHandler(
+const resendVerificationEmail = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user;
 
@@ -531,7 +531,7 @@ export {
   login,
   registerOrLogin,
   verifyEmail,
-  resendVerifyEmail,
+  resendVerificationEmail,
   sendResetPasswordEmail,
   resendResetPasswordEmail,
   verifyResetPasswordOtp,

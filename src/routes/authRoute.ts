@@ -7,7 +7,7 @@ import {
   register,
   registerOrLogin,
   resendResetPasswordEmail,
-  resendVerifyEmail,
+  resendVerificationEmail,
   resetPassword,
   sendResetPasswordEmail,
   verifyEmail,
@@ -54,8 +54,8 @@ router
     verifyEmail,
   );
 router
-  .route("/resendVerifyEmail")
-  .post(resendEmailLimiterMiddleware, isAuthenticated, resendVerifyEmail);
+  .route("/resendVerificationEmail")
+  .post(resendEmailLimiterMiddleware, isAuthenticated, resendVerificationEmail);
 
 router
   .route("/sendResetPasswordEmail")
