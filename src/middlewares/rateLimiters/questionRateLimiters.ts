@@ -2,7 +2,6 @@ import { RateLimiterRedis } from "rate-limiter-flexible";
 import { redisMessagingClient } from "../../config/redis.js";
 
 import createRateLimiterMiddleware from "../createRateLimiterMiddleware.js";
-import { markAnswerAsBest } from "../../controllers/questionController.js";
 
 const createQuestionLimiter = new RateLimiterRedis({
   storeClient: redisMessagingClient,
