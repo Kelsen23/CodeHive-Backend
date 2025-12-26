@@ -15,7 +15,7 @@ import Reply from "../models/replyModel.js";
 import Vote from "../models/voteModel.js";
 
 import prisma from "../config/prisma.js";
-import { redisClient } from "../config/redis.js";
+import { redisCacheClient } from "../config/redis.js";
 
 const createQuestion = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
@@ -59,7 +59,7 @@ const createAnswerOnQuestion = asyncHandler(
       $inc: { answerCount: 1 },
     });
 
-    await redisClient.del(`question:${questionId}`);
+    await redisCacheClient.del(`question:${questionId}`);
     await clearAnswerCache(questionId);
 
     await prisma.user.update({
@@ -102,7 +102,7 @@ const createReplyOnAnswer = asyncHandler(
       $inc: { replyCount: 1 },
     });
 
-    await redisClient.del(`question:${foundAnswer.questionId}`);
+    await redisCacheClient.del(`question:${foundAnswer.questionId}`);
     await clearAnswerCache(foundAnswer.questionId as string);
     await clearReplyCache(foundAnswer._id as string);
 
@@ -117,7 +117,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { targetType, targetId, voteType } = req.body;
 
   if (targetType === "Question") {
-    const cachedQuestion = await redisClient.get(`question:${targetId}`);
+    const cachedQuestion = await redisCacheClient.get(`question:${targetId}`);
 
     const foundQuestion = cachedQuestion
       ? JSON.parse(cachedQuestion)
@@ -160,7 +160,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       existingVote.voteType = voteType;
       await existingVote.save();
 
-      await redisClient.del(`question:${targetId}`);
+      await redisCacheClient.del(`question:${targetId}`);
 
       return res
         .status(200)
@@ -196,7 +196,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    await redisClient.del(`question:${targetId}`);
+    await redisCacheClient.del(`question:${targetId}`);
 
     return res.status(200).json({
       message: `Successfully ${voteType === "upvote" ? "upvoted" : "downvoted"} question`,
@@ -244,7 +244,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       existingVote.voteType = voteType;
       await existingVote.save();
 
-      await redisClient.del(`question:${foundAnswer.questionId}`);
+      await redisCacheClient.del(`question:${foundAnswer.questionId}`);
       await clearAnswerCache(foundAnswer.questionId as string);
 
       return res
@@ -281,7 +281,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    await redisClient.del(`question:${foundAnswer.questionId}`);
+    await redisCacheClient.del(`question:${foundAnswer.questionId}`);
     await clearAnswerCache(foundAnswer.questionId as string);
 
     return res.status(200).json({
@@ -333,7 +333,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       existingVote.voteType = voteType;
       await existingVote.save();
 
-      await redisClient.del(`question:${foundAnswer.questionId}`);
+      await redisCacheClient.del(`question:${foundAnswer.questionId}`);
       await clearAnswerCache(foundAnswer.questionId as string);
       await clearReplyCache(foundAnswer._id as string);
 
@@ -371,7 +371,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    await redisClient.del(`question:${foundAnswer.questionId}`);
+    await redisCacheClient.del(`question:${foundAnswer.questionId}`);
     await clearAnswerCache(foundAnswer.questionId as string);
     await clearReplyCache(foundAnswer._id as string);
 
@@ -412,7 +412,7 @@ const unvote = asyncHandler(
     await Vote.deleteOne({ userId, targetType, targetId });
 
     if (targetType === "Question") {
-      const cachedQuestion = await redisClient.get(`question:${targetId}`);
+      const cachedQuestion = await redisCacheClient.get(`question:${targetId}`);
 
       const foundQuestion = cachedQuestion
         ? JSON.parse(cachedQuestion)
@@ -527,7 +527,7 @@ const markAnswerAsBest = asyncHandler(
       });
     }
 
-    const cachedQuestion = await redisClient.get(
+    const cachedQuestion = await redisCacheClient.get(
       `question:${foundAnswer.questionId}`,
     );
 
@@ -577,7 +577,7 @@ const markAnswerAsBest = asyncHandler(
       },
     });
 
-    await redisClient.del(`question:${foundAnswer.questionId}`);
+    await redisCacheClient.del(`question:${foundAnswer.questionId}`);
     await clearAnswerCache(foundAnswer.questionId as string);
 
     return res.status(200).json({
@@ -596,7 +596,7 @@ const unmarkAnswerAsBest = asyncHandler(
 
     if (!foundAnswer) throw new HttpError("Answer not found", 404);
 
-    const cachedQuestion = await redisClient.get(
+    const cachedQuestion = await redisCacheClient.get(
       `question:${foundAnswer.questionId}`,
     );
     const foundQuestion = cachedQuestion
@@ -631,7 +631,7 @@ const unmarkAnswerAsBest = asyncHandler(
       },
     });
 
-    await redisClient.del(`question:${foundAnswer.questionId}`);
+    await redisCacheClient.del(`question:${foundAnswer.questionId}`);
     await clearAnswerCache(foundAnswer.questionId as string);
 
     return res.status(200).json({
@@ -661,7 +661,7 @@ const deleteContent = asyncHandler(
     }
 
     if (targetType === "question") {
-      const cachedQuestion = await redisClient.get(`question:${targetId}`);
+      const cachedQuestion = await redisCacheClient.get(`question:${targetId}`);
 
       const foundQuestion = cachedQuestion
         ? JSON.parse(cachedQuestion)
@@ -684,7 +684,7 @@ const deleteContent = asyncHandler(
         data: { questionsAsked: { decrement: 1 } },
       });
 
-      await redisClient.del(`question:${targetId}`);
+      await redisCacheClient.del(`question:${targetId}`);
 
       return res.status(200).json({
         message: "Successfully deleted question",
@@ -718,7 +718,7 @@ const deleteContent = asyncHandler(
         },
       });
 
-      await redisClient.del(`question:${foundAnswer.questionId}`);
+      await redisCacheClient.del(`question:${foundAnswer.questionId}`);
       await clearAnswerCache(foundAnswer.questionId as string);
 
       return res.status(200).json({
@@ -749,7 +749,7 @@ const deleteContent = asyncHandler(
         $inc: { replyCount: -1 },
       });
 
-      await redisClient.del(`question:${foundAnswer.questionId}`);
+      await redisCacheClient.del(`question:${foundAnswer.questionId}`);
       await clearAnswerCache(foundAnswer.questionId as string);
       await clearReplyCache(foundAnswer._id as string);
 

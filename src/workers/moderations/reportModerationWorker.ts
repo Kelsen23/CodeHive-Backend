@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { redisConnection, redisClient } from "../../config/redis.js";
+import { redisMessagingClientConnection, redisCacheClient } from "../../config/redis.js";
 
 import aiModerateReport from "../../services/aiModerationService.js";
 
@@ -30,7 +30,7 @@ new Worker(
       let content = "";
 
       if (report.targetType === "Question") {
-        const cachedQuestion = await redisClient.get(
+        const cachedQuestion = await redisCacheClient.get(
           `question:${report.targetId}`,
         );
         const question = cachedQuestion
@@ -219,5 +219,5 @@ new Worker(
       console.error("Error processing moderation report:", error);
     }
   },
-  { connection: redisConnection, concurrency: 20 },
+  { connection: redisMessagingClientConnection, concurrency: 20 },
 );

@@ -1,9 +1,9 @@
-import { redisClient } from "../config/redis.js";
+import { redisCacheClient } from "../config/redis.js";
 
 async function deleteKeysByPattern(pattern: string) {
   let cursor = "0";
   do {
-    const [nextCursor, keys] = await redisClient.scan(
+    const [nextCursor, keys] = await redisCacheClient.scan(
       cursor,
       "MATCH",
       pattern,
@@ -11,7 +11,7 @@ async function deleteKeysByPattern(pattern: string) {
       "100",
     );
     cursor = nextCursor;
-    if (keys.length) await redisClient.del(...keys);
+    if (keys.length) await redisCacheClient.del(...keys);
   } while (cursor !== "0");
 }
 

@@ -5,9 +5,9 @@ const userResolvers = {
     getUserById: async (
       _: any,
       { id }: { id: string },
-      { prisma, redisClient }: { prisma: any; redisClient: any },
+      { prisma, redisCacheClient }: { prisma: any; redisCacheClient: any },
     ) => {
-      const cachedUser = await redisClient.get(`user:${id}`);
+      const cachedUser = await redisCacheClient.get(`user:${id}`);
 
       if (cachedUser) return JSON.parse(cachedUser);
 
@@ -27,7 +27,7 @@ const userResolvers = {
         ...userWithoutSensitiveInfo
       } = foundUser;
 
-      await redisClient.set(
+      await redisCacheClient.set(
         `user:${id}`,
         JSON.stringify(userWithoutSensitiveInfo),
         "EX",

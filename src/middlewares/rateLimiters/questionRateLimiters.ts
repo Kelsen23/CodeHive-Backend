@@ -1,39 +1,39 @@
 import { RateLimiterRedis } from "rate-limiter-flexible";
-import { redisClient } from "../../config/redis.js";
+import { redisMessagingClient } from "../../config/redis.js";
 
 import createRateLimiterMiddleware from "../createRateLimiterMiddleware.js";
 import { markAnswerAsBest } from "../../controllers/questionController.js";
 
 const createQuestionLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: redisMessagingClient,
   keyPrefix: "createQuestion",
   points: 8,
   duration: 60 * 30,
 });
 
 const createAnswerOnQuestionLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: redisMessagingClient,
   keyPrefix: "createAnswerOnQuestion",
   points: 3,
   duration: 60 * 30,
 });
 
 const createReplyOnAnswerLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: redisMessagingClient,
   keyPrefix: "createReplyOnAnswer",
   points: 5,
   duration: 60 * 15,
 });
 
 const voteLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: redisMessagingClient,
   keyPrefix: "vote",
   points: 20,
   duration: 60 * 15,
 });
 
 const markAnswerAsBestLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
+  storeClient: redisMessagingClient,
   keyPrefix: "markAnswerAsBest",
   points: 5,
   duration: 60 * 30,

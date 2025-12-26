@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { redisConnection } from "../../config/redis.js";
+import { redisMessagingClientConnection } from "../../config/redis.js";
 
 import transporter from "../../config/nodemailer.js";
 
@@ -16,5 +16,5 @@ new Worker(
     });
   },
 
-  { connection: redisConnection, concurrency: 20 },
+  { connection: redisMessagingClientConnection, concurrency: 20 },
 );
