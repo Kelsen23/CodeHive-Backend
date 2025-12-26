@@ -113,10 +113,10 @@ model User {
   warnings Warning[]
   bans     Ban[]
 
-  otp                               String?   @db.Char(6)
+  otp                               String?
   otpResendAvailableAt              DateTime?
   otpExpireAt                       DateTime?
-  resetPasswordOtp                  String?   @db.Char(6)
+  resetPasswordOtp                  String?
   resetPasswordOtpVerified          Boolean?
   resetPasswordOtpResendAvailableAt DateTime?
   resetPasswordOtpExpireAt          DateTime?
