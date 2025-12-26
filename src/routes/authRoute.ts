@@ -7,7 +7,7 @@ import {
   register,
   registerOrLogin,
   resendResetPasswordEmail,
-  resendVerifyEmail,
+  resendVerificationEmail,
   resetPassword,
   sendResetPasswordEmail,
   verifyEmail,
@@ -21,6 +21,7 @@ import {
   oauthSchema,
   registerSchema,
   resetPasswordSchema,
+  sendResetPasswordEmailSchema,
   verifyEmailSchema,
 } from "../validations/auth.schema.js";
 
@@ -54,28 +55,27 @@ router
     verifyEmail,
   );
 router
-  .route("/resendVerifyEmail")
-  .post(resendEmailLimiterMiddleware, isAuthenticated, resendVerifyEmail);
+  .route("/resendVerificationEmail")
+  .post(resendEmailLimiterMiddleware, isAuthenticated, resendVerificationEmail);
 
 router
   .route("/sendResetPasswordEmail")
   .post(
     resetPasswordLimiterMiddleware,
-    isAuthenticated,
+    validate(sendResetPasswordEmailSchema),
     sendResetPasswordEmail,
   );
 router
   .route("/resendResetPasswordEmail")
   .post(
     resendEmailLimiterMiddleware,
-    isAuthenticated,
+    validate(sendResetPasswordEmailSchema),
     resendResetPasswordEmail,
   );
 router
   .route("/verifyResetPasswordOtp")
   .post(
     emailVerificationLimiterMiddleware,
-    isAuthenticated,
     validate(verifyEmailSchema),
     verifyResetPasswordOtp,
   );
@@ -83,7 +83,6 @@ router
   .route("/resetPassword")
   .post(
     resetPasswordLimiterMiddleware,
-    isAuthenticated,
     validate(resetPasswordSchema),
     resetPassword,
   );

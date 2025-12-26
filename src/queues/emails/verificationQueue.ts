@@ -1,8 +1,8 @@
 import { Queue } from "bullmq";
-import { redisConnection } from "../../config/redis.js";
+import { redisMessagingClientConnection } from "../../config/redis.js";
 
 const verificationQueue = new Queue("verificationQueue", {
-  connection: redisConnection,
+  connection: redisMessagingClientConnection,
 });
 
 export default verificationQueue;

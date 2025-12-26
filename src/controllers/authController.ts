@@ -40,7 +40,7 @@ const register = asyncHandler(async (req: Request, res: Response) => {
   });
   generateToken(res, newUser.id);
 
-  const otp = Math.floor(10000 + Math.random() * 900000).toString();
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const otpExpireAt = new Date(Date.now() + 2 * 60 * 1000);
   const otpResendAvailableAt = new Date(Date.now() + 30 * 1000);
 
@@ -255,7 +255,7 @@ const verifyEmail = asyncHandler(
   },
 );
 
-const resendVerifyEmail = asyncHandler(
+const resendVerificationEmail = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user;
 
@@ -278,7 +278,7 @@ const resendVerifyEmail = asyncHandler(
         400,
       );
 
-    const otp = Math.floor(10000 + Math.random() * 900000).toString();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpireAt = new Date(Date.now() + 2 * 60 * 1000);
     const otpResendAvailableAt = new Date(Date.now() + 30 * 1000);
 
@@ -314,21 +314,25 @@ const resendVerifyEmail = asyncHandler(
 );
 
 const sendResetPasswordEmail = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+  async (req: Request, res: Response) => {
+    const { email } = req.body;
 
-    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+    const foundUser = await prisma.user.findUnique({ where: { email } });
 
     if (!foundUser) throw new HttpError("User not found", 404);
 
+    if (foundUser.resetPasswordOtp && foundUser.resetPasswordOtpExpireAt)
+      if (foundUser.resetPasswordOtpExpireAt > new Date(Date.now()))
+        throw new HttpError("Reset password OTP already sent", 400);
+
     const resetPasswordOtp = Math.floor(
-      10000 + Math.random() * 900000,
+      100000 + Math.random() * 900000,
     ).toString();
     const resetPasswordOtpExpireAt = new Date(Date.now() + 2 * 60 * 1000);
     const resetPasswordOtpResendAvailableAt = new Date(Date.now() + 30 * 1000);
 
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: { email },
       data: {
         resetPasswordOtp,
         resetPasswordOtpExpireAt,
@@ -365,10 +369,10 @@ const sendResetPasswordEmail = asyncHandler(
 );
 
 const resendResetPasswordEmail = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+  async (req: Request, res: Response) => {
+    const { email } = req.body;
 
-    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+    const foundUser = await prisma.user.findUnique({ where: { email } });
 
     if (!foundUser) throw new HttpError("User not found", 404);
 
@@ -386,17 +390,18 @@ const resendResetPasswordEmail = asyncHandler(
       );
 
     const resetPasswordOtp = Math.floor(
-      10000 + Math.random() * 900000,
+      100000 + Math.random() * 900000,
     ).toString();
     const resetPasswordOtpExpireAt = new Date(Date.now() + 2 * 60 * 1000);
     const resetPasswordOtpResendAvailableAt = new Date(Date.now() + 30 * 1000);
 
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: { email },
       data: {
         resetPasswordOtp,
         resetPasswordOtpExpireAt,
         resetPasswordOtpResendAvailableAt,
+        resetPasswordOtpVerified: false,
       },
     });
 
@@ -428,11 +433,10 @@ const resendResetPasswordEmail = asyncHandler(
 );
 
 const verifyResetPasswordOtp = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
-    const { otp } = req.body;
+  async (req: Request, res: Response) => {
+    const { email, otp } = req.body;
 
-    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+    const foundUser = await prisma.user.findUnique({ where: { email } });
 
     if (!foundUser) throw new HttpError("User not found", 404);
 
@@ -451,7 +455,9 @@ const verifyResetPasswordOtp = asyncHandler(
 
     await prisma.user.update({
       where: { id: foundUser.id },
-      data: { resetPasswordOtpVerified: true },
+      data: {
+        resetPasswordOtpVerified: true,
+      },
     });
 
     res.status(200).json({ message: "Successfully verified OTP" });
@@ -459,11 +465,10 @@ const verifyResetPasswordOtp = asyncHandler(
 );
 
 const resetPassword = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
-    const { newPassword } = req.body;
+  async (req: Request, res: Response) => {
+    const { email, newPassword } = req.body;
 
-    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+    const foundUser = await prisma.user.findUnique({ where: { email } });
 
     if (!foundUser) throw new HttpError("User not found", 404);
 
@@ -474,7 +479,7 @@ const resetPassword = asyncHandler(
     const hashedPassword = await bcrypt.hash(newPassword, genSalt);
 
     await prisma.user.update({
-      where: { id: userId },
+      where: { email },
       data: {
         password: hashedPassword,
         resetPasswordOtp: null,
@@ -531,7 +536,7 @@ export {
   login,
   registerOrLogin,
   verifyEmail,
-  resendVerifyEmail,
+  resendVerificationEmail,
   sendResetPasswordEmail,
   resendResetPasswordEmail,
   verifyResetPasswordOtp,
