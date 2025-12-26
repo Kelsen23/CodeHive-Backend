@@ -32,8 +32,8 @@ const register = asyncHandler(async (req: Request, res: Response) => {
   const usernameExists = await prisma.user.findUnique({ where: { username } });
   if (usernameExists) throw new HttpError("Username is taken", 400);
 
-  const genSalt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, genSalt);
+  const passwordSalt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, passwordSalt);
 
   const newUser = await prisma.user.create({
     data: { username, email, password: hashedPassword },
@@ -44,9 +44,12 @@ const register = asyncHandler(async (req: Request, res: Response) => {
   const otpExpireAt = new Date(Date.now() + 2 * 60 * 1000);
   const otpResendAvailableAt = new Date(Date.now() + 30 * 1000);
 
+  const otpSalt = await bcrypt.genSalt(8);
+  const hashedOtp = await bcrypt.hash(otp, otpSalt);
+
   const updatedUser = await prisma.user.update({
     where: { email },
-    data: { otp, otpExpireAt, otpResendAvailableAt },
+    data: { otp: hashedOtp, otpExpireAt, otpResendAvailableAt },
   });
 
   const deviceInfo = getDeviceInfo(req);
@@ -208,11 +211,27 @@ const verifyEmail = asyncHandler(
       throw new HttpError("OTP not set", 400);
     }
 
-    if (foundUser.otpExpireAt < new Date(Date.now())) {
-      throw new HttpError("OTP expired", 400);
-    }
+    const attempts = await redisCacheClient.get(
+      `verifyEmail-attempts:${foundUser.id}`,
+    );
 
-    if (foundUser.otp !== inputOtp) throw new HttpError("Invalid OTP", 400);
+    if (attempts && Number(attempts) >= 5)
+      throw new HttpError(`Too many invalid attempts, OTP locked`, 400);
+
+    if (foundUser.otpExpireAt < new Date(Date.now()))
+      throw new HttpError("OTP expired", 400);
+
+    const isValidOtp = await bcrypt.compare(inputOtp, foundUser.otp);
+
+    if (!isValidOtp) {
+      await redisCacheClient
+        .multi()
+        .incr(`verifyEmail-attempts:${foundUser.id}`)
+        .expire(`verifyEmail-attempts:${foundUser.id}`, 120)
+        .exec();
+
+      throw new HttpError("Invalid OTP", 400);
+    }
 
     const verifiedUser = await prisma.user.update({
       where: { id: userId },
@@ -243,6 +262,8 @@ const verifyEmail = asyncHandler(
       "EX",
       60 * 20,
     );
+
+    await redisCacheClient.del(`verifyEmail-attempts:${foundUser.id}`);
 
     res.status(200).json({
       message: "Successfully verified",
@@ -282,9 +303,12 @@ const resendVerificationEmail = asyncHandler(
     const otpExpireAt = new Date(Date.now() + 2 * 60 * 1000);
     const otpResendAvailableAt = new Date(Date.now() + 30 * 1000);
 
+    const salt = await bcrypt.genSalt(8);
+    const hashedOtp = await bcrypt.hash(otp, salt);
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { otp, otpExpireAt, otpResendAvailableAt },
+      data: { otp: hashedOtp, otpExpireAt, otpResendAvailableAt },
     });
 
     if (!updatedUser.otp) throw new HttpError("OTP not set", 400);
@@ -331,10 +355,13 @@ const sendResetPasswordEmail = asyncHandler(
     const resetPasswordOtpExpireAt = new Date(Date.now() + 2 * 60 * 1000);
     const resetPasswordOtpResendAvailableAt = new Date(Date.now() + 30 * 1000);
 
+    const salt = await bcrypt.genSalt(8);
+    const hashedResetPasswordOtp = await bcrypt.hash(resetPasswordOtp, salt);
+
     const updatedUser = await prisma.user.update({
       where: { email },
       data: {
-        resetPasswordOtp,
+        resetPasswordOtp: hashedResetPasswordOtp,
         resetPasswordOtpExpireAt,
         resetPasswordOtpResendAvailableAt,
         resetPasswordOtpVerified: false,
@@ -348,7 +375,7 @@ const sendResetPasswordEmail = asyncHandler(
 
     const htmlContent = resetPasswordHtml(
       updatedUser.username,
-      updatedUser.resetPasswordOtp,
+      resetPasswordOtp,
       deviceName,
       deviceInfo.ip || "Unknown IP",
     );
@@ -395,10 +422,13 @@ const resendResetPasswordEmail = asyncHandler(
     const resetPasswordOtpExpireAt = new Date(Date.now() + 2 * 60 * 1000);
     const resetPasswordOtpResendAvailableAt = new Date(Date.now() + 30 * 1000);
 
+    const salt = await bcrypt.genSalt(8);
+    const hashedResetPasswordOtp = await bcrypt.hash(resetPasswordOtp, salt);
+
     const updatedUser = await prisma.user.update({
       where: { email },
       data: {
-        resetPasswordOtp,
+        resetPasswordOtp: hashedResetPasswordOtp,
         resetPasswordOtpExpireAt,
         resetPasswordOtpResendAvailableAt,
         resetPasswordOtpVerified: false,
@@ -412,7 +442,7 @@ const resendResetPasswordEmail = asyncHandler(
 
     const htmlContent = resetPasswordHtml(
       updatedUser.username,
-      updatedUser.resetPasswordOtp,
+      resetPasswordOtp,
       deviceName,
       deviceInfo.ip || "Unknown IP",
     );
@@ -447,11 +477,27 @@ const verifyResetPasswordOtp = asyncHandler(
     )
       throw new HttpError("Reset password OTP not set", 400);
 
+    const attempts = await redisCacheClient.get(
+      `verifyResetPasswordOtp-attempts:${foundUser.id}`,
+    );
+
+    if (attempts && Number(attempts) >= 5)
+      throw new HttpError(`Too many invalid attempts, OTP locked`, 400);
+
     if (foundUser.resetPasswordOtpExpireAt < new Date(Date.now()))
       throw new HttpError("Reset password OTP expired", 400);
 
-    if (foundUser.resetPasswordOtp !== otp)
-      throw new HttpError("Invalid OTP", 400);
+    const isValidOtp = await bcrypt.compare(otp, foundUser.resetPasswordOtp);
+
+    if (!isValidOtp) {
+      await redisCacheClient
+        .multi()
+        .incr(`verifyResetPasswordOtp-attempts:${foundUser.id}`)
+        .expire(`verifyResetPasswordOtp-attempts:${foundUser.id}`, 120)
+        .exec();
+
+      throw new HttpError("Invalid reset password OTP", 400);
+    }
 
     await prisma.user.update({
       where: { id: foundUser.id },
@@ -462,6 +508,10 @@ const verifyResetPasswordOtp = asyncHandler(
         resetPasswordOtpResendAvailableAt: null,
       },
     });
+
+    await redisCacheClient.del(
+      `verifyResetPasswordOtp-attempts:${foundUser.id}`,
+    );
 
     res.status(200).json({ message: "Successfully verified OTP" });
   },
@@ -488,8 +538,8 @@ const resetPassword = asyncHandler(async (req: Request, res: Response) => {
       400,
     );
 
-  const genSalt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(newPassword, genSalt);
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(newPassword, salt);
 
   await prisma.user.update({
     where: { email },
