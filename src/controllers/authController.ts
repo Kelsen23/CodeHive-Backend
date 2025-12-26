@@ -374,7 +374,7 @@ const sendResetPasswordEmail = asyncHandler(
     const deviceName = `${deviceInfo.browser} on ${deviceInfo.os}`;
 
     const htmlContent = resetPasswordHtml(
-      updatedUser.username, 
+      updatedUser.username,
       resetPasswordOtp,
       deviceName,
       deviceInfo.ip || "Unknown IP",
@@ -477,15 +477,15 @@ const verifyResetPasswordOtp = asyncHandler(
     )
       throw new HttpError("Reset password OTP not set", 400);
 
-    if (foundUser.resetPasswordOtpExpireAt < new Date(Date.now()))
-      throw new HttpError("Reset password OTP expired", 400);
-
     const attempts = await redisCacheClient.get(
       `verifyResetPasswordOtp-attempts:${foundUser.id}`,
     );
 
     if (attempts && Number(attempts) >= 5)
       throw new HttpError(`Too many invalid attempts, OTP locked`, 400);
+
+    if (foundUser.resetPasswordOtpExpireAt < new Date(Date.now()))
+      throw new HttpError("Reset password OTP expired", 400);
 
     const isValidOtp = await bcrypt.compare(otp, foundUser.resetPasswordOtp);
 
