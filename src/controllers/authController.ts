@@ -464,34 +464,43 @@ const verifyResetPasswordOtp = asyncHandler(
   },
 );
 
-const resetPassword = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { email, newPassword } = req.body;
+const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { email, newPassword } = req.body;
 
-    const foundUser = await prisma.user.findUnique({ where: { email } });
+  const foundUser = await prisma.user.findUnique({ where: { email } });
 
-    if (!foundUser) throw new HttpError("User not found", 404);
+  if (!foundUser) throw new HttpError("User not found", 404);
 
-    if (!foundUser.resetPasswordOtpVerified)
-      throw new HttpError("OTP not verified", 400);
+  if (!foundUser.resetPasswordOtpVerified)
+    throw new HttpError("OTP not verified", 400);
 
-    const genSalt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, genSalt);
+  const isSamePassword = await bcrypt.compare(
+    newPassword,
+    foundUser.password as string,
+  );
 
-    await prisma.user.update({
-      where: { email },
-      data: {
-        password: hashedPassword,
-        resetPasswordOtp: null,
-        resetPasswordOtpExpireAt: null,
-        resetPasswordOtpResendAvailableAt: null,
-        resetPasswordOtpVerified: null,
-      },
-    });
+  if (isSamePassword)
+    throw new HttpError(
+      "New password must be different from the old password",
+      400,
+    );
 
-    res.status(200).json({ message: "Successfully updated your password" });
-  },
-);
+  const genSalt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(newPassword, genSalt);
+
+  await prisma.user.update({
+    where: { email },
+    data: {
+      password: hashedPassword,
+      resetPasswordOtp: null,
+      resetPasswordOtpExpireAt: null,
+      resetPasswordOtpResendAvailableAt: null,
+      resetPasswordOtpVerified: null,
+    },
+  });
+
+  res.status(200).json({ message: "Successfully updated your password" });
+});
 
 const isAuth = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
