@@ -87,13 +87,31 @@ const githubSchema = z.object({
 });
 
 const verifyEmailSchema = z.object({
+  email: z
+    .string()
+    .email("Invalid email address")
+    .min(5, "Email must be at least 5 characters")
+    .max(345, "Email must be at most 345 characters"),
   otp: z
     .string()
     .max(6, "OTP should be exactly 6 characters")
     .min(6, "OTP should be exactly 6 characters"),
 });
 
+const sendResetPasswordEmailSchema = z.object({
+  email: z
+    .string()
+    .email("Invalid email address")
+    .min(5, "Email must be at least 5 characters")
+    .max(345, "Email must be at most 345 characters"),
+});
+
 const resetPasswordSchema = z.object({
+  email: z
+    .string()
+    .email("Invalid email address")
+    .min(5, "Email must be at least 5 characters")
+    .max(345, "Email must be at most 345 characters"),
   newPassword: z
     .string()
     .min(8, "Password must be at least 8 characters")
@@ -106,7 +124,13 @@ const resetPasswordSchema = z.object({
     ),
 });
 
-export { registerSchema, loginSchema, verifyEmailSchema, resetPasswordSchema };
+export {
+  registerSchema,
+  loginSchema,
+  verifyEmailSchema,
+  sendResetPasswordEmailSchema,
+  resetPasswordSchema,
+};
 export const oauthSchema = z.discriminatedUnion("provider", [
   googleSchema,
   githubSchema,
