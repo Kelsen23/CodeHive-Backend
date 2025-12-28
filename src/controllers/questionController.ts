@@ -19,7 +19,7 @@ import { redisCacheClient } from "../config/redis.js";
 
 const createQuestion = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
     const { title, body, tags } = req.body;
 
     const createdQuestion = await Question.create({
@@ -43,7 +43,7 @@ const createQuestion = asyncHandler(
 
 const createAnswerOnQuestion = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
     const { body } = req.body;
     const { questionId } = req.params;
 
@@ -78,7 +78,7 @@ const createAnswerOnQuestion = asyncHandler(
 
 const createReplyOnAnswer = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
     const { body } = req.body;
     const answerId = req.params.answerId;
 
@@ -113,7 +113,7 @@ const createReplyOnAnswer = asyncHandler(
 );
 
 const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const userId = req.user;
+  const userId = req.user.id;
   const { targetType, targetId, voteType } = req.body;
 
   if (targetType === "Question") {
@@ -384,7 +384,7 @@ const vote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
 
 const unvote = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
 
     let { targetType } = req.params;
     const { targetId } = req.params;
@@ -510,7 +510,7 @@ const unvote = asyncHandler(
 
 const markAnswerAsBest = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
     const { answerId } = req.params;
 
     const foundAnswer = await Answer.findById(answerId);
@@ -589,7 +589,7 @@ const markAnswerAsBest = asyncHandler(
 
 const unmarkAnswerAsBest = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
     const { answerId } = req.params;
 
     const foundAnswer = await Answer.findById(answerId);
@@ -643,7 +643,7 @@ const unmarkAnswerAsBest = asyncHandler(
 
 const deleteContent = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
     const { targetType, targetId } = req.params;
 
     const validTargetTypes = ["question", "answer", "reply"] as const;
