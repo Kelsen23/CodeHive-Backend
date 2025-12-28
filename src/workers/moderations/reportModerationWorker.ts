@@ -81,14 +81,7 @@ new Worker(
           data: { status: "TERMINATED" },
         });
 
-        redisPub.publish(
-          "socket:emit",
-          JSON.stringify({
-            userId: report.targetUserId as string,
-            event: "banUser",
-            data: newBan,
-          }),
-        );
+        publishSocketEvent(report.targetUserId as string, "banUser", newBan);
 
         redisPub.publish(
           "socket:disconnect",
