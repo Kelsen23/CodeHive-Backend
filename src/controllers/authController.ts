@@ -194,7 +194,7 @@ const registerOrLogin = asyncHandler(async (req: Request, res: Response) => {
 
 const verifyEmail = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
     const { otp: inputOtp } = req.body;
 
     const foundUser = await prisma.user.findUnique({ where: { id: userId } });
@@ -278,7 +278,7 @@ const verifyEmail = asyncHandler(
 
 const resendVerificationEmail = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
 
     const foundUser = await prisma.user.findUnique({ where: { id: userId } });
 
@@ -557,7 +557,7 @@ const resetPassword = asyncHandler(async (req: Request, res: Response) => {
 
 const isAuth = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
 
     const foundUser = await prisma.user.findUnique({ where: { id: userId } });
 
