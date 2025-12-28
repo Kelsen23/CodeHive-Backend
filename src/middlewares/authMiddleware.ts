@@ -7,6 +7,7 @@ import { NextFunction, Request, Response } from "express";
 import HttpError from "../utils/httpError.js";
 
 import prisma from "../config/prisma.js";
+import { redisCacheClient } from "../config/redis.js";
 
 interface AuthenticatedRequest extends Request {
   cookies: {
@@ -21,41 +22,41 @@ const isAuthenticated = asyncHandler(
 
     if (!token) throw new HttpError("Not authenticated, no token", 400);
 
+    let decoded;
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
+      decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
         userId: string;
       };
-      req.user = decoded.userId;
-      next();
     } catch (error) {
       throw new HttpError("Not authenticated, token failed", 401);
     }
+
+    const cachedUser = await redisCacheClient.get(`user:${decoded.userId}`);
+
+    const user = cachedUser
+      ? JSON.parse(cachedUser)
+      : await prisma.user.findUnique({
+          where: { id: decoded.userId },
+          select: { id: true, status: true, isVerified: true, role: true },
+        });
+
+    if (!user) throw new HttpError("User not found", 404);
+
+    req.user = user;
+    next();
   },
 );
 
 const isVerified = asyncHandler(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const userId = req.user;
-
-    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
-
-    if (!foundUser) throw new HttpError("User not found", 404);
-
-    if (!foundUser.isVerified) throw new HttpError("User not verified", 403);
-
+    if (!req.user.isVerified) throw new HttpError("User not verified", 403);
     next();
   },
 );
 
-const isTerminated = asyncHandler(
+const requireActiveUser = asyncHandler(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const userId = req.user;
-
-    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
-
-    if (!foundUser) throw new HttpError("User not found", 404);
-
-    if (foundUser.status !== "ACTIVE")
+    if (req.user.status !== "ACTIVE")
       throw new HttpError("User not active", 403);
 
     next();
@@ -63,4 +64,4 @@ const isTerminated = asyncHandler(
 );
 
 export default isAuthenticated;
-export { isVerified, isTerminated };
+export { isVerified, requireActiveUser };
