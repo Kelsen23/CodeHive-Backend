@@ -4,7 +4,7 @@ import multer from "multer";
 import { changeProfilePicture } from "../controllers/uploadFileController.js";
 
 import isAuthenticated, {
-  isTerminated,
+  requireActiveUser,
   isVerified,
 } from "../middlewares/authMiddleware.js";
 
@@ -21,7 +21,7 @@ router
     uploadProfilePictureLimiterMiddleware,
     isAuthenticated,
     isVerified,
-    isTerminated,
+    requireActiveUser,
     upload.single("profilePicture"),
     changeProfilePicture,
   );

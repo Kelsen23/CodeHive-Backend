@@ -27,7 +27,7 @@ import {
 } from "../middlewares/rateLimiters/questionRateLimiters.js";
 
 import isAuthenticated, {
-  isTerminated,
+  requireActiveUser,
   isVerified,
 } from "../middlewares/authMiddleware.js";
 
@@ -41,7 +41,7 @@ router
     createQuestionLimiterMiddleware,
     isAuthenticated,
     isVerified,
-    isTerminated,
+    requireActiveUser,
     validate(createQuestionSchema),
     createQuestion,
   );
@@ -52,7 +52,7 @@ router
     createAnswerOnQuestionLimiterMiddleware,
     isAuthenticated,
     isVerified,
-    isTerminated,
+    requireActiveUser,
     validate(createAnswerOnQuestionSchema),
     createAnswerOnQuestion,
   );
@@ -63,7 +63,7 @@ router
     createReplyOnAnswerLimiterMiddleware,
     isAuthenticated,
     isVerified,
-    isTerminated,
+    requireActiveUser,
     validate(createReplyOnAnswerSchema),
     createReplyOnAnswer,
   );
@@ -74,14 +74,14 @@ router
     voteLimiterMiddleware,
     isAuthenticated,
     isVerified,
-    isTerminated,
+    requireActiveUser,
     validate(voteSchema),
     vote,
   );
 
 router
   .route("/unvote/:targetType/:targetId")
-  .delete(isAuthenticated, isVerified, isTerminated, unvote);
+  .delete(isAuthenticated, isVerified, requireActiveUser, unvote);
 
 router
   .route("/answer/markAsBest/:answerId")
@@ -89,16 +89,16 @@ router
     markAnswerAsBestLimiterMiddleware,
     isAuthenticated,
     isVerified,
-    isTerminated,
+    requireActiveUser,
     markAnswerAsBest,
   );
 
 router
   .route("/answer/unmarkAsBest/:answerId")
-  .patch(isAuthenticated, isVerified, isTerminated, unmarkAnswerAsBest);
+  .patch(isAuthenticated, isVerified, requireActiveUser, unmarkAnswerAsBest);
 
 router
   .route("/:targetType/:targetId")
-  .delete(isAuthenticated, isVerified, isTerminated, deleteContent);
+  .delete(isAuthenticated, isVerified, requireActiveUser, deleteContent);
 
 export default router;
