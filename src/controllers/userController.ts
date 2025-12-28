@@ -12,20 +12,23 @@ import prisma from "../config/prisma.js";
 
 const updateProfile = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
+    const { username, bio } = req.body;
 
     const foundUser = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!foundUser) throw new HttpError("User not found", 404);
 
-    const { username, bio } = req.body;
+    if (foundUser.username === username)
+      throw new HttpError("You already have this username", 400);
+    if (foundUser.bio === bio)
+      throw new HttpError("You already have this bio", 400);
 
-    if (username && username !== foundUser.username) {
-      const usernameExists = await prisma.user.findUnique({
-        where: { username },
-      });
-      if (usernameExists) throw new HttpError("Username is already taken", 400);
-    }
+    const usernameExists = await prisma.user.findUnique({
+      where: { username },
+    });
+
+    if (usernameExists) throw new HttpError("Username is already taken", 400);
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -64,7 +67,7 @@ const getInterests = asyncHandler(async (req: Request, res: Response) => {
 
 const saveInterests = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
     const { interests } = req.body;
 
     const updatedUser = await prisma.user.update({
@@ -98,4 +101,5 @@ const saveInterests = asyncHandler(
     });
   },
 );
+
 export { updateProfile, getInterests, saveInterests };
