@@ -7,7 +7,7 @@ import {
 } from "../controllers/userController.js";
 
 import isAuthenticated, {
-  isTerminated,
+  requireActiveUser,
   isVerified,
 } from "../middlewares/authMiddleware.js";
 import validate from "../middlewares/validateMiddleware.js";
@@ -27,7 +27,7 @@ router
     updateProfileLimiterMiddleware,
     isAuthenticated,
     isVerified,
-    isTerminated,
+    requireActiveUser,
     validate(updateProfileSchema),
     updateProfile,
   );
@@ -38,7 +38,7 @@ router
     getInterestsLimiterMiddleware,
     isAuthenticated,
     isVerified,
-    isTerminated,
+    requireActiveUser,
     getInterests,
   );
 router
@@ -47,7 +47,7 @@ router
     saveInterestsLimiterMiddleware,
     isAuthenticated,
     isVerified,
-    isTerminated,
+    requireActiveUser,
     validate(saveInterestsSchema),
     saveInterests,
   );

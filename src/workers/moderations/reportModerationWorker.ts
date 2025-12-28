@@ -1,5 +1,9 @@
 import { Worker } from "bullmq";
-import { redisMessagingClientConnection, redisCacheClient } from "../../config/redis.js";
+
+import {
+  redisMessagingClientConnection,
+  redisCacheClient,
+} from "../../config/redis.js";
 
 import aiModerateReport from "../../services/aiModerationService.js";
 
@@ -12,7 +16,7 @@ import Report from "../../models/reportModel.js";
 
 import prisma from "../../config/prisma.js";
 
-import emitToUser from "../../sockets/emitters/socketEmitter.js";
+import { redisPub } from "../../redis/pubsub.js";
 
 const mapSeverityToDecision = (severity: number) => {
   if (severity >= 90) return "BAN_USER_PERM";
@@ -20,6 +24,10 @@ const mapSeverityToDecision = (severity: number) => {
   if (severity >= 50) return "WARN_USER";
   if (severity !== 0) return "UNCERTAIN";
   return "IGNORE";
+};
+
+const publishSocketEvent = (userId: string, event: string, data: any) => {
+  redisPub.publish("socket:emit", JSON.stringify({ userId, event, data }));
 };
 
 new Worker(
@@ -73,7 +81,12 @@ new Worker(
           data: { status: "TERMINATED" },
         });
 
-        emitToUser(report.targetUserId as string, "banUser", newBan);
+        publishSocketEvent(report.targetUserId as string, "banUser", newBan);
+
+        redisPub.publish(
+          "socket:disconnect",
+          JSON.stringify(report.targetUserId as string),
+        );
 
         await Report.findOneAndUpdate(report._id, {
           severity,
@@ -86,7 +99,7 @@ new Worker(
             severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
         });
 
-        emitToUser(report.reportedBy as string, "reportStatusChanged", {
+        publishSocketEvent(report.reportedBy as string, "reportStatusChanged", {
           actionsTaken:
             severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
           status: "RESOLVED",
@@ -114,7 +127,12 @@ new Worker(
           data: { status: "TERMINATED" },
         });
 
-        emitToUser(report.targetUserId as string, "banUser", newBan);
+        publishSocketEvent(report.targetUserId as string, "banUser", newBan);
+
+        redisPub.publish(
+          "socket:disconnect",
+          JSON.stringify(report.targetUserId as string),
+        );
 
         await Report.findOneAndUpdate(report._id, {
           severity,
@@ -127,7 +145,7 @@ new Worker(
             severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
         });
 
-        emitToUser(report.reportedBy as string, "reportStatusChanged", {
+        publishSocketEvent(report.reportedBy as string, "reportStatusChanged", {
           actionsTaken:
             severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
           status: "RESOLVED",
@@ -151,7 +169,11 @@ new Worker(
           },
         });
 
-        emitToUser(report.targetUserId as string, "warnUser", newWarning);
+        publishSocketEvent(
+          report.targetUserId as string,
+          "warnUser",
+          newWarning,
+        );
 
         await Report.findOneAndUpdate(report._id, {
           severity,
@@ -164,7 +186,7 @@ new Worker(
             severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
         });
 
-        emitToUser(report.reportedBy as string, "reportStatusChanged", {
+        publishSocketEvent(report.reportedBy as string, "reportStatusChanged", {
           actionsTaken:
             severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
           status: "RESOLVED",
@@ -179,7 +201,7 @@ new Worker(
           status: "REVIEWING",
         });
 
-        emitToUser(report.reportedBy as string, "reportStatusChanged", {
+        publishSocketEvent(report.reportedBy as string, "reportStatusChanged", {
           actionsTaken:
             severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
           status: "REVIEWING",
@@ -196,7 +218,7 @@ new Worker(
           actionsTaken: "NO_ACTION",
         });
 
-        emitToUser(report.reportedBy as string, "reportStatusChanged", {
+        publishSocketEvent(report.reportedBy as string, "reportStatusChanged", {
           actionsTaken: [aiDecision],
           status: "DISMISSED",
         });

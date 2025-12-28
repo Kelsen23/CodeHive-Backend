@@ -3,12 +3,23 @@ import http from "http";
 import { Server as SocketServer, Socket } from "socket.io";
 import { addUserSocket, removeUserSocket } from "../redis/presence.js";
 
+import initSocketEmitSubscriber from "./subscribers/socketEmitSubscriber.js";
+import initSocketDisconnectSubscriber from "./subscribers/socketDisconnectSubscriber.js";
+
 export let io: SocketServer;
 
 const initSocket = (server: http.Server) => {
   io = new SocketServer(server, {
     cors: { origin: "*", methods: ["GET", "POST"] },
   });
+
+  if (!io) {
+    console.warn("Socket not ready yet, skipping emit");
+    return;
+  }
+
+  initSocketEmitSubscriber();
+  initSocketDisconnectSubscriber();
 
   io.on("connection", (socket: Socket) => {
     console.log("Socket connected:", socket.id);
