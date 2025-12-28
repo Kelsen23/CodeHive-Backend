@@ -43,7 +43,7 @@ const s3 = new S3Client({
 
 const changeProfilePicture = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user;
+    const userId = req.user.id;
 
     const foundUser = await prisma.user.findUnique({ where: { id: userId } });
 
