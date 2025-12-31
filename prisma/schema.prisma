@@ -147,7 +147,7 @@ enum SeverityLevel {
 }
 
 enum MODS {
-  HUMAN
+  ADMIN_MODERATION
   AI_MODERATION
 }
 
