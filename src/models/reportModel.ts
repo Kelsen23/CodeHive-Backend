@@ -30,7 +30,7 @@ const ReportSchema = new mongoose.Schema(
       default: null,
     },
 
-    severity: { type: Number, min: 1, max: 100, default: 0 },
+    severity: { type: Number, min: 0, max: 100, default: 0 },
     aiDecisions: {
       type: [String],
       enum: [
