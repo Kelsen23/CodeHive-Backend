@@ -139,14 +139,6 @@ model Achievement {
   updatedAt DateTime @updatedAt
 }
 
-enum SeverityLevel {
-  ONE
-  TWO
-  THREE
-  FOUR
-  FIVE
-}
-
 enum MODS {
   ADMIN_MODERATION
   AI_MODERATION
@@ -162,9 +154,9 @@ model Warning {
   user   User   @relation(fields: [userId], references: [id])
   userId String
 
-  title    String        @db.VarChar(30)
+  title    String   @db.VarChar(30)
   reasons  String[]
-  severity SeverityLevel
+  severity Int
   warnedBy MODS
 
   seen      Boolean @default(false)
@@ -181,10 +173,10 @@ model Ban {
   user   User   @relation(fields: [userId], references: [id])
   userId String
 
-  title    String        @db.VarChar(30)
+  title    String   @db.VarChar(30)
   reasons  String[]
   banType  BanType
-  severity SeverityLevel
+  severity Int
   bannedBy MODS
 
   expiresAt  DateTime?
