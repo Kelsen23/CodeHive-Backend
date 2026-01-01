@@ -220,8 +220,6 @@ async function startWorker() {
             report.reportedBy as string,
             "reportStatusChanged",
             {
-              actionsTaken:
-                severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
               status: "REVIEWING",
             },
           );
