@@ -35,10 +35,13 @@ async function startWorker() {
 
   new Worker(
     "reportModerationQueue",
-    async (job) => {
+    async (job) => { 
       try {
         const { report } = job.data;
         let content = "";
+
+        const freshReport = await Report.findById(report._id);
+        if (!freshReport || freshReport.status !== "PENDING") return;
 
         if (report.targetType === "Question") {
           const cachedQuestion = await redisCacheClient.get(
@@ -67,6 +70,8 @@ async function startWorker() {
 
         const aiDecision = mapSeverityToDecision(severity);
 
+        const shouldRemoveContent = severity >= 70 ? true : false;
+
         if (aiDecision === "BAN_USER_PERM") {
           const newBan = await prisma.ban.create({
             data: {
@@ -74,7 +79,7 @@ async function startWorker() {
               title: "Permanent Account Suspension",
               reasons: aiReasons,
               banType: "PERM",
-              severity: "FIVE",
+              severity,
               bannedBy: "AI_MODERATION",
             },
           });
@@ -93,27 +98,23 @@ async function startWorker() {
 
           await Report.findByIdAndUpdate(report._id, {
             severity,
-            aiDecisions:
-              severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+            aiDecision,
             aiConfidence,
             aiReasons,
             status: "RESOLVED",
-            actionsTaken:
-              severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+            actionTaken: aiDecision,
+            isRemovingContent: shouldRemoveContent,
           });
 
           publishSocketEvent(
             report.reportedBy as string,
             "reportStatusChanged",
             {
-              actionsTaken:
-                severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+              actionTaken: aiDecision,
               status: "RESOLVED",
             },
           );
-        }
-
-        if (aiDecision === "BAN_USER_TEMP") {
+        } else if (aiDecision === "BAN_USER_TEMP") {
           const tempBanMs = calculateTempBanMs(severity, aiConfidence);
 
           const newBan = await prisma.ban.create({
@@ -122,7 +123,7 @@ async function startWorker() {
               title: "Temporary Account Suspension",
               reasons: aiReasons,
               banType: "TEMP",
-              severity: "FOUR",
+              severity,
               bannedBy: "AI_MODERATION",
               expiresAt: new Date(Date.now() + tempBanMs),
               durationMs: tempBanMs,
@@ -131,7 +132,7 @@ async function startWorker() {
 
           await prisma.user.update({
             where: { id: report.targetUserId as string },
-            data: { status: "TERMINATED" },
+            data: { status: "SUSPENDED" },
           });
 
           publishSocketEvent(report.targetUserId as string, "banUser", newBan);
@@ -143,27 +144,23 @@ async function startWorker() {
 
           await Report.findByIdAndUpdate(report._id, {
             severity,
-            aiDecisions:
-              severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+            aiDecision,
             aiConfidence,
             aiReasons,
             status: "RESOLVED",
-            actionsTaken:
-              severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+            actionTaken: aiDecision,
+            isRemovingContent: shouldRemoveContent,
           });
 
           publishSocketEvent(
             report.reportedBy as string,
             "reportStatusChanged",
             {
-              actionsTaken:
-                severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+              actionTaken: aiDecision,
               status: "RESOLVED",
             },
           );
-        }
-
-        if (aiDecision === "WARN_USER") {
+        } else if (aiDecision === "WARN_USER") {
           const title =
             aiReasons.length > 0
               ? `${aiReasons[0]}`
@@ -174,7 +171,7 @@ async function startWorker() {
               userId: report.targetUserId as string,
               title,
               reasons: aiReasons,
-              severity: "THREE",
+              severity,
               warnedBy: "AI_MODERATION",
               expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             },
@@ -188,29 +185,26 @@ async function startWorker() {
 
           await Report.findByIdAndUpdate(report._id, {
             severity,
-            aiDecisions:
-              severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+            aiDecision,
             aiConfidence,
             aiReasons,
             status: "RESOLVED",
-            actionsTaken:
-              severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+            actionTaken: aiDecision,
+            isRemovingContent: shouldRemoveContent,
           });
 
           publishSocketEvent(
             report.reportedBy as string,
             "reportStatusChanged",
             {
-              actionsTaken:
-                severity >= 60 ? [aiDecision, "REMOVE_CONTENT"] : [aiDecision],
+              actionTaken: aiDecision,
               status: "RESOLVED",
             },
           );
-        }
-
-        if (aiDecision === "UNCERTAIN") {
+        } else if (aiDecision === "UNCERTAIN") {
           await Report.findByIdAndUpdate(report._id, {
-            aiDecisions: [aiDecision],
+            severity,
+            aiDecision,
             aiConfidence,
             aiReasons,
             status: "REVIEWING",
@@ -223,42 +217,46 @@ async function startWorker() {
               status: "REVIEWING",
             },
           );
-        }
-
-        if (aiDecision === "IGNORE") {
+        } else if (aiDecision === "IGNORE") {
           await Report.findByIdAndUpdate(report._id, {
             severity,
-            aiDecisions: [aiDecision],
+            aiDecision,
             aiConfidence,
             aiReasons,
             status: "DISMISSED",
-            actionsTaken: "NO_ACTION",
+            actionTaken: "IGNORE",
+            isRemovingContent: false,
           });
 
           publishSocketEvent(
             report.reportedBy as string,
             "reportStatusChanged",
             {
-              actionsTaken: [aiDecision],
+              actionTaken: aiDecision,
               status: "DISMISSED",
             },
           );
         }
 
         if (aiDecision)
-          if (severity >= 60) {
-            if (report.targetType === "Question")
-              await Question.findByIdAndUpdate(report.targetId, {
-                isActive: false,
-              });
-            if (report.targetType === "Answer")
-              await Answer.findByIdAndUpdate(report.targetId, {
-                isActive: false,
-              });
-            if (report.targetType === "Reply")
-              await Reply.findByIdAndUpdate(report.targetId, {
-                isActive: false,
-              });
+          if (shouldRemoveContent) {
+            switch (report.targetType) {
+              case "Question":
+                await Question.findByIdAndUpdate(report.targetId, {
+                  isActive: false,
+                });
+                break;
+              case "Answer":
+                await Answer.findByIdAndUpdate(report.targetId, {
+                  isActive: false,
+                });
+                break;
+              case "Reply":
+                await Reply.findByIdAndUpdate(report.targetId, {
+                  isActive: false,
+                });
+                break;
+            }
           }
       } catch (error) {
         console.error("Error processing moderation report:", error);
