@@ -89,7 +89,7 @@ async function startWorker() {
             data: { status: "TERMINATED" },
           });
 
-          publishSocketEvent(report.targetUserId as string, "banUser", newBan);
+          await publishSocketEvent(report.targetUserId as string, "banUser", newBan);
 
           redisPub.publish(
             "socket:disconnect",
@@ -135,7 +135,7 @@ async function startWorker() {
             data: { status: "SUSPENDED" },
           });
 
-          publishSocketEvent(report.targetUserId as string, "banUser", newBan);
+          await publishSocketEvent(report.targetUserId as string, "banUser", newBan);
 
           redisPub.publish(
             "socket:disconnect",
