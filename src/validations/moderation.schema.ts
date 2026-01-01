@@ -22,4 +22,28 @@ const reportSchema = z.object({
     .optional(),
 });
 
-export { reportSchema };
+const moderateReportSchema = z.object({
+  reportId: z.string(),
+  title: z.string().max(30, "Title must be at most 30 characters"),
+  actionTaken: z.enum(
+    ["BAN_USER_TEMP", "BAN_USER_PERM", "WARN_USER", "IGNORE"],
+    "Invalid action",
+  ),
+  adminReasons: z.array(
+    z
+      .string()
+      .min(3, "A reason must be at least 3 characters")
+      .max(150, "A reason must be at most 150 characters"),
+  ),
+  severity: z
+    .number()
+    .min(0, "Severity mus be from 0 to 100")
+    .max(100, "Severity mus be from 0 to 100"),
+  banDurationMs: z
+    .number()
+    .min(1 * 60 * 60 * 1000, "Banning for less than 1 hout not allowed")
+    .max(30 * 24 * 60 * 60 * 1000, "Banning for more than 30 days not allowed")
+    .optional(),
+});
+
+export { reportSchema, moderateReportSchema };
