@@ -63,5 +63,14 @@ const requireActiveUser = asyncHandler(
   },
 );
 
+const isAdmin = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (req.user.role !== "ADMIN")
+      throw new HttpError("User forbidden accessing this route", 403);
+
+    next();
+  },
+);
+
 export default isAuthenticated;
-export { isVerified, requireActiveUser };
+export { isVerified, requireActiveUser, isAdmin };
