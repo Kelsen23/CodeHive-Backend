@@ -19,16 +19,20 @@ async function addAdminModPoints(
   const pointsToAdd = MOD_POINTS[actionTaken];
 
   const luaScript = `
-    local current = redis.call("GET", KEYS[1])
+  local current = redis.call("GET", KEYS[1])
     if not current then
       redis.call("SET", KEYS[1], ARGV[1], "EX", ARGV[2])
       return ARGV[1]
     else
       local newVal = tonumber(current) + tonumber(ARGV[1])
-      redis.call("SET", KEYS[1], newVal, "EX", redis.call("TTL", KEYS[1]))
+      local ttl = redis.call("TTL", KEYS[1])
+      if ttl < 0 then
+        ttl = ARGV[2]
+      end
+      redis.call("SET", KEYS[1], newVal, "EX", ttl)
       return newVal
     end
-  `;
+`;
 
   const newPoints = await redisCacheClient.eval(
     luaScript,
