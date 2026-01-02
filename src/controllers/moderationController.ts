@@ -96,14 +96,10 @@ const getReports = asyncHandler(async (req: Request, res: Response) => {
 const moderateReport = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
-    const {
-      reportId,
-      title,
-      actionTaken,
-      adminReasons,
-      severity,
-      banDurationMs,
-    } = req.body;
+
+    const reportId = req.params.id;
+    const { title, actionTaken, adminReasons, severity, banDurationMs } =
+      req.body;
 
     await addAdminModPoints(userId, actionTaken);
 
@@ -283,8 +279,6 @@ const moderateReport = asyncHandler(
           );
           break;
       }
-    } else {
-      throw new HttpError("Invalid actionTaken value", 400);
     }
 
     res.status(200).json({ message: "Report successfully reviewed" });
