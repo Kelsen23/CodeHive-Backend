@@ -131,7 +131,11 @@ const moderateReport = asyncHandler(
         data: { status: "TERMINATED" },
       });
 
-      await publishSocketEvent(report.targetUserId as string, "banUser", newBan);
+      await publishSocketEvent(
+        report.targetUserId as string,
+        "banUser",
+        newBan,
+      );
 
       redisPub.publish(
         "socket:disconnect",
@@ -180,7 +184,11 @@ const moderateReport = asyncHandler(
         data: { status: "SUSPENDED" },
       });
 
-      await publishSocketEvent(report.targetUserId as string, "banUser", newBan);
+      await publishSocketEvent(
+        report.targetUserId as string,
+        "banUser",
+        newBan,
+      );
 
       redisPub.publish(
         "socket:disconnect",
@@ -283,4 +291,31 @@ const moderateReport = asyncHandler(
   },
 );
 
-export { createReport, getReports, moderateReport };
+const getBan = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user.id;
+
+    const foundBans = await prisma.ban.findMany({ where: { userId } });
+
+    const permBan = foundBans.find((ban) => ban.banType === "PERM");
+    if (permBan) {
+      return res.status(200).json({
+        message: "Successfully received ban",
+        ban: permBan,
+      });
+    }
+
+    const tempBan = foundBans.find(
+      (ban) =>
+        ban.banType === "TEMP" &&
+        ban.expiresAt &&
+        ban.expiresAt > new Date(Date.now()),
+    );
+
+    return res
+      .status(200)
+      .json({ message: "Successfully received ban", ban: tempBan ?? null });
+  },
+);
+
+export { createReport, getReports, moderateReport, getBan };
