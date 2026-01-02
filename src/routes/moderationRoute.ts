@@ -2,10 +2,11 @@ import express from "express";
 
 import {
   createReport,
-  getBan,
-  getWarnings,
   getReports,
   moderateReport,
+  getBan,
+  getWarnings,
+  acknowledgeWarning,
 } from "../controllers/moderationController.js";
 
 import {
@@ -41,6 +42,10 @@ router
 
 router.route("/ban").get(isAuthenticated, getBan);
 router.route("/warnings").get(isAuthenticated, requireActiveUser, getWarnings);
+
+router
+  .route("/warnings/:id/seen")
+  .patch(isAuthenticated, requireActiveUser, acknowledgeWarning);
 
 router
   .route("/report/moderate")
