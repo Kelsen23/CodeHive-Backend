@@ -5,6 +5,7 @@ import {
   getReports,
   moderateReport,
   getBan,
+  activateAccount,
   getWarnings,
   acknowledgeWarning,
 } from "../controllers/moderationController.js";
@@ -43,13 +44,15 @@ router
 router.route("/ban").get(isAuthenticated, getBan);
 router.route("/warnings").get(isAuthenticated, requireActiveUser, getWarnings);
 
+router.route("/account/activate").patch(isAuthenticated, activateAccount);
+
 router
   .route("/warnings/:id/seen")
   .patch(isAuthenticated, requireActiveUser, acknowledgeWarning);
 
 router
-  .route("/report/moderate")
-  .post(
+  .route("/report/:id/moderate")
+  .patch(
     isAuthenticated,
     isVerified,
     requireActiveUser,
