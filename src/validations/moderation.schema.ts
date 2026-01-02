@@ -23,7 +23,6 @@ const reportSchema = z.object({
 });
 
 const moderateReportSchema = z.object({
-  reportId: z.string(),
   title: z.string().max(30, "Title must be at most 30 characters"),
   actionTaken: z.enum(
     ["BAN_USER_TEMP", "BAN_USER_PERM", "WARN_USER", "IGNORE"],
