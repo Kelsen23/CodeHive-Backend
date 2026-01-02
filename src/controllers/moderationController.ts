@@ -318,6 +318,33 @@ const getBan = asyncHandler(
   },
 );
 
+const activateAccount = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user.id;
+
+    if (req.user.status !== "SUSPENDED")
+      return res.status(403).json({
+        message: "Account can not be activated due to account's current state",
+      });
+
+    const foundTempBan = await prisma.ban.findFirst({
+      where: { userId, banType: "TEMP", expiresAt: { gt: new Date() } },
+    });
+
+    if (foundTempBan)
+      return res
+        .status(403)
+        .json({ message: "Could not activate account, ban still active" });
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { status: "ACTIVE" },
+    });
+
+    return res.status(200).json({ message: "Successfully activated account" });
+  },
+);
+
 const getWarnings = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
@@ -356,4 +383,12 @@ const acknowledgeWarning = asyncHandler(
   },
 );
 
-export { createReport, getReports, moderateReport, getBan, getWarnings, acknowledgeWarning };
+export {
+  createReport,
+  getReports,
+  moderateReport,
+  getBan,
+  activateAccount,
+  getWarnings,
+  acknowledgeWarning,
+};
