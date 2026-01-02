@@ -318,4 +318,28 @@ const getBan = asyncHandler(
   },
 );
 
-export { createReport, getReports, moderateReport, getBan };
+const getWarnings = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user.id;
+
+    const foundWarnings = await prisma.warning.findMany({
+      where: {
+        userId,
+        seen: false,
+        expiresAt: { gt: new Date(Date.now()) },
+      },
+    });
+
+    await prisma.warning.updateMany({
+      where: { userId, seen: false, expiresAt: { gt: new Date(Date.now()) } },
+      data: { delivered: true },
+    });
+
+    return res.status(200).json({
+      message: "Successfully received warnings",
+      warnings: foundWarnings,
+    });
+  },
+);
+
+export { createReport, getReports, moderateReport, getBan, getWarnings };
