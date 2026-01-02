@@ -342,4 +342,18 @@ const getWarnings = asyncHandler(
   },
 );
 
-export { createReport, getReports, moderateReport, getBan, getWarnings };
+const acknowledgeWarning = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    await prisma.warning.update({
+      where: { id, userId },
+      data: { seen: true, delivered: true },
+    });
+
+    res.status(200).json({ message: "Warning acknowledged" });
+  },
+);
+
+export { createReport, getReports, moderateReport, getBan, getWarnings, acknowledgeWarning };
