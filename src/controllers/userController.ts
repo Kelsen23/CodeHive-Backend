@@ -15,7 +15,10 @@ const updateProfile = asyncHandler(
     const userId = req.user.id;
     const { username, bio } = req.body;
 
-    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+    const cachedUser = await redisCacheClient.get(`user:${userId}`);
+    const foundUser = cachedUser
+      ? JSON.parse(cachedUser)
+      : await prisma.user.findUnique({ where: { id: userId } });
 
     if (!foundUser) throw new HttpError("User not found", 404);
 
