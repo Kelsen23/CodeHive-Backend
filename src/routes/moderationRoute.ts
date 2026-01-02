@@ -3,6 +3,7 @@ import express from "express";
 import {
   createReport,
   getBan,
+  getWarnings,
   getReports,
   moderateReport,
 } from "../controllers/moderationController.js";
@@ -35,10 +36,11 @@ router
   );
 
 router
-  .route("/get/reports")
+  .route("/reports")
   .get(isAuthenticated, isVerified, requireActiveUser, isAdmin, getReports);
 
-router.route("/get/ban").get(isAuthenticated, getBan);
+router.route("/ban").get(isAuthenticated, getBan);
+router.route("/warnings").get(isAuthenticated, requireActiveUser, getWarnings);
 
 router
   .route("/report/moderate")
