@@ -1,11 +1,11 @@
-<h1 align="center">CodeHive Backend</h1>
+<h1 align="center">Qanopy Backend</h1>
 
 <p align="center">
-  🚀 Backend service for <b>CodeHive</b> – powering authentication, APIs, caching, and database management.
+  🚀 Backend service for <b>Qanopy</b> – powering authentication, APIs, caching, and database management.
 </p>
 
 <p align="center">
-  <img src="assets/CodeHive logo.png" alt="CodeHive Logo" width="800"/>
+  <img src="assets/qanopy-logo.png" alt="Qanopy Logo" width="800"/>
 </p>
 
 ---
@@ -45,8 +45,8 @@
 
 ```bash
 # Clone repo
-git clone https://github.com/Kelsen23/CodeHive-Backend.git
-cd CodeHive-Backend
+git clone https://github.com/Kelsen23/Qanopy-Backend.git
+cd Qanopy-Backend
 
 # Install dependencies
 npm install
@@ -59,7 +59,7 @@ npm run dev
 
 Contributions are welcome!
 
-If you’d like to improve **CodeHive-Backend**, feel free to **fork the repository** and submit a pull request.  
+If you’d like to improve **Qanopy-Backend**, feel free to **fork the repository** and submit a pull request.  
 This project is licensed under the **MIT License**, so you’re free to use, modify, and share it.
 
 Steps to contribute:

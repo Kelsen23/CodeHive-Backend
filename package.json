@@ -1,14 +1,14 @@
 {
-  "name": "codehive-backend",
+  "name": "qanopy-backend",
   "version": "1.0.0",
-  "description": "<h1 align=\"center\">CodeHive Backend</h1>",
-  "homepage": "https://github.com/Kelsen23/CodeHive-Backend#readme",
+  "description": "<h1 align=\"center\">Qanopy Backend</h1>",
+  "homepage": "https://github.com/Kelsen23/Qanopy-Backend#readme",
   "bugs": {
-    "url": "https://github.com/Kelsen23/CodeHive-Backend/issues"
+    "url": "https://github.com/Kelsen23/Qanopy-Backend/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Kelsen23/CodeHive-Backend.git"
+    "url": "git+https://github.com/Kelsen23/Qanopy-Backend.git"
   },
   "license": "MIT",
   "author": "Kelsen23",

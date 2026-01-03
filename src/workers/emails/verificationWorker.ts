@@ -9,7 +9,7 @@ new Worker(
     const { email, htmlContent } = job.data;
 
     await transporter.sendMail({
-      from: `'CodeHive' <${process.env.CODEHIVE_EMAIL}>`,
+      from: `'QANOPY' <${process.env.QANOPY_EMAIL}>`,
       to: email,
       subject: "Verify Email",
       html: htmlContent,

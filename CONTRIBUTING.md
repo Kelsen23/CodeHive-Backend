@@ -1,6 +1,6 @@
-# Contributing to CodeHive-Backend
+# Contributing to Qanopy-Backend
 
-🎉 Thanks for your interest in contributing! We’re excited to build **CodeHive** together.  
+🎉 Thanks for your interest in contributing! We’re excited to build **Qanopy** together.  
 This document outlines how to get started, the contribution workflow, and some guidelines to keep things consistent.
 
 ---
@@ -10,8 +10,8 @@ This document outlines how to get started, the contribution workflow, and some g
 1. **Fork the repository** and clone your fork:
 
    ```bash
-   git clone https://github.com/Kelsen23/CodeHive-Backend.git
-   cd CodeHive-Backend
+   git clone https://github.com/Kelsen23/Qanopy-Backend.git
+   cd Qanopy-Backend
    ```
 
 2. Install dependencies:
