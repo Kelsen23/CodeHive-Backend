@@ -30,17 +30,17 @@ const ReportSchema = new mongoose.Schema(
       default: null,
     },
 
-    severity: { type: Number, min: 1, max: 100, default: 0 },
-    aiDecisions: {
-      type: [String],
+    aiDecision: {
+      type: String,
       enum: [
-        "REMOVE_CONTENT",
         "BAN_USER_TEMP",
         "BAN_USER_PERM",
+        "WARN_USER",
         "IGNORE",
         "UNCERTAIN",
       ],
-      default: ["UNCERTAIN"],
+      required: true,
+      default: "UNCERTAIN",
     },
     aiConfidence: { type: Number, min: 0, max: 1, default: 0 },
     aiReasons: {
@@ -50,23 +50,18 @@ const ReportSchema = new mongoose.Schema(
       default: [],
     },
 
+    severity: { type: Number, min: 0, max: 100, default: 0 },
     status: {
       type: String,
       enum: ["PENDING", "REVIEWING", "RESOLVED", "DISMISSED"],
       default: "PENDING",
     },
 
-    actionsTaken: {
-      type: [String],
-      enum: [
-        "REMOVE_CONTENT",
-        "BAN_USER_TEMP",
-        "BAN_USER_PERM",
-        "WARN_USER",
-        "NO_ACTION",
-      ],
-      default: [],
+    actionTaken: {
+      type: String,
+      enum: ["BAN_USER_TEMP", "BAN_USER_PERM", "WARN_USER", "IGNORE"],
     },
+    isRemovingContent: { type: Boolean, required: true, default: false },
     adminReasons: [{ type: String, maxlength: 150, minlength: 3 }],
   },
   {

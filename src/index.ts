@@ -24,6 +24,7 @@ import authRoute from "./routes/authRoute.js";
 import uploadFileRoute from "./routes/uploadFileRoute.js";
 import userRoute from "./routes/userRoute.js";
 import questionRoute from "./routes/questionRoute.js";
+import moderationRoute from "./routes/moderationRoute.js";
 
 import cookieParser from "cookie-parser";
 
@@ -61,6 +62,7 @@ app.use("/api/auth", authRoute);
 app.use("/api/upload", uploadFileRoute);
 app.use("/api/user", userRoute);
 app.use("/api/question", questionRoute);
+app.use("/api/moderation", moderationRoute);
 
 app.use(
   "/graphql",
