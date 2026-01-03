@@ -87,7 +87,7 @@ const getReports = asyncHandler(async (req: Request, res: Response) => {
     status: "REVIEWING",
   });
 
-  res.status(200).json({
+  return res.status(200).json({
     message: "Successfully received reports for moderation",
     reports: reportsForModeration,
   });
@@ -281,7 +281,7 @@ const moderateReport = asyncHandler(
       }
     }
 
-    res.status(200).json({ message: "Report successfully reviewed" });
+    return res.status(200).json({ message: "Report successfully reviewed" });
   },
 );
 
@@ -373,7 +373,7 @@ const acknowledgeWarning = asyncHandler(
       data: { seen: true, delivered: true },
     });
 
-    res.status(200).json({ message: "Warning acknowledged" });
+    return res.status(200).json({ message: "Warning acknowledged" });
   },
 );
 

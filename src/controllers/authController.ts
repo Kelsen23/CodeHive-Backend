@@ -86,15 +86,35 @@ const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   const foundUser = await prisma.user.findUnique({ where: { email } });
-  if (!foundUser) throw new HttpError("Email not found", 404);
 
-  if (!foundUser.password)
-    throw new HttpError("Invalid credentials", 400);
+  if (!foundUser) throw new HttpError("Invalid credentials", 400);
+
+  if (!foundUser.password) throw new HttpError("Invalid credentials", 400);
 
   const isPasswordCorrect = await bcrypt.compare(password, foundUser.password);
   if (!isPasswordCorrect) throw new HttpError("Invalid password", 401);
 
   generateToken(res, foundUser.id);
+
+  const {
+    password: _,
+    profilePictureKey,
+    otp,
+    otpResendAvailableAt,
+    otpExpireAt,
+    resetPasswordOtp,
+    resetPasswordOtpVerified,
+    resetPasswordOtpResendAvailableAt,
+    resetPasswordOtpExpireAt,
+    ...userWithoutSensitiveInfo
+  } = foundUser;
+
+  await redisCacheClient.set(
+    `user:${foundUser.id}`,
+    JSON.stringify(userWithoutSensitiveInfo),
+    "EX",
+    60 * 20,
+  );
 
   return res.json({
     message: "Successfully logged in",
@@ -584,7 +604,10 @@ const isAuth = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
 
-    const foundUser = await prisma.user.findUnique({ where: { id: userId } });
+    const cachedUser = await redisCacheClient.get(`user:${userId}`);
+    const foundUser = cachedUser
+      ? JSON.parse(cachedUser)
+      : await prisma.user.findUnique({ where: { id: userId } });
 
     if (!foundUser) throw new HttpError("Invalid credentials", 404);
 
@@ -601,6 +624,20 @@ const isAuth = asyncHandler(
       ...userWithoutSensitiveInfo
     } = foundUser;
 
+    await redisCacheClient.set(
+      `user:${foundUser.id}`,
+      JSON.stringify(userWithoutSensitiveInfo),
+      "EX",
+      60 * 20,
+    );
+
+    if (cachedUser) {
+      return res.status(200).json({
+        message: "Successfully authenticated",
+        user: JSON.parse(cachedUser),
+      });
+    }
+
     return res.status(200).json({
       message: "Successfully authenticated",
       user: userWithoutSensitiveInfo,
@@ -608,15 +645,21 @@ const isAuth = asyncHandler(
   },
 );
 
-const logout = asyncHandler(async (req: Request, res: Response) => {
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-  });
+const logout = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user.id;
 
-  return res.status(200).json({ message: "Logged Out" });
-});
+    await redisCacheClient.del(`user:${userId}`);
+
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+    });
+
+    return res.status(200).json({ message: "Logged Out" });
+  },
+);
 
 export {
   register,
