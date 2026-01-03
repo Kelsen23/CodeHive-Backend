@@ -91,6 +91,12 @@ enum Interest {
   NETWORKING
 }
 
+enum Auth_Provider {
+  LOCAL
+  GOOGLE
+  GITHUB
+}
+
 model User {
   id       String  @id @default(uuid())
   username String  @unique @db.VarChar(15)
@@ -120,7 +126,8 @@ model User {
   resetPasswordOtpVerified          Boolean?
   resetPasswordOtpResendAvailableAt DateTime?
   resetPasswordOtpExpireAt          DateTime?
-  isVerified                        Boolean   @default(false)
+  isVerified                        Boolean       @default(false)
+  authProvider                      Auth_Provider @default(LOCAL)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

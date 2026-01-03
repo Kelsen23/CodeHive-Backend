@@ -89,7 +89,7 @@ const login = asyncHandler(async (req: Request, res: Response) => {
   if (!foundUser) throw new HttpError("Email not found", 404);
 
   if (!foundUser.password)
-    throw new HttpError("This account uses Google/GitHub login only", 400);
+    throw new HttpError("Invalid credentials", 400);
 
   const isPasswordCorrect = await bcrypt.compare(password, foundUser.password);
   if (!isPasswordCorrect) throw new HttpError("Invalid password", 401);
@@ -128,6 +128,7 @@ const registerOrLogin = asyncHandler(async (req: Request, res: Response) => {
           email,
           profilePictureUrl: picture,
           isVerified: true,
+          authProvider: "GOOGLE",
         },
       });
       generateToken(res, newUser.id);
@@ -140,8 +141,11 @@ const registerOrLogin = asyncHandler(async (req: Request, res: Response) => {
         },
       });
     } else {
-      if (foundUser.password)
-        throw new HttpError("User is already registered with this email", 400);
+      if (foundUser.authProvider !== "GOOGLE")
+        throw new HttpError(
+          "User is already registered with other method",
+          400,
+        );
 
       generateToken(res, foundUser.id);
 
@@ -169,6 +173,7 @@ const registerOrLogin = asyncHandler(async (req: Request, res: Response) => {
           email,
           profilePictureUrl: avatar_url,
           isVerified: true,
+          authProvider: "GITHUB",
         },
       });
 
@@ -179,8 +184,11 @@ const registerOrLogin = asyncHandler(async (req: Request, res: Response) => {
         user: { username: newUser.username, email: newUser.email },
       });
     } else {
-      if (foundUser.password)
-        throw new HttpError("User is already registered with this email", 400);
+      if (foundUser.authProvider !== "GITHUB")
+        throw new HttpError(
+          "User is already registered with other method",
+          400,
+        );
 
       generateToken(res, foundUser.id);
 
@@ -199,7 +207,10 @@ const verifyEmail = asyncHandler(
 
     const foundUser = await prisma.user.findUnique({ where: { id: userId } });
 
-    if (!foundUser) throw new HttpError("User not found", 404);
+    if (!foundUser) throw new HttpError("Invalid credentials", 404);
+
+    if (foundUser.authProvider !== "LOCAL")
+      throw new HttpError("Email verification not applicable", 400);
 
     if (foundUser.isVerified) throw new HttpError("User already verified", 400);
 
@@ -212,7 +223,7 @@ const verifyEmail = asyncHandler(
     }
 
     const attempts = await redisCacheClient.get(
-      `verifyEmail-attempts:${foundUser.id}`,
+      `auth:verify-email:attempts:${foundUser.id}`,
     );
 
     if (attempts && Number(attempts) >= 5)
@@ -226,8 +237,8 @@ const verifyEmail = asyncHandler(
     if (!isValidOtp) {
       await redisCacheClient
         .multi()
-        .incr(`verifyEmail-attempts:${foundUser.id}`)
-        .expire(`verifyEmail-attempts:${foundUser.id}`, 120)
+        .incr(`auth:verify-email:attempts:${foundUser.id}`)
+        .expire(`auth:verify-email:attempts:${foundUser.id}`, 120)
         .exec();
 
       throw new HttpError("Invalid OTP", 400);
@@ -263,7 +274,7 @@ const verifyEmail = asyncHandler(
       60 * 20,
     );
 
-    await redisCacheClient.del(`verifyEmail-attempts:${foundUser.id}`);
+    await redisCacheClient.del(`auth:verify-email:attempts:${foundUser.id}`);
 
     res.status(200).json({
       message: "Successfully verified",
@@ -282,7 +293,10 @@ const resendVerificationEmail = asyncHandler(
 
     const foundUser = await prisma.user.findUnique({ where: { id: userId } });
 
-    if (!foundUser) throw new HttpError("User not found", 404);
+    if (!foundUser) throw new HttpError("Invalid credentials", 404);
+
+    if (foundUser.authProvider !== "LOCAL")
+      throw new HttpError("Email verification not applicable", 400);
 
     if (foundUser.isVerified) throw new HttpError("User already verified", 400);
 
@@ -317,7 +331,7 @@ const resendVerificationEmail = asyncHandler(
     const deviceName = `${deviceInfo.browser} on ${deviceInfo.os}`;
     const htmlContent = verificationHtml(
       updatedUser.username,
-      updatedUser.otp,
+      otp,
       deviceName,
       deviceInfo.ip || "Unknown IP",
     );
@@ -343,7 +357,11 @@ const sendResetPasswordEmail = asyncHandler(
 
     const foundUser = await prisma.user.findUnique({ where: { email } });
 
-    if (!foundUser) throw new HttpError("User not found", 404);
+    if (!foundUser || foundUser.authProvider !== "LOCAL") {
+      return res
+        .status(200)
+        .json({ message: "If account exists, an email was sent" });
+    }
 
     if (foundUser.resetPasswordOtp && foundUser.resetPasswordOtpExpireAt)
       if (foundUser.resetPasswordOtpExpireAt > new Date(Date.now()))
@@ -391,7 +409,7 @@ const sendResetPasswordEmail = asyncHandler(
 
     return res
       .status(200)
-      .json({ message: "Successfully sent reset password OTP" });
+      .json({ message: "If account exists, an email was sent" });
   },
 );
 
@@ -401,7 +419,10 @@ const resendResetPasswordEmail = asyncHandler(
 
     const foundUser = await prisma.user.findUnique({ where: { email } });
 
-    if (!foundUser) throw new HttpError("User not found", 404);
+    if (!foundUser) throw new HttpError("Invalid credentials", 404);
+
+    if (foundUser.authProvider !== "LOCAL")
+      throw new HttpError("Password reset not applicable", 400);
 
     if (
       !foundUser.resetPasswordOtp ||
@@ -468,7 +489,10 @@ const verifyResetPasswordOtp = asyncHandler(
 
     const foundUser = await prisma.user.findUnique({ where: { email } });
 
-    if (!foundUser) throw new HttpError("User not found", 404);
+    if (!foundUser) throw new HttpError("Invalid credentials", 404);
+
+    if (foundUser.authProvider !== "LOCAL")
+      throw new HttpError("Password reset not applicable", 400);
 
     if (
       !foundUser.resetPasswordOtp ||
@@ -478,7 +502,7 @@ const verifyResetPasswordOtp = asyncHandler(
       throw new HttpError("Reset password OTP not set", 400);
 
     const attempts = await redisCacheClient.get(
-      `verifyResetPasswordOtp-attempts:${foundUser.id}`,
+      `auth:reset-password:attempts:${foundUser.id}`,
     );
 
     if (attempts && Number(attempts) >= 5)
@@ -492,8 +516,8 @@ const verifyResetPasswordOtp = asyncHandler(
     if (!isValidOtp) {
       await redisCacheClient
         .multi()
-        .incr(`verifyResetPasswordOtp-attempts:${foundUser.id}`)
-        .expire(`verifyResetPasswordOtp-attempts:${foundUser.id}`, 120)
+        .incr(`auth:reset-password:attempts:${foundUser.id}`)
+        .expire(`auth:reset-password:attempts:${foundUser.id}`, 120)
         .exec();
 
       throw new HttpError("Invalid reset password OTP", 400);
@@ -509,9 +533,7 @@ const verifyResetPasswordOtp = asyncHandler(
       },
     });
 
-    await redisCacheClient.del(
-      `verifyResetPasswordOtp-attempts:${foundUser.id}`,
-    );
+    await redisCacheClient.del(`auth:reset-password:attempts:${foundUser.id}`);
 
     res.status(200).json({ message: "Successfully verified OTP" });
   },
@@ -522,7 +544,10 @@ const resetPassword = asyncHandler(async (req: Request, res: Response) => {
 
   const foundUser = await prisma.user.findUnique({ where: { email } });
 
-  if (!foundUser) throw new HttpError("User not found", 404);
+  if (!foundUser) throw new HttpError("Invalid credentials", 404);
+
+  if (foundUser.authProvider !== "LOCAL")
+    throw new HttpError("Password reset not applicable", 400);
 
   if (!foundUser.resetPasswordOtpVerified)
     throw new HttpError("OTP not verified", 400);
@@ -561,7 +586,7 @@ const isAuth = asyncHandler(
 
     const foundUser = await prisma.user.findUnique({ where: { id: userId } });
 
-    if (!foundUser) throw new HttpError("User not found", 404);
+    if (!foundUser) throw new HttpError("Invalid credentials", 404);
 
     const {
       password,
