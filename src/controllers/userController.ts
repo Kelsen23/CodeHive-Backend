@@ -22,16 +22,16 @@ const updateProfile = asyncHandler(
 
     if (!foundUser) throw new HttpError("User not found", 404);
 
-    if (foundUser.username === username)
-      throw new HttpError("You already have this username", 400);
-    if (foundUser.bio === bio)
-      throw new HttpError("You already have this bio", 400);
+    if (username === foundUser.username) {
+      if (bio === foundUser.bio)
+        throw new HttpError("Username and bio already used", 400);
+    } else {
+      const usernameExists = await prisma.user.findUnique({
+        where: { username },
+      });
 
-    const usernameExists = await prisma.user.findUnique({
-      where: { username },
-    });
-
-    if (usernameExists) throw new HttpError("Username is already taken", 400);
+      if (usernameExists) throw new HttpError("Username is already taken", 400);
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
