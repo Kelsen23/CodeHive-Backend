@@ -11,7 +11,7 @@ const registerSchema = z.object({
   username: z
     .string()
     .min(3, "Username must be at least 3 characters")
-    .max(15, "Username must be at most 15 characters")
+    .max(20, "Username must be at most 20 characters")
     .regex(
       /^[a-zA-Z0-9_. ]+$/,
       "Only letters, numbers, spaces, underscores, and dots allowed",
@@ -59,31 +59,12 @@ const loginSchema = z.object({
 
 const googleSchema = z.object({
   provider: z.literal("google"),
-  email: z
-    .string()
-    .email("Invalid email address")
-    .min(5, "Email must be at least 5 characters")
-    .max(345, "Email must be at most 345 characters"),
-  name: z
-    .string()
-    .min(3, "Username must be at least 3 characters")
-    .max(15, "Username must be at most 15 characters"),
-  picture: z.string().url("Invalid picture url"),
-  email_verified: z.boolean(),
+  id_token: z.string(),
 });
 
 const githubSchema = z.object({
   provider: z.literal("github"),
-  email: z
-    .string()
-    .email("Invalid email address")
-    .min(5, "Email must be at least 5 characters")
-    .max(345, "Email must be at most 345 characters"),
-  name: z
-    .string()
-    .min(3, "Username must be at least 3 characters")
-    .max(15, "Username must be at most 15 characters"),
-  avatar_url: z.string().url("Invalid picture url"),
+  access_token: z.string(),
 });
 
 const verifyEmailSchema = z.object({
