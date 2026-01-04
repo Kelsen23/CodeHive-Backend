@@ -99,7 +99,7 @@ enum Auth_Provider {
 
 model User {
   id       String  @id @default(uuid())
-  username String  @unique @db.VarChar(15)
+  username String  @unique @db.VarChar(20)
   email    String  @unique @db.VarChar(345)
   password String? @db.VarChar(60)
 
