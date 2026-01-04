@@ -7,8 +7,6 @@ import HttpError from "./httpError.js";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-console.log(process.env.GOOGLE_CLIENT_ID);
-
 async function verifyGoogleToken(idToken: string): Promise<{
   email: string;
   name: string;
@@ -35,6 +33,7 @@ async function verifyGoogleToken(idToken: string): Promise<{
 
     return { email, name, picture, email_verified, googleId: sub };
   } catch (error) {
+    console.error(error); 
     throw new HttpError("Google ID token verification failed", 500);
   }
 }
