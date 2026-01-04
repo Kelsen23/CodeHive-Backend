@@ -13,7 +13,7 @@ const updateProfileSchema = z.object({
   username: z
     .string()
     .min(3, "Username must be at least 3 characters")
-    .max(15, "Username must be at most 15 characters")
+    .max(20, "Username must be at most 20 characters")
     .regex(
       /^[a-zA-Z0-9_. ]+$/,
       "Only letters, numbers, spaces, underscores, and dots allowed",
@@ -26,7 +26,7 @@ const updateProfileSchema = z.object({
     }),
   bio: z
     .string()
-    .max(150, "Bio must be at most 150 characters")
+    .max(200, "Bio must be at most 200 characters")
     .refine((bio) => (bio ? !leoProfanity.check(bio) : true), {
       message: "Bio contains inappropriate language",
     }),

@@ -8,7 +8,9 @@ import bcrypt from "bcrypt";
 
 import generateToken from "../utils/generateToken.js";
 import getDeviceInfo from "../utils/getDeviceInfo.js";
-import generateUniqueUsername from "../utils/generateUniqueUsername.js";
+import generateOAuthUsername from "../utils/generateOAuthUsername.js";
+
+import verifyGoogleToken from "../utils/verifyGoogleToken.js";
 
 import {
   resetPasswordHtml,
@@ -132,7 +134,10 @@ const registerOrLogin = asyncHandler(async (req: Request, res: Response) => {
   const { provider } = req.body;
 
   if (provider === "google") {
-    const { email, name, picture, email_verified } = req.body;
+    const { id_token } = req.body;
+
+    const { email, name, picture, email_verified } =
+      await verifyGoogleToken(id_token);
 
     if (!email_verified)
       throw new HttpError("Email not verified, couldn't register", 400);
@@ -140,7 +145,7 @@ const registerOrLogin = asyncHandler(async (req: Request, res: Response) => {
     const foundUser = await prisma.user.findUnique({ where: { email } });
 
     if (!foundUser) {
-      const uniqueUsername = await generateUniqueUsername(name);
+      const uniqueUsername = await generateOAuthUsername(name);
 
       const newUser = await prisma.user.create({
         data: {
@@ -180,12 +185,21 @@ const registerOrLogin = asyncHandler(async (req: Request, res: Response) => {
   }
 
   if (provider === "github") {
-    const { name, email, avatar_url } = req.body;
+    const { access_token } = req.body;
+
+    const githubRes = await fetch("https://api.github.com/user", {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+
+    const { email, name, avatar_url } = await githubRes.json();
+
+    if (!email || !name)
+      throw new HttpError("Invalid Github access token", 400);
 
     const foundUser = await prisma.user.findUnique({ where: { email } });
 
     if (!foundUser) {
-      const uniqueUsername = await generateUniqueUsername(name);
+      const uniqueUsername = await generateOAuthUsername(name);
 
       const newUser = await prisma.user.create({
         data: {
