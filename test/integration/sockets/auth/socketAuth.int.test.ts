@@ -38,11 +38,6 @@ vi.mock(
 );
 
 vi.mock(
-  "../../../../src/sockets/listeners/editSession.listener.js",
-  () => mockSocketAuthModules.editSessionListener,
-);
-
-vi.mock(
   "../../../../src/sockets/listeners/aiAnswerSession.listener.js",
   () => mockSocketAuthModules.aiAnswerSessionListener,
 );
