@@ -33,9 +33,9 @@ const questionGatewayAuditDecisionByGateDecision: Record<
   QuestionEligibilityGateResult["decision"],
   QuestionGatewayAuditDecision
 > = {
-  allow: "ALLOW",
-  clarify: "CLARIFY",
-  reject: "REJECT",
+  ALLOW: "ALLOW",
+  CLARIFY: "CLARIFY",
+  REJECT: "REJECT",
 };
 
 export { questionGatewayAuditDecisionByGateDecision };
