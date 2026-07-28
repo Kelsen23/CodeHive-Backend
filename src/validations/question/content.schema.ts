@@ -4,7 +4,7 @@ import { Interest } from "../../generated/prisma/client.js";
 
 import { hasMinimumBodyLengthAfterTempImageRemoval } from "../../utils/content/contentBodyValidation.util.js";
 
-import { leoProfanity } from "./shared.js";
+import { leoProfanity, objectIdSchema } from "./shared.js";
 
 const createQuestionSchema = z
   .object({
@@ -102,17 +102,64 @@ const voteSchema = z.object({
     ["QUESTION", "ANSWER", "REPLY"],
     "Target type is either 'QUESTION', 'ANSWER' or 'REPLY'",
   ),
-  targetId: z.string().min(1, "targetId is required"),
+  targetId: objectIdSchema,
   voteType: z.enum(
     ["UPVOTE", "DOWNVOTE"],
     "Vote type must be either 'UPVOTE' or 'DOWNVOTE'",
   ),
 });
 
+const questionIdSchema = z
+  .object({
+    questionId: objectIdSchema,
+  })
+  .strict();
+
+const answerIdSchema = z
+  .object({
+    answerId: objectIdSchema,
+  })
+  .strict();
+
+const questionVersionSchema = z
+  .object({
+    questionId: objectIdSchema,
+    version: z.coerce
+      .number()
+      .int("version must be an integer")
+      .positive("version must be greater than 0"),
+  })
+  .strict();
+
+const voteTargetSchema = z
+  .object({
+    targetType: z.enum(
+      ["QUESTION", "ANSWER", "REPLY"],
+      "Target type is either 'QUESTION', 'ANSWER' or 'REPLY'",
+    ),
+    targetId: objectIdSchema,
+  })
+  .strict();
+
+const contentTargetSchema = z
+  .object({
+    targetType: z.enum(
+      ["QUESTION", "ANSWER", "REPLY", "AI_ANSWER_FEEDBACK"],
+      "Invalid targetType",
+    ),
+    targetId: objectIdSchema,
+  })
+  .strict();
+
 export {
+  answerIdSchema,
+  contentTargetSchema,
   createAnswerOnQuestionSchema,
   createQuestionSchema,
   createReplyOnAnswerSchema,
   editQuestionSchema,
+  questionIdSchema,
+  questionVersionSchema,
+  voteTargetSchema,
   voteSchema,
 };
