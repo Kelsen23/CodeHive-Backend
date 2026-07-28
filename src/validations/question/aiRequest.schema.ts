@@ -2,14 +2,7 @@ import z from "zod";
 
 import { hasMinimumBodyLengthAfterTempImageRemoval } from "../../utils/content/contentBodyValidation.util.js";
 
-import { leoProfanity } from "./shared.js";
-
-const generateSuggestionSchema = z.object({
-  version: z.coerce
-    .number()
-    .int("version must be an integer")
-    .positive("version must be greater than 0"),
-});
+import { leoProfanity, objectIdSchema } from "./shared.js";
 
 const generateAiAnswerSchema = z.object({
   version: z.coerce
@@ -18,17 +11,9 @@ const generateAiAnswerSchema = z.object({
     .positive("version must be greater than 0"),
 });
 
-const publishAiAnswerSchema = z.object({
-  aiAnswerId: z.string().min(1, "aiAnswerId is required"),
-});
-
-const unpublishAiAnswerSchema = z.object({
-  aiAnswerId: z.string().min(1, "aiAnswerId is required"),
-});
-
 const createFeedbackOnAiAnswerSchema = z
   .object({
-    aiAnswerId: z.string().min(1, "aiAnswerId is required"),
+    aiAnswerId: objectIdSchema,
     type: z.enum(["HELPFUL", "NOT_HELPFUL"]),
     body: z
       .string()
@@ -66,7 +51,7 @@ const createFeedbackOnAiAnswerSchema = z
 
 const editAiFeedbackSchema = z
   .object({
-    feedbackId: z.string().min(1, "feedbackId is required"),
+    feedbackId: objectIdSchema,
     type: z.enum(["HELPFUL", "NOT_HELPFUL"]),
     body: z
       .string()
@@ -104,7 +89,4 @@ export {
   createFeedbackOnAiAnswerSchema,
   editAiFeedbackSchema,
   generateAiAnswerSchema,
-  generateSuggestionSchema,
-  publishAiAnswerSchema,
-  unpublishAiAnswerSchema,
 };
