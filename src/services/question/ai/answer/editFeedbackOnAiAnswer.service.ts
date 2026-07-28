@@ -1,0 +1,98 @@
+import HttpError from "../../../../utils/http/httpError.util.js";
+import { makeJobId } from "../../../../utils/job/makeJobId.util.js";
+
+import AiAnswer from "../../../../models/aiAnswer.model.js";
+import AiAnswerFeedback from "../../../../models/aiAnswerFeedback.model.js";
+import QuestionVersion from "../../../../models/questionVersion.model.js";
+
+import contentFinalizeQueue from "../../../../queues/contentFinalize.queue.js";
+
+import { toPublicAiAnswerFeedback } from "../../question.response.js";
+
+const editFeedbackOnAiAnswer = async (
+  userId: string,
+  {
+    feedbackId,
+    type,
+    body,
+    questionVersionAtFeedback,
+  }: {
+    feedbackId: string;
+    type: "HELPFUL" | "NOT_HELPFUL";
+    body: string;
+    questionVersionAtFeedback: number;
+  },
+) => {
+  const foundFeedback = await AiAnswerFeedback.findById(feedbackId)
+    .select(
+      "userId aiAnswerId type body questionVersionAtFeedback isDeleted isActive",
+    )
+    .lean();
+
+  if (!foundFeedback) throw new HttpError("AI feedback not found", 404);
+  if (foundFeedback.userId !== userId)
+    throw new HttpError("Unauthorized to edit AI feedback", 403);
+  if (foundFeedback.isDeleted || !foundFeedback.isActive)
+    throw new HttpError("AI feedback not active", 410);
+
+  const foundAiAnswer = await AiAnswer.findById(foundFeedback.aiAnswerId)
+    .select("questionId")
+    .lean();
+
+  if (!foundAiAnswer) throw new HttpError("AI answer not found", 404);
+
+  const foundQuestionVersion = await QuestionVersion.findOne({
+    questionId: foundAiAnswer.questionId,
+    version: questionVersionAtFeedback,
+  })
+    .select("_id")
+    .lean();
+
+  if (!foundQuestionVersion)
+    throw new HttpError("Question version not found", 404);
+
+  const hasNoChanges =
+    type === foundFeedback.type && body === (foundFeedback.body ?? null);
+
+  if (hasNoChanges) throw new HttpError("No changes made to the feedback", 400);
+
+  const editedFeedback = await AiAnswerFeedback.findByIdAndUpdate(
+    feedbackId,
+    {
+      $set: {
+        type,
+        body,
+        questionVersionAtFeedback,
+        moderationStatus: "PENDING",
+        moderationUpdatedAt: null,
+      },
+      $inc: { moderationRevision: 1 },
+    },
+    { returnDocument: "after" },
+  );
+
+  await contentFinalizeQueue.add(
+    "AI_ANSWER_FEEDBACK",
+    {
+      userId,
+      entityId: feedbackId,
+    },
+    {
+      removeOnComplete: true,
+      removeOnFail: false,
+      jobId: makeJobId(
+        "contentFinalize",
+        "AI_ANSWER_FEEDBACK",
+        feedbackId,
+        editedFeedback?.moderationRevision,
+      ),
+    },
+  );
+
+  return {
+    message: "Successfully edited AI answer feedback",
+    feedback: toPublicAiAnswerFeedback(editedFeedback),
+  };
+};
+
+export default editFeedbackOnAiAnswer;
