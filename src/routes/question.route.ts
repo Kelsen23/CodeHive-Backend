@@ -10,13 +10,11 @@ import {
   editFeedbackOnAiAnswer,
   editQuestion,
   rollbackVersion,
+  generateQuestionSuggestion,
   generateAiAnswer,
-  generateSuggestion,
   markAnswerAsBest,
-  publishAiAnswer,
   unacceptAnswer,
   unmarkAnswerAsBest,
-  unpublishAiAnswer,
   unvote,
   vote,
 } from "../controllers/question.controller.js";
@@ -27,16 +25,18 @@ import isAuthenticated, {
 } from "../middlewares/auth.middleware.js";
 
 import {
+  answerIdSchema,
+  contentTargetSchema,
   createAnswerOnQuestionSchema,
   createFeedbackOnAiAnswerSchema,
   editAiFeedbackSchema,
-  generateAiAnswerSchema,
-  generateSuggestionSchema,
   createQuestionSchema,
   editQuestionSchema,
   createReplyOnAnswerSchema,
-  publishAiAnswerSchema,
-  unpublishAiAnswerSchema,
+  generateAiAnswerSchema,
+  questionIdSchema,
+  questionVersionSchema,
+  voteTargetSchema,
   voteSchema,
 } from "../validations/question.schema.js";
 
@@ -49,16 +49,14 @@ import {
   deleteContentLimiterMiddleware,
   editAiFeedbackLimiterMiddleware,
   editQuestionLimiterMiddleware,
-  generateAiAnswerLimiterMiddleware,
   generateSuggestionLimiterMiddleware,
+  generateAiAnswerLimiterMiddleware,
   markAnswerAsBestLimiterMiddleware,
   rollbackVersionLimiterMiddleware,
   unmarkAnswerAsBestLimiterMiddleware,
   unacceptAnswerLimiterMiddleware,
   unvoteLimiterMiddleware,
   voteLimiterMiddleware,
-  publishAiAnswerLimiterMiddleware,
-  unpublishAiAnswerLimiterMiddleware,
 } from "../middlewares/rate-limiters/question.rate-limiters.js";
 
 import validate from "../middlewares/validate.middleware.js";
@@ -73,7 +71,7 @@ router
     isVerified,
     requireActiveUser,
     createQuestionLimiterMiddleware,
-    validate(createQuestionSchema),
+    validate("body", createQuestionSchema),
     createQuestion,
   );
 
@@ -84,7 +82,8 @@ router
     isVerified,
     requireActiveUser,
     createAnswerOnQuestionLimiterMiddleware,
-    validate(createAnswerOnQuestionSchema),
+    validate("params", questionIdSchema),
+    validate("body", createAnswerOnQuestionSchema),
     createAnswerOnQuestion,
   );
 
@@ -95,7 +94,8 @@ router
     isVerified,
     requireActiveUser,
     createReplyOnAnswerLimiterMiddleware,
-    validate(createReplyOnAnswerSchema),
+    validate("params", answerIdSchema),
+    validate("body", createReplyOnAnswerSchema),
     createReplyOnAnswer,
   );
 
@@ -106,7 +106,7 @@ router
     isVerified,
     requireActiveUser,
     voteLimiterMiddleware,
-    validate(voteSchema),
+    validate("body", voteSchema),
     vote,
   );
 
@@ -117,6 +117,7 @@ router
     isVerified,
     requireActiveUser,
     unvoteLimiterMiddleware,
+    validate("params", voteTargetSchema),
     unvote,
   );
 
@@ -127,6 +128,7 @@ router
     isVerified,
     requireActiveUser,
     acceptAnswerLimiterMiddleware,
+    validate("params", answerIdSchema),
     acceptAnswer,
   )
   .delete(
@@ -134,6 +136,7 @@ router
     isVerified,
     requireActiveUser,
     unacceptAnswerLimiterMiddleware,
+    validate("params", answerIdSchema),
     unacceptAnswer,
   );
 
@@ -144,6 +147,7 @@ router
     isVerified,
     requireActiveUser,
     markAnswerAsBestLimiterMiddleware,
+    validate("params", answerIdSchema),
     markAnswerAsBest,
   )
   .delete(
@@ -151,6 +155,7 @@ router
     isVerified,
     requireActiveUser,
     unmarkAnswerAsBestLimiterMiddleware,
+    validate("params", answerIdSchema),
     unmarkAnswerAsBest,
   );
 
@@ -161,7 +166,8 @@ router
     isVerified,
     requireActiveUser,
     editQuestionLimiterMiddleware,
-    validate(editQuestionSchema),
+    validate("params", questionIdSchema),
+    validate("body", editQuestionSchema),
     editQuestion,
   );
 
@@ -172,6 +178,7 @@ router
     isVerified,
     requireActiveUser,
     rollbackVersionLimiterMiddleware,
+    validate("params", questionVersionSchema),
     rollbackVersion,
   );
 
@@ -182,19 +189,19 @@ router
     isVerified,
     requireActiveUser,
     deleteContentLimiterMiddleware,
+    validate("params", contentTargetSchema),
     deleteContent,
   );
 
 router
-  .route("/:questionId/ai/suggestion")
+  .route("/:questionId/versions/:version/ai/suggestion")
   .post(
     isAuthenticated,
     isVerified,
     requireActiveUser,
     generateSuggestionLimiterMiddleware,
-    validate(generateSuggestionSchema),
-    chargeCredits("AI_SUGGESTION"),
-    generateSuggestion,
+    validate("params", questionVersionSchema),
+    generateQuestionSuggestion,
   );
 
 router
@@ -204,31 +211,10 @@ router
     isVerified,
     requireActiveUser,
     generateAiAnswerLimiterMiddleware,
-    validate(generateAiAnswerSchema),
+    validate("params", questionIdSchema),
+    validate("body", generateAiAnswerSchema),
     chargeCredits("AI_ANSWER"),
     generateAiAnswer,
-  );
-
-router
-  .route("/:questionId/ai/answer/publish")
-  .patch(
-    isAuthenticated,
-    isVerified,
-    requireActiveUser,
-    publishAiAnswerLimiterMiddleware,
-    validate(publishAiAnswerSchema),
-    publishAiAnswer,
-  );
-
-router
-  .route("/:questionId/ai/answer/unpublish")
-  .patch(
-    isAuthenticated,
-    isVerified,
-    requireActiveUser,
-    unpublishAiAnswerLimiterMiddleware,
-    validate(unpublishAiAnswerSchema),
-    unpublishAiAnswer,
   );
 
 router
@@ -238,7 +224,7 @@ router
     isVerified,
     requireActiveUser,
     createFeedbackOnAiAnswerLimiterMiddleware,
-    validate(createFeedbackOnAiAnswerSchema),
+    validate("body", createFeedbackOnAiAnswerSchema),
     createFeedbackOnAiAnswer,
   );
 
@@ -249,7 +235,7 @@ router
     isVerified,
     requireActiveUser,
     editAiFeedbackLimiterMiddleware,
-    validate(editAiFeedbackSchema),
+    validate("body", editAiFeedbackSchema),
     editFeedbackOnAiAnswer,
   );
 

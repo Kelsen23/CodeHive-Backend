@@ -51,7 +51,7 @@ router
     isVerified,
     requireActiveUser,
     userProfilePictureUpdateLimiterMiddleware,
-    validate(updateProfilePictureSchema),
+    validate("body", updateProfilePictureSchema),
     updateProfilePicture,
   )
   .delete(
@@ -69,7 +69,7 @@ router
     isVerified,
     requireActiveUser,
     userProfileUpdateLimiterMiddleware,
-    validate(updateProfileSchema),
+    validate("body", updateProfileSchema),
     updateProfile,
   );
 
@@ -79,7 +79,7 @@ router
     isAuthenticated,
     requireActiveUser,
     userEmailChangeSendLimiterMiddleware,
-    validate(sendEmailChangeSchema),
+    validate("body", sendEmailChangeSchema),
     sendEmailChange,
   );
 
@@ -98,7 +98,7 @@ router
     isAuthenticated,
     requireActiveUser,
     userEmailChangeVerifyLimiterMiddleware,
-    validate(verifyEmailChangeSchema),
+    validate("body", verifyEmailChangeSchema),
     verifyEmailChange,
   );
 
@@ -118,7 +118,7 @@ router
     isVerified,
     requireActiveUser,
     userNotificationSettingsLimiterMiddleware,
-    validate(updateNotificationSettingsSchema),
+    validate("body", updateNotificationSettingsSchema),
     updateNotificationSettings,
   );
 
@@ -129,7 +129,7 @@ router
     isVerified,
     requireActiveUser,
     userNotificationsSeenLimiterMiddleware,
-    validate(markNotificationsAsSeenSchema),
+    validate("body", markNotificationsAsSeenSchema),
     markNotificationsAsSeen,
   );
 
