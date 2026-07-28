@@ -74,4 +74,22 @@ const NotificationSchema = new Schema(
   },
 );
 
+NotificationSchema.index(
+  {
+    recipientId: 1,
+    event: 1,
+    "target.entityType": 1,
+    "target.entityId": 1,
+    "target.questionVersion": 1,
+  },
+  {
+    unique: true,
+    partialFilterExpression: {
+      event: "AI_SUGGESTION_READY",
+      "target.entityType": "QUESTION",
+      "target.questionVersion": { $exists: true },
+    },
+  },
+);
+
 export default mongoose.model("Notification", NotificationSchema);
