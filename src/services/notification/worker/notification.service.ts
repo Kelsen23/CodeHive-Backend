@@ -7,7 +7,7 @@ import publishSocketEvent from "../../../utils/socket/publishSocketEvent.util.js
 
 import Notification from "../../../models/notification.model.js";
 
-const processNotificationJob = async (jobData: {
+type NotificationJobData = {
   recipientId: string;
   actorId?: string;
   event: string;
@@ -24,21 +24,91 @@ const processNotificationJob = async (jobData: {
     questionVersion?: number | null;
   };
   meta?: Record<string, unknown>;
-}) => {
+};
+
+const isDuplicateKeyError = (error: unknown) =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  (error as { code?: unknown }).code === 11000;
+
+const isAiSuggestionReadyNotification = ({
+  event,
+  target,
+}: Pick<NotificationJobData, "event" | "target">) =>
+  event === "AI_SUGGESTION_READY" &&
+  target.entityType === "QUESTION" &&
+  Boolean(target.entityId) &&
+  typeof target.questionVersion === "number";
+
+const findAiSuggestionReadyNotification = ({
+  recipientId,
+  event,
+  target,
+}: Pick<NotificationJobData, "recipientId" | "event" | "target">) =>
+  Notification.findOne(
+    {
+      recipientId,
+      event,
+      "target.entityType": target.entityType,
+      "target.entityId": target.entityId,
+      "target.questionVersion": target.questionVersion,
+    } as any,
+  );
+
+const createNotification = async ({
+  recipientId,
+  actorId,
+  event,
+  target,
+  meta,
+}: NotificationJobData) => {
+  try {
+    const notification = await Notification.create({
+      recipientId,
+      actorId,
+      event: event as any,
+      target: target as any,
+      meta,
+    });
+
+    return { notification, created: true };
+  } catch (error) {
+    if (
+      isDuplicateKeyError(error) &&
+      isAiSuggestionReadyNotification({ event, target })
+    ) {
+      const existingNotification = await findAiSuggestionReadyNotification({
+        recipientId,
+        event,
+        target,
+      });
+
+      if (existingNotification) {
+        return { notification: existingNotification, created: false };
+      }
+    }
+
+    throw error;
+  }
+};
+
+const processNotificationJob = async (jobData: NotificationJobData) => {
   const { recipientId, actorId, event, target, meta } = jobData;
   const normalizedMeta = meta ?? {};
 
-  const notification = (await Notification.create({
+  const { notification, created } = await createNotification({
     recipientId,
     actorId,
-    event: event as any,
-    target: target as any,
+    event,
+    target,
     meta: normalizedMeta,
-  })) as unknown as {
-    _id: string;
-    createdAt: Date;
-    updatedAt: Date;
-  };
+  });
+
+  if (!created) {
+    await clearNotificationCache(recipientId);
+    return;
+  }
 
   const sockets = await getUserSockets(recipientId);
 
