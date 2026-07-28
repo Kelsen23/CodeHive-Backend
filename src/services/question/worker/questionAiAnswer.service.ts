@@ -1,7 +1,7 @@
 import type { CreditCharge } from "../../user/credits/credits.types.js";
 
-import contextualAnswerService from "../ai/aiAnswer/contextualAnswer.service.js";
-import fullAnswerService from "../ai/aiAnswer/fullAnswer.service.js";
+import contextualAnswerService from "../ai/answer/contextualAnswer.service.js";
+import fullAnswerService from "../ai/answer/fullAnswer.service.js";
 import { canGetAIAnswer } from "../ai/questionAiHelp.shared.js";
 import refundCreditCharge from "../../user/credits/refundCreditCharge.service.js";
 import {
