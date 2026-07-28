@@ -2,16 +2,16 @@ import z from "zod";
 
 const questionEligibilityGateSchema = z
   .object({
-    decision: z.enum(["allow", "clarify", "reject"]),
+    decision: z.enum(["ALLOW", "CLARIFY", "REJECT"]),
     eligibleForDownstreamProcessing: z.boolean(),
     understandability: z
       .object({
         status: z.enum([
-          "understandable",
-          "ambiguous_but_usable",
-          "too_vague",
-          "fragmented",
-          "nonsense",
+          "UNDERSTANDABLE",
+          "AMBIGUOUS_BUT_USABLE",
+          "TOO_VAGUE",
+          "FRAGMENTED",
+          "NONSENSE",
         ]),
         reason: z.string(),
       })
@@ -21,16 +21,16 @@ const questionEligibilityGateSchema = z
         isSoftwareRelated: z.boolean(),
         hasRealQuestionOrProblem: z.boolean(),
         intent: z.enum([
-          "debugging",
-          "implementation",
-          "architecture",
-          "conceptual_explanation",
-          "tooling_config",
-          "error_explanation",
-          "code_review",
-          "non_software",
-          "no_real_problem",
-          "unknown",
+          "DEBUGGING",
+          "IMPLEMENTATION",
+          "ARCHITECTURE",
+          "CONCEPTUAL_EXPLANATION",
+          "TOOLING_CONFIG",
+          "ERROR_EXPLANATION",
+          "CODE_REVIEW",
+          "NON_SOFTWARE",
+          "NO_REAL_PROBLEM",
+          "UNKNOWN",
         ]),
         technologies: z.array(z.string()),
         questionableEntities: z.array(z.string()),
@@ -38,22 +38,22 @@ const questionEligibilityGateSchema = z
       .strict(),
     answerability: z
       .object({
-        status: z.enum(["answerable", "needs_clarification", "not_answerable"]),
+        status: z.enum(["ANSWERABLE", "NEEDS_CLARIFICATION", "NOT_ANSWERABLE"]),
         missingContext: z.array(z.string()),
       })
       .strict(),
     security: z
       .object({
-        promptInjectionRisk: z.enum(["none", "low", "medium", "high"]),
+        promptInjectionRisk: z.enum(["NONE", "LOW", "MEDIUM", "HIGH"]),
         hasSuspiciousInstructionalText: z.boolean(),
         harmfulTechnicalIntent: z.enum([
-          "none",
-          "cyber_dual_use",
-          "credential_theft",
-          "malware",
-          "abuse_evasion",
-          "privacy_invasion",
-          "unknown",
+          "NONE",
+          "CYBER_DUAL_USE",
+          "CREDENTIAL_THEFT",
+          "MALWARE",
+          "ABUSE_EVASION",
+          "PRIVACY_INVASION",
+          "UNKNOWN",
         ]),
         reason: z.string(),
       })
@@ -63,7 +63,7 @@ const questionEligibilityGateSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
-    const expectedEligibility = value.decision === "allow";
+    const expectedEligibility = value.decision === "ALLOW";
 
     if (value.eligibleForDownstreamProcessing !== expectedEligibility) {
       ctx.addIssue({
@@ -75,7 +75,7 @@ const questionEligibilityGateSchema = z
     }
 
     if (
-      value.answerability.status === "answerable" &&
+      value.answerability.status === "ANSWERABLE" &&
       value.answerability.missingContext.length > 0
     ) {
       ctx.addIssue({
@@ -86,8 +86,8 @@ const questionEligibilityGateSchema = z
     }
 
     if (
-      value.decision === "allow" &&
-      value.security.promptInjectionRisk === "high"
+      value.decision === "ALLOW" &&
+      value.security.promptInjectionRisk === "HIGH"
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -97,8 +97,8 @@ const questionEligibilityGateSchema = z
     }
 
     if (
-      value.decision === "allow" &&
-      value.security.harmfulTechnicalIntent !== "none"
+      value.decision === "ALLOW" &&
+      value.security.harmfulTechnicalIntent !== "NONE"
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

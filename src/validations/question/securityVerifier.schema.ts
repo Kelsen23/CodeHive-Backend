@@ -3,26 +3,26 @@ import z from "zod";
 const securityVerifierSchema = z
   .object({
     finalSecurityDecision: z.enum([
-      "allow",
-      "allow_with_constraints",
-      "reject",
+      "ALLOW",
+      "ALLOW_WITH_CONSTRAINTS",
+      "REJECT",
     ]),
     promptInjection: z
       .object({
         detected: z.boolean(),
-        risk: z.enum(["none", "low", "medium", "high"]),
+        risk: z.enum(["NONE", "LOW", "MEDIUM", "HIGH"]),
         attackType: z.enum([
-          "none",
-          "direct_instruction_override",
-          "system_prompt_extraction",
-          "roleplay_jailbreak",
-          "developer_mode",
-          "hidden_or_encoded_instruction",
-          "tool_abuse",
-          "data_exfiltration",
-          "quoted_untrusted_text",
-          "indirect_prompt_injection",
-          "other",
+          "NONE",
+          "DIRECT_INSTRUCTION_OVERRIDE",
+          "SYSTEM_PROMPT_EXTRACTION",
+          "ROLEPLAY_JAILBREAK",
+          "DEVELOPER_MODE",
+          "HIDDEN_OR_ENCODED_INSTRUCTION",
+          "TOOL_ABUSE",
+          "DATA_EXFILTRATION",
+          "QUOTED_UNTRUSTED_TEXT",
+          "INDIRECT_PROMPT_INJECTION",
+          "OTHER",
         ]),
         suspiciousText: z.array(z.string()),
       })
@@ -31,19 +31,19 @@ const securityVerifierSchema = z
       .object({
         detected: z.boolean(),
         category: z.enum([
-          "none",
-          "malware",
-          "credential_theft",
-          "phishing",
-          "abuse_evasion",
-          "unauthorized_access",
-          "privacy_invasion",
-          "spam_or_platform_abuse",
-          "destructive_action",
-          "cyber_dual_use",
-          "other",
+          "NONE",
+          "MALWARE",
+          "CREDENTIAL_THEFT",
+          "PHISHING",
+          "ABUSE_EVASION",
+          "UNAUTHORIZED_ACCESS",
+          "PRIVACY_INVASION",
+          "SPAM_OR_PLATFORM_ABUSE",
+          "DESTRUCTIVE_ACTION",
+          "CYBER_DUAL_USE",
+          "OTHER",
         ]),
-        severity: z.enum(["none", "low", "medium", "high"]),
+        severity: z.enum(["NONE", "LOW", "MEDIUM", "HIGH"]),
       })
       .strict(),
     downstreamPolicy: z
@@ -58,7 +58,7 @@ const securityVerifierSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
-    const expectedEligibility = value.finalSecurityDecision !== "reject";
+    const expectedEligibility = value.finalSecurityDecision !== "REJECT";
 
     if (
       value.downstreamPolicy.eligibleForDownstreamProcessing !==
@@ -73,7 +73,7 @@ const securityVerifierSchema = z
     }
 
     if (
-      value.finalSecurityDecision === "allow" &&
+      value.finalSecurityDecision === "ALLOW" &&
       (value.downstreamPolicy.requireDefensiveFraming ||
         value.downstreamPolicy.requireQuotedTextIsolation)
     ) {
@@ -85,7 +85,7 @@ const securityVerifierSchema = z
     }
 
     if (
-      value.finalSecurityDecision === "allow_with_constraints" &&
+      value.finalSecurityDecision === "ALLOW_WITH_CONSTRAINTS" &&
       (!value.downstreamPolicy.requireDefensiveFraming ||
         !value.downstreamPolicy.requireQuotedTextIsolation)
     ) {
