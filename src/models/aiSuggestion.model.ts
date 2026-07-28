@@ -10,30 +10,55 @@ const AiSuggestionSchema = new Schema(
 
     version: { type: Number, required: true, min: 1 },
 
-    suggestions: {
-      title: String,
-      body: String,
-      tags: [String],
+    suggestedTitle: {
+      type: String,
+      minlength: 10,
+      maxlength: 150,
+      required: true,
     },
 
-    notes: {
+    suggestedBody: {
+      type: String,
+      minlength: 20,
+      maxlength: 20000,
+      required: true,
+    },
+
+    suggestedTags: {
       type: [String],
       default: [],
     },
 
-    confidence: {
-      type: Number,
-      min: 0,
-      max: 1,
+    improvementTips: {
+      type: [
+        {
+          category: {
+            type: String,
+            enum: [
+              "MISSING_CODE",
+              "MISSING_ERROR",
+              "MISSING_CONTEXT",
+              "MISSING_REPRODUCTION",
+              "MISSING_EXPECTED_BEHAVIOR",
+              "MISSING_ACTUAL_BEHAVIOR",
+              "MISSING_ENVIRONMENT",
+              "CLARITY",
+              "SCOPE",
+              "FORMATTING",
+              "OTHER",
+            ],
+            required: true,
+          },
+          message: { type: String, required: true },
+        },
+      ],
+      default: [],
     },
 
     meta: {
       type: Schema.Types.Mixed,
       default: {},
     },
-
-    isDeleted: { type: Boolean, default: false },
-    isActive: { type: Boolean, default: true },
   },
   {
     timestamps: true,
@@ -58,8 +83,6 @@ AiSuggestionSchema.index(
   },
   { unique: true },
 );
-
-AiSuggestionSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 45 });
 
 export default mongoose.model(
   "AiSuggestion",
