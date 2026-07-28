@@ -13,7 +13,6 @@ import {
 import Question from "../../../models/question.model.js";
 import QuestionVersion from "../../../models/questionVersion.model.js";
 
-import { isObjectId } from "../question.shared.js";
 import { toPublicQuestionVersion } from "../question.response.js";
 
 const moderationSeverity = {
@@ -30,8 +29,6 @@ const rollbackVersion = async (
   questionId: string,
   version: number,
 ) => {
-  if (!isObjectId(questionId)) throw new HttpError("Invalid questionId", 400);
-
   const cachedQuestion = await getRedisCacheClient().get(
     `question:${questionId}`,
   );

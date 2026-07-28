@@ -9,7 +9,6 @@ import {
   clearQuestionThreadCache,
   ensureActiveAnswer,
   ensureActiveQuestion,
-  isObjectId,
   makeQuestionAnswerStateEventId,
   queueQuestionStats,
 } from "../question.shared.js";
@@ -20,8 +19,6 @@ const answerSelect =
 const questionSelect = "_id userId isDeleted isActive";
 
 const unmarkAnswerAsBest = async (userId: string, answerId: string) => {
-  if (!isObjectId(answerId)) throw new HttpError("Invalid answerId", 400);
-
   const session = await mongoose.startSession();
 
   try {
