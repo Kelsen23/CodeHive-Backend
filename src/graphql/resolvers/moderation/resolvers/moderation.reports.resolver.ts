@@ -1,11 +1,11 @@
 import { Redis } from "ioredis";
 
 import {
+  default as getReports,
   type ModerationGraphqlContext,
   type ReportCursor,
   type ReportPage,
 } from "../helpers/moderation.reports.helper.js";
-import getReports from "../helpers/moderation.reports.helper.js";
 
 const moderationReportsResolver = {
   Query: {

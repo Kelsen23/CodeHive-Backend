@@ -10,7 +10,6 @@ import {
 
 import Question from "../../../models/question.model.js";
 
-import { isObjectId } from "../question.shared.js";
 import { toPublicQuestion } from "../question.response.js";
 
 const editQuestion = async (
@@ -18,8 +17,6 @@ const editQuestion = async (
   questionId: string,
   reqBody: { title: string; body: string; tags: string[] },
 ) => {
-  if (!isObjectId(questionId)) throw new HttpError("Invalid questionId", 400);
-
   const { title, body, tags } = reqBody;
 
   const cachedQuestion = await getRedisCacheClient().get(

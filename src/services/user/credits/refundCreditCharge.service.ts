@@ -4,9 +4,11 @@ import prisma from "../../../config/prisma.config.js";
 
 const refundCreditCharge = async ({
   operationKey,
+  expectedReason,
   reason,
 }: {
   operationKey: string;
+  expectedReason?: string | null;
   reason?: string;
 }) => {
   try {
@@ -17,6 +19,13 @@ const refundCreditCharge = async ({
         });
 
         if (!operation || operation.status !== "CHARGED") {
+          return { refunded: false };
+        }
+
+        if (
+          expectedReason !== undefined &&
+          operation.reason !== expectedReason
+        ) {
           return { refunded: false };
         }
 
@@ -54,15 +63,30 @@ const refundCreditCharge = async ({
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
   } catch (error) {
-    await prisma.creditOperation
-      .update({
-        where: { operationKey },
-        data: {
-          status: "REFUND_PENDING",
-          reason: reason ?? "Refund failed",
-        },
-      })
-      .catch(() => undefined);
+    if (expectedReason === undefined) {
+      await prisma.creditOperation
+        .update({
+          where: { operationKey },
+          data: {
+            status: "REFUND_PENDING",
+            reason: reason ?? "Refund failed",
+          },
+        })
+        .catch(() => undefined);
+    } else {
+      await prisma.creditOperation
+        .updateMany({
+          where: {
+            operationKey,
+            reason: expectedReason,
+          },
+          data: {
+            status: "REFUND_PENDING",
+            reason: reason ?? "Refund failed",
+          },
+        })
+        .catch(() => undefined);
+    }
 
     throw error;
   }

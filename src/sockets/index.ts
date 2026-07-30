@@ -11,7 +11,6 @@ import { removeUserSocket } from "../services/redis/presence.service.js";
 import validateSocketUser from "../services/socket/validateSocketUser.service.js";
 import initializeSocketUserSession from "../services/socket/initializeSocketUserSession.service.js";
 
-import initEditSessionListener from "./listeners/editSession.listener.js";
 import initAiAnswerSessionListener from "./listeners/aiAnswerSession.listener.js";
 import initQuestionSessionListener from "./listeners/questionSession.listener.js";
 
@@ -61,7 +60,6 @@ const initSocket = (server: http.Server) => {
 
       console.log(`Registering user ${userId} with socket ${socket.id}`);
 
-      initEditSessionListener(socket);
       initAiAnswerSessionListener(socket);
       initQuestionSessionListener(socket);
 

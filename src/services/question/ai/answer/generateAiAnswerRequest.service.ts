@@ -1,5 +1,3 @@
-import mongoose from "mongoose";
-
 import type { CreditCharge } from "../../../user/credits/credits.types.js";
 
 import { canGetAIAnswer } from "../questionAiHelp.shared.js";
@@ -22,9 +20,6 @@ const generateAiAnswerRequest = async (
   version: number,
   creditCharge?: CreditCharge,
 ) => {
-  if (!mongoose.Types.ObjectId.isValid(questionId))
-    throw new HttpError("Invalid questionId", 400);
-
   const foundQuestion = await Question.findOne({
     _id: questionId,
     userId,

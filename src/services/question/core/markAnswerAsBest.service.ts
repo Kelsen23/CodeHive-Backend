@@ -11,7 +11,6 @@ import {
   clearQuestionThreadCache,
   ensureActiveAnswer,
   ensureActiveQuestion,
-  isObjectId,
   makeQuestionAnswerStateEventId,
   queueQuestionStats,
 } from "../question.shared.js";
@@ -28,8 +27,6 @@ const isDuplicateKeyError = (error: unknown) =>
     : /E11000/.test(error.message));
 
 const markAnswerAsBest = async (userId: string, answerId: string) => {
-  if (!isObjectId(answerId)) throw new HttpError("Invalid answerId", 400);
-
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const session = await mongoose.startSession();
 

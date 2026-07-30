@@ -1,5 +1,3 @@
-import mongoose from "mongoose";
-
 import routeNotification from "../notification/routeNotification.service.js";
 
 import { getRedisCacheClient } from "../../config/redis.config.js";
@@ -17,8 +15,6 @@ import Reply from "../../models/reply.model.js";
 import statsQueue from "../../queues/stats.queue.js";
 
 type QuestionTargetType = "QUESTION" | "ANSWER" | "REPLY";
-
-const isObjectId = (value: string) => mongoose.Types.ObjectId.isValid(value);
 
 const getCachedQuestion = async (
   questionId: string,
@@ -149,7 +145,6 @@ const makeQuestionAnswerStateEventId = (
 export type { QuestionTargetType };
 
 export {
-  isObjectId,
   getCachedQuestion,
   getOwnedQuestion,
   getCachedAnswer,

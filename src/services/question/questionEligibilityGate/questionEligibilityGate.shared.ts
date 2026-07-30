@@ -19,16 +19,16 @@ const questionEligibilityStatusByDecision: Record<
   QuestionEligibilityGateResult["decision"],
   QuestionEligibilityStatus
 > = {
-  allow: "ALLOWED",
-  clarify: "CLARIFY",
-  reject: "REJECTED",
+  ALLOW: "ALLOWED",
+  CLARIFY: "CLARIFY",
+  REJECT: "REJECTED",
 };
 
 const shouldRunSecurityVerifier = (result: QuestionEligibilityGateResult) =>
-  result.decision === "allow" &&
+  result.decision === "ALLOW" &&
   (result.security.hasSuspiciousInstructionalText ||
-    result.security.promptInjectionRisk === "low" ||
-    result.security.promptInjectionRisk === "medium");
+    result.security.promptInjectionRisk === "LOW" ||
+    result.security.promptInjectionRisk === "MEDIUM");
 
 const buildQuestionEligibilityMetadata = (
   result: QuestionEligibilityGateResult,

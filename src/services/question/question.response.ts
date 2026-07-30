@@ -56,6 +56,25 @@ const toPublicReply = (reply: any) => ({
   updatedAt: reply.updatedAt,
 });
 
+const toPublicAiSuggestion = (suggestion: any) => ({
+  id: suggestion.id ?? suggestion._id,
+  questionId: suggestion.questionId,
+  version: suggestion.version,
+  suggestedTitle: suggestion.suggestedTitle,
+  suggestedBody: suggestion.suggestedBody,
+  suggestedTags: Array.isArray(suggestion.suggestedTags)
+    ? suggestion.suggestedTags
+    : [],
+  improvementTips: Array.isArray(suggestion.improvementTips)
+    ? suggestion.improvementTips.map((tip: any) => ({
+        category: tip.category,
+        message: tip.message,
+      }))
+    : [],
+  createdAt: suggestion.createdAt,
+  updatedAt: suggestion.updatedAt,
+});
+
 const toPublicAiAnswer = (answer: any) => ({
   id: answer.id ?? answer._id,
   questionId: answer.questionId,
@@ -106,6 +125,7 @@ export {
   toPublicQuestion,
   toPublicAnswer,
   toPublicReply,
+  toPublicAiSuggestion,
   toPublicAiAnswer,
   toPublicAiAnswerFeedback,
   toPublicQuestionVersion,

@@ -1,5 +1,3 @@
-import mongoose from "mongoose";
-
 import queueUserInterest from "../../../user/userInterest/queueUserInterest.service.js";
 
 import HttpError from "../../../../utils/http/httpError.util.js";
@@ -28,9 +26,6 @@ const createFeedbackOnAiAnswerService = async (
     questionVersionAtFeedback: number;
   },
 ) => {
-  if (!mongoose.Types.ObjectId.isValid(aiAnswerId))
-    throw new HttpError("Invalid aiAnswerId", 400);
-
   const foundAiAnswer = await AiAnswer.findById(aiAnswerId)
     .select("_id questionId isPublished")
     .lean();

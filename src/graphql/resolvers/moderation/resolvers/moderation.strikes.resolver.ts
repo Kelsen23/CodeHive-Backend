@@ -1,11 +1,11 @@
 import { Redis } from "ioredis";
 
 import {
+  default as getStrikes,
   type ModerationGraphqlStrikeContext,
   type StrikeCursor,
   type StrikePage,
 } from "../helpers/moderation.strikes.helper.js";
-import getStrikes from "../helpers/moderation.strikes.helper.js";
 
 const moderationStrikesResolver = {
   Query: {

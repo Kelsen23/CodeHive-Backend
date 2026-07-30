@@ -1,28 +1,26 @@
-import { Response } from "express";
+import type { Response } from "express";
 
-import AuthenticatedRequest from "../types/authenticatedRequest.type.js";
+import type AuthenticatedRequest from "../types/authenticatedRequest.type.js";
 
-import refundCreditCharge from "../services/user/credits/refundCreditCharge.service.js";
 import {
   acceptAnswer as acceptAnswerService,
   createAnswerOnQuestion as createAnswerOnQuestionService,
-  createFeedbackOnAiAnswer as createFeedbackOnAiAnswerService,
   createQuestion as createQuestionService,
   createReplyOnAnswer as createReplyOnAnswerService,
   deleteContent as deleteContentService,
-  editFeedbackOnAiAnswer as editFeedbackOnAiAnswerService,
   editQuestion as editQuestionService,
+  generateQuestionSuggestionRequest as generateQuestionSuggestionRequestService,
   generateAiAnswerRequest as generateAiAnswerRequestService,
-  generateSuggestionRequest as generateSuggestionRequestService,
+  createFeedbackOnAiAnswer as createFeedbackOnAiAnswerService,
+  editFeedbackOnAiAnswer as editFeedbackOnAiAnswerService,
   markAnswerAsBest as markAnswerAsBestService,
-  publishAiAnswer as publishAiAnswerService,
   rollbackVersion as rollbackVersionService,
   unacceptAnswer as unacceptAnswerService,
   unmarkAnswerAsBest as unmarkAnswerAsBestService,
-  unpublishAiAnswer as unpublishAiAnswerService,
   unvote as unvoteService,
   vote as voteService,
 } from "../services/question/question.service.js";
+import refundCreditCharge from "../services/user/credits/refundCreditCharge.service.js";
 
 import asyncHandler from "../middlewares/asyncHandler.middleware.js";
 
@@ -155,29 +153,16 @@ const rollbackVersion = asyncHandler(
   },
 );
 
-const generateSuggestion = asyncHandler(
+const generateQuestionSuggestion = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const { id: userId } = req.user;
-    const { questionId } = req.params;
+    const { questionId, version } = req.params;
 
-    let result;
-    try {
-      result = await generateSuggestionRequestService(
-        userId,
-        questionId,
-        Number(req.body.version),
-        req.creditCharge,
-      );
-    } catch (error) {
-      if (req.creditCharge?.chargedNow) {
-        await refundCreditCharge({
-          operationKey: req.creditCharge.operationKey,
-          reason: "AI suggestion request failed",
-        });
-      }
-
-      throw error;
-    }
+    const result = await generateQuestionSuggestionRequestService({
+      userId,
+      questionId,
+      version: Number(version),
+    });
 
     return res.status(200).json(result);
   },
@@ -193,7 +178,7 @@ const generateAiAnswer = asyncHandler(
       result = await generateAiAnswerRequestService(
         userId,
         questionId,
-        Number(req.body.version),
+        req.body.version,
         req.creditCharge,
       );
     } catch (error) {
@@ -206,34 +191,6 @@ const generateAiAnswer = asyncHandler(
 
       throw error;
     }
-
-    return res.status(200).json(result);
-  },
-);
-
-const publishAiAnswer = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const { id: userId } = req.user;
-    const { questionId } = req.params;
-    const { aiAnswerId } = req.body;
-
-    const result = await publishAiAnswerService(userId, questionId, aiAnswerId);
-
-    return res.status(200).json(result);
-  },
-);
-
-const unpublishAiAnswer = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const { id: userId } = req.user;
-    const { questionId } = req.params;
-    const { aiAnswerId } = req.body;
-
-    const result = await unpublishAiAnswerService(
-      userId,
-      questionId,
-      aiAnswerId,
-    );
 
     return res.status(200).json(result);
   },
@@ -286,10 +243,8 @@ export {
   unmarkAnswerAsBest,
   editQuestion,
   rollbackVersion,
-  generateSuggestion,
+  generateQuestionSuggestion,
   generateAiAnswer,
-  publishAiAnswer,
-  unpublishAiAnswer,
   createFeedbackOnAiAnswer,
   editFeedbackOnAiAnswer,
   deleteContent,

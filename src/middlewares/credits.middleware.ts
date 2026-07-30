@@ -1,7 +1,6 @@
-import { NextFunction, Response } from "express";
+import type { NextFunction, Response } from "express";
 import mongoose from "mongoose";
 
-import type { CreditOperationType } from "../generated/prisma/client.js";
 import type AuthenticatedRequest from "../types/authenticatedRequest.type.js";
 
 import calculateCreditCharge from "../services/user/credits/calculateCreditCharge.service.js";
@@ -10,11 +9,9 @@ import chargeCreditsService from "../services/user/credits/chargeCredits.service
 import HttpError from "../utils/http/httpError.util.js";
 
 import AiAnswer from "../models/aiAnswer.model.js";
-import AiSuggestion from "../models/aiSuggestion.model.js";
 import QuestionVersion from "../models/questionVersion.model.js";
-import asyncHandler from "./asyncHandler.middleware.js";
 
-const AI_SUGGESTION_TTL_MS = 45 * 60 * 1000;
+import asyncHandler from "./asyncHandler.middleware.js";
 
 const getCreditOperationKey = ({
   type,
@@ -22,18 +19,12 @@ const getCreditOperationKey = ({
   questionId,
   version,
 }: {
-  type: "AI_SUGGESTION" | "AI_ANSWER";
+  type: "AI_ANSWER";
   userId: string;
   questionId: string;
   version: number;
 }) => {
-  const baseKey = `${type}:${userId}:${questionId}:${version}`;
-
-  if (type === "AI_SUGGESTION") {
-    return `${baseKey}:${Math.floor(Date.now() / AI_SUGGESTION_TTL_MS)}`;
-  }
-
-  return baseKey;
+  return `${type}:${userId}:${questionId}:${version}`;
 };
 
 const getQuestionVersionText = async (questionId: string, version: number) => {
@@ -60,29 +51,21 @@ const hasExistingBillableResult = async ({
   questionId,
   version,
 }: {
-  type: CreditOperationType;
+  type: "AI_ANSWER";
   questionId: string;
   version: number;
 }) => {
   if (!mongoose.Types.ObjectId.isValid(questionId)) return false;
 
-  if (type === "AI_SUGGESTION") {
-    return !!(await AiSuggestion.exists({ questionId, version }));
-  }
-
-  if (type === "AI_ANSWER") {
-    return !!(await AiAnswer.exists({ questionId, questionVersion: version }));
-  }
-
-  return false;
+  return !!(await AiAnswer.exists({ questionId, questionVersion: version }));
 };
 
-const chargeCredits = (type: "AI_SUGGESTION" | "AI_ANSWER") =>
+const chargeCredits = (type: "AI_ANSWER") =>
   asyncHandler(
     async (req: AuthenticatedRequest, _res: Response, next: NextFunction) => {
       const userId = req.user?.id;
       const { questionId } = req.params;
-      const version = Number(req.body.version);
+      const version = Number(req.params.version ?? req.body.version);
 
       if (!userId) {
         throw new HttpError("Not authenticated", 401);

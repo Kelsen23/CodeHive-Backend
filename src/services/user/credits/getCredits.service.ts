@@ -16,6 +16,11 @@ type CreditPeriodSummary = {
   resetAt: Date;
 };
 
+const clampPercentage = (value: number) => Math.max(0, Math.min(100, value));
+
+const roundPercentage = (value: number) =>
+  Number(clampPercentage(value).toFixed(2));
+
 const getCredits = async ({ userId }: { userId: string }) => {
   const limits = getCreditLimits();
 
@@ -43,11 +48,12 @@ const getCredits = async ({ userId }: { userId: string }) => {
       );
       const spent = periodUsage?.used ?? 0;
       const spentPercentage = (spent / limit) * 100;
+      const remainingPercentage = 100 - spentPercentage;
 
       return {
         periodType,
-        spentPercentage,
-        remainingPercentage: 100 - spentPercentage,
+        spentPercentage: roundPercentage(spentPercentage),
+        remainingPercentage: roundPercentage(remainingPercentage),
         resetAt: periodUsage?.resetAt ?? getNextResetAt(periodType),
       };
     },

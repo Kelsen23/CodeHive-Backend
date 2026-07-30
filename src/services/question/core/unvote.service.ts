@@ -38,21 +38,7 @@ const actionMap = {
 } as const;
 
 const unvote = async (userId: string, targetType: string, targetId: string) => {
-  if (
-    targetType !== "question" &&
-    targetType !== "answer" &&
-    targetType !== "reply"
-  )
-    throw new HttpError("Invalid target type", 400);
-
   const normalizedTargetType = targetType.toUpperCase() as TargetType;
-
-  if (
-    typeof targetId !== "string" ||
-    !mongoose.Types.ObjectId.isValid(targetId)
-  ) {
-    throw new HttpError("Invalid targetId", 400);
-  }
 
   const foundVote = await Vote.findOne({
     userId,

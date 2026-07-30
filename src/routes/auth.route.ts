@@ -49,22 +49,22 @@ const router = express.Router();
 
 router
   .route("/register")
-  .post(registerLimiterMiddleware, validate(registerSchema), register);
+  .post(registerLimiterMiddleware, validate("body", registerSchema), register);
 
 router
   .route("/login")
-  .post(loginLimiterMiddleware, validate(loginSchema), login);
+  .post(loginLimiterMiddleware, validate("body", loginSchema), login);
 
 router
   .route("/oauth")
-  .post(oauthLimiterMiddleware, validate(oauthSchema), registerOrLogin);
+  .post(oauthLimiterMiddleware, validate("body", oauthSchema), registerOrLogin);
 
 router
   .route("/email/verify")
   .post(
     isAuthenticated,
     userEmailVerificationLimiterMiddleware,
-    validate(verifyEmailSchema),
+    validate("body", verifyEmailSchema),
     verifyEmail,
   );
 
@@ -81,7 +81,7 @@ router
   .post(
     requireLoggedOut,
     passwordResetLimiterMiddleware,
-    validate(sendResetPasswordEmailSchema),
+    validate("body", sendResetPasswordEmailSchema),
     sendResetPasswordEmail,
   );
 
@@ -90,7 +90,7 @@ router
   .post(
     requireLoggedOut,
     resendEmailLimiterMiddleware,
-    validate(sendResetPasswordEmailSchema),
+    validate("body", sendResetPasswordEmailSchema),
     resendResetPasswordEmail,
   );
 
@@ -99,7 +99,7 @@ router
   .post(
     requireLoggedOut,
     emailVerificationLimiterMiddleware,
-    validate(verifyResetPasswordOtpSchema),
+    validate("body", verifyResetPasswordOtpSchema),
     verifyResetPasswordOtp,
   );
 
@@ -108,7 +108,7 @@ router
   .post(
     requireLoggedOut,
     passwordResetLimiterMiddleware,
-    validate(resetPasswordSchema),
+    validate("body", resetPasswordSchema),
     resetPassword,
   );
 
@@ -117,7 +117,7 @@ router
   .post(
     isAuthenticated,
     userPasswordChangeLimiterMiddleware,
-    validate(changePasswordSchema),
+    validate("body", changePasswordSchema),
     changePassword,
   );
 

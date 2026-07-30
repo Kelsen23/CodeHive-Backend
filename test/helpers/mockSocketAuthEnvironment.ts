@@ -2,7 +2,6 @@ import { vi } from "vitest";
 
 const initSocketEmitSubscriber = vi.fn();
 const initSocketDisconnectSubscriber = vi.fn();
-const initEditSessionListener = vi.fn();
 const initAiAnswerSessionListener = vi.fn();
 const initQuestionSessionListener = vi.fn();
 
@@ -15,9 +14,6 @@ export const mockSocketAuthModules = {
   },
   socketDisconnectSubscriber: {
     default: initSocketDisconnectSubscriber,
-  },
-  editSessionListener: {
-    default: initEditSessionListener,
   },
   aiAnswerSessionListener: {
     default: initAiAnswerSessionListener,
@@ -36,7 +32,6 @@ export const mockSocketAuthModules = {
 export const resetSocketAuthEnvironment = () => {
   initSocketEmitSubscriber.mockClear();
   initSocketDisconnectSubscriber.mockClear();
-  initEditSessionListener.mockClear();
   initAiAnswerSessionListener.mockClear();
   initQuestionSessionListener.mockClear();
   initializeSocketUserSession.mockClear();
@@ -45,7 +40,6 @@ export const resetSocketAuthEnvironment = () => {
 
 export {
   initAiAnswerSessionListener,
-  initEditSessionListener,
   initQuestionSessionListener,
   initSocketDisconnectSubscriber,
   initSocketEmitSubscriber,

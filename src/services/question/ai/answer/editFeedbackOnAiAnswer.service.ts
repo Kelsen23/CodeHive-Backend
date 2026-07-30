@@ -1,5 +1,3 @@
-import mongoose from "mongoose";
-
 import HttpError from "../../../../utils/http/httpError.util.js";
 import { makeJobId } from "../../../../utils/job/makeJobId.util.js";
 
@@ -25,9 +23,6 @@ const editFeedbackOnAiAnswer = async (
     questionVersionAtFeedback: number;
   },
 ) => {
-  if (!mongoose.Types.ObjectId.isValid(feedbackId))
-    throw new HttpError("Invalid feedbackId", 400);
-
   const foundFeedback = await AiAnswerFeedback.findById(feedbackId)
     .select(
       "userId aiAnswerId type body questionVersionAtFeedback isDeleted isActive",

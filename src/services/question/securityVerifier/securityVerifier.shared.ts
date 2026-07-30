@@ -14,18 +14,18 @@ const securityVerifierStatusByDecision: Record<
     "ALLOWED" | "ALLOWED_WITH_CONSTRAINTS" | "REJECTED"
   >
 > = {
-  allow: "ALLOWED",
-  allow_with_constraints: "ALLOWED_WITH_CONSTRAINTS",
-  reject: "REJECTED",
+  ALLOW: "ALLOWED",
+  ALLOW_WITH_CONSTRAINTS: "ALLOWED_WITH_CONSTRAINTS",
+  REJECT: "REJECTED",
 };
 
 const questionGatewayAuditDecisionBySecurityDecision: Record<
   SecurityVerifierResult["finalSecurityDecision"],
   QuestionGatewayAuditDecision
 > = {
-  allow: "ALLOW",
-  allow_with_constraints: "ALLOW_WITH_CONSTRAINTS",
-  reject: "REJECT",
+  ALLOW: "ALLOW",
+  ALLOW_WITH_CONSTRAINTS: "ALLOW_WITH_CONSTRAINTS",
+  REJECT: "REJECT",
 };
 
 const buildSecurityVerifierMetadata = (
@@ -54,17 +54,17 @@ const buildFailClosedSecurityVerifierResult = (
   const message = error instanceof Error ? error.message : "Unknown error";
 
   return {
-    finalSecurityDecision: "reject",
+    finalSecurityDecision: "REJECT",
     promptInjection: {
       detected: true,
-      risk: "high",
-      attackType: "other",
+      risk: "HIGH",
+      attackType: "OTHER",
       suspiciousText: [],
     },
     harmfulTechnicalIntent: {
       detected: false,
-      category: "none",
-      severity: "none",
+      category: "NONE",
+      severity: "NONE",
     },
     downstreamPolicy: {
       eligibleForDownstreamProcessing: false,

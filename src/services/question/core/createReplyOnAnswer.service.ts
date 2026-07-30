@@ -1,6 +1,5 @@
 import routeNotification from "../../notification/routeNotification.service.js";
 
-import HttpError from "../../../utils/http/httpError.util.js";
 import { makeJobId } from "../../../utils/job/makeJobId.util.js";
 
 import Question from "../../../models/question.model.js";
@@ -15,7 +14,6 @@ import {
   ensureActiveQuestion,
   getCachedAnswer,
   getCachedQuestion,
-  isObjectId,
   queueQuestionStats,
 } from "../question.shared.js";
 import { toPublicReply } from "../question.response.js";
@@ -29,8 +27,6 @@ const createReplyOnAnswer = async ({
   answerId: string;
   body: string;
 }) => {
-  if (!isObjectId(answerId)) throw new HttpError("Invalid answerId", 400);
-
   const foundAnswer =
     (await getCachedAnswer(
       answerId,

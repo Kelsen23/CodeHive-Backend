@@ -212,7 +212,7 @@ const processQuestionEligibilityGateJob = async ({
           questionEligibilityUpdatedAt: updatedAt,
           questionEligibilitySourceVersion: version,
           securityVerifierStatus:
-            eligibilityResult.decision === "allow"
+            eligibilityResult.decision === "ALLOW"
               ? nextSecurityVerifierStatus
               : "NOT_REQUIRED",
           securityVerifierUpdatedAt: null,
@@ -234,7 +234,7 @@ const processQuestionEligibilityGateJob = async ({
         questionGatewayAuditDecisionByGateDecision[eligibilityResult.decision],
       questionEligibilityStatus: nextEligibilityStatus,
       securityVerifierStatus:
-        eligibilityResult.decision === "allow"
+        eligibilityResult.decision === "ALLOW"
           ? nextSecurityVerifierStatus
           : "NOT_REQUIRED",
       eligibleForDownstreamProcessing:
@@ -251,7 +251,7 @@ const processQuestionEligibilityGateJob = async ({
       userId: String(lockedQuestion.userId),
       questionEligibilityStatus: nextEligibilityStatus,
       securityVerifierStatus:
-        eligibilityResult.decision === "allow"
+        eligibilityResult.decision === "ALLOW"
           ? nextSecurityVerifierStatus
           : "NOT_REQUIRED",
     });

@@ -124,7 +124,7 @@ describe("sendResetPasswordEmail service", () => {
       expect.objectContaining({
         email: "alice@example.com",
         userId: "user_1",
-        purpose: "RESET_PASSWORD",
+        purpose: "resetPassword",
         subject: "Reset Password Request",
         htmlContent: "<otp-email>",
       }),

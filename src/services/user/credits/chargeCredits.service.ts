@@ -24,11 +24,13 @@ const chargeCredits = async ({
   operationKey,
   type,
   amount,
+  reason,
 }: {
   userId: string;
   operationKey: string;
   type: "AI_SUGGESTION" | "AI_ANSWER";
   amount: number;
+  reason?: string | null;
 }) => {
   if (amount <= 0) throw new HttpError("Invalid credit charge amount", 400);
 
@@ -77,7 +79,7 @@ const chargeCredits = async ({
                 type,
                 chargedAt: new Date(),
                 refundedAt: null,
-                reason: null,
+                reason: reason ?? null,
                 dailyResetAt,
                 weeklyResetAt,
                 attemptCount: { increment: 1 },
@@ -90,6 +92,7 @@ const chargeCredits = async ({
                 type,
                 status: "CHARGED",
                 chargeAmount: amount,
+                reason: reason ?? null,
                 dailyResetAt,
                 weeklyResetAt,
               },

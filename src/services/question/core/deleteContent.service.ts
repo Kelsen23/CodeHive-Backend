@@ -18,8 +18,6 @@ import Reply from "../../../models/reply.model.js";
 
 import statsQueue from "../../../queues/stats.queue.js";
 
-import { isObjectId } from "../question.shared.js";
-
 type TargetType = "QUESTION" | "ANSWER" | "REPLY" | "AI_ANSWER_FEEDBACK";
 
 const modelMap = {
@@ -40,21 +38,6 @@ const deleteContent = async (
   targetType: string,
   targetId: string,
 ) => {
-  const validTargetTypes: TargetType[] = [
-    "QUESTION",
-    "ANSWER",
-    "REPLY",
-    "AI_ANSWER_FEEDBACK",
-  ];
-
-  if (!validTargetTypes.includes(targetType as TargetType)) {
-    throw new HttpError("Invalid target type", 400);
-  }
-
-  if (!isObjectId(targetId)) {
-    throw new HttpError("Invalid targetId", 400);
-  }
-
   const Model = modelMap[targetType as TargetType] as any;
   let foundContent: any;
 

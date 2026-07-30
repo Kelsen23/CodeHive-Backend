@@ -12,11 +12,13 @@ const completedSecurityVerifierStatuses = new Set<SecurityVerifierStatus>([
   "ALLOWED_WITH_CONSTRAINTS",
 ]);
 
+const aiSuggestionEligibilityStatuses = new Set(["ALLOWED", "CLARIFY"]);
+
 const canGetAISuggestion = ({
   questionEligibilityStatus,
   securityVerifierStatus,
 }: Record<string, any>) =>
-  questionEligibilityStatus === "ALLOWED" &&
+  aiSuggestionEligibilityStatuses.has(questionEligibilityStatus) &&
   completedSecurityVerifierStatuses.has(
     securityVerifierStatus as SecurityVerifierStatus,
   );
@@ -26,7 +28,10 @@ const canGetAIAnswer = ({
   securityVerifierStatus,
   embeddingStatus,
 }: Record<string, any>) =>
-  canGetAISuggestion({ questionEligibilityStatus, securityVerifierStatus }) &&
+  questionEligibilityStatus === "ALLOWED" &&
+  completedSecurityVerifierStatuses.has(
+    securityVerifierStatus as SecurityVerifierStatus,
+  ) &&
   embeddingStatus === "READY";
 
 const buildSecurityConstraintInstructions = ({

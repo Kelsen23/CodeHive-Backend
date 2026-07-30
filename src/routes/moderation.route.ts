@@ -32,7 +32,7 @@ router
     isVerified,
     requireActiveUser,
     createReportLimiterMiddleware,
-    validate(reportSchema),
+    validate("body", reportSchema),
     createReport,
   );
 
@@ -43,7 +43,7 @@ router
     isVerified,
     requireActiveUser,
     isAdmin,
-    validate(moderateSchema),
+    validate("body", moderateSchema),
     moderate,
   );
 
@@ -54,7 +54,7 @@ router
     isVerified,
     requireActiveUser,
     isAdmin,
-    validate(removeBanSchema),
+    validate("body", removeBanSchema),
     removeBan,
   );
 

@@ -1,4 +1,5 @@
 import { RateLimiterRedis } from "rate-limiter-flexible";
+
 import type { Request } from "express";
 
 import { getRedisMessagingClient } from "../../config/redis.config.js";
@@ -103,20 +104,6 @@ const generateAiAnswerLimiter = new RateLimiterRedis({
   storeClient: getRedisMessagingClient(),
   keyPrefix: "question:ai:answer",
   points: 10,
-  duration: 60 * 30,
-});
-
-const publishAiAnswerLimiter = new RateLimiterRedis({
-  storeClient: getRedisMessagingClient(),
-  keyPrefix: "question:ai:answer:publish",
-  points: 20,
-  duration: 60 * 30,
-});
-
-const unpublishAiAnswerLimiter = new RateLimiterRedis({
-  storeClient: getRedisMessagingClient(),
-  keyPrefix: "question:ai:answer:unpublish",
-  points: 20,
   duration: 60 * 30,
 });
 
@@ -225,18 +212,6 @@ const generateAiAnswerLimiterMiddleware = createRateLimiterMiddleware(
   userKeyResolver,
 );
 
-const publishAiAnswerLimiterMiddleware = createRateLimiterMiddleware(
-  publishAiAnswerLimiter,
-  "Too many AI answer publish requests, please try again later",
-  userKeyResolver,
-);
-
-const unpublishAiAnswerLimiterMiddleware = createRateLimiterMiddleware(
-  unpublishAiAnswerLimiter,
-  "Too many AI answer unpublish requests, please try again later",
-  userKeyResolver,
-);
-
 const createFeedbackOnAiAnswerLimiterMiddleware = createRateLimiterMiddleware(
   createFeedbackOnAiAnswerLimiter,
   "Too many AI answer feedback requests, please try again later",
@@ -270,8 +245,6 @@ export {
   deleteContentLimiterMiddleware,
   generateSuggestionLimiterMiddleware,
   generateAiAnswerLimiterMiddleware,
-  publishAiAnswerLimiterMiddleware,
-  unpublishAiAnswerLimiterMiddleware,
   createFeedbackOnAiAnswerLimiterMiddleware,
   editAiFeedbackLimiterMiddleware,
   deleteAiFeedbackLimiterMiddleware,
