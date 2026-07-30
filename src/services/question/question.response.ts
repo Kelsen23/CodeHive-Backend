@@ -66,7 +66,10 @@ const toPublicAiSuggestion = (suggestion: any) => ({
     ? suggestion.suggestedTags
     : [],
   improvementTips: Array.isArray(suggestion.improvementTips)
-    ? suggestion.improvementTips
+    ? suggestion.improvementTips.map((tip: any) => ({
+        category: tip.category,
+        message: tip.message,
+      }))
     : [],
   createdAt: suggestion.createdAt,
   updatedAt: suggestion.updatedAt,
