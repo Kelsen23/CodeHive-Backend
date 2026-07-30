@@ -16,14 +16,12 @@ const AiSuggestionSchema = new Schema(
       maxlength: 150,
       required: true,
     },
-
     suggestedBody: {
       type: String,
       minlength: 20,
       maxlength: 20000,
       required: true,
     },
-
     suggestedTags: {
       type: [String],
       default: [],
