@@ -25,7 +25,7 @@ const generateQuestionSuggestionRequest = async ({
   questionId,
   version,
 }: GenerateQuestionSuggestionRequestInput): Promise<GenerateQuestionSuggestionRequestResult> => {
-  const { question, title, body, tags, questionText } =
+  const { question, title, body, tags, questionText, eligibilityGateDiagnosis } =
     await loadQuestionSuggestionContext({
       userId,
       questionId,
@@ -96,6 +96,7 @@ const generateQuestionSuggestionRequest = async ({
               body,
               tags,
               securityVerifierStatus: question.securityVerifierStatus,
+              eligibilityGateDiagnosis,
             });
 
           await assertLockHeld();
