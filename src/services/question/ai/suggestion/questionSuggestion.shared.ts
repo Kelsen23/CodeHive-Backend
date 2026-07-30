@@ -16,6 +16,7 @@ import convertQuestionToLLMText from "../../../../utils/question/convertQuestion
 import normalizeText from "../../../../utils/question/normalizeText.util.js";
 
 import AiSuggestion from "../../../../models/aiSuggestion.model.js";
+import EligibilityGateActionLog from "../../../../models/eligibilityGateActionLog.model.js";
 import Notification from "../../../../models/notification.model.js";
 import Question from "../../../../models/question.model.js";
 import QuestionVersion from "../../../../models/questionVersion.model.js";
@@ -34,12 +35,20 @@ type GenerateQuestionSuggestionRequestResult = {
   suggestion: ReturnType<typeof toPublicAiSuggestion>;
 };
 
+type QuestionEligibilityGateDiagnosis = {
+  decision: "ALLOW" | "CLARIFY" | "REJECT";
+  questionEligibilityStatus: "ALLOWED" | "CLARIFY" | "REJECTED";
+  userFacingReason: string;
+  internalReason: string;
+};
+
 type QuestionSuggestionContext = {
   question: any;
   title: string;
   body: string;
   tags: string[];
   questionText: string;
+  eligibilityGateDiagnosis: QuestionEligibilityGateDiagnosis | null;
 };
 
 type QuestionSuggestionCreditCharge = {
@@ -92,6 +101,26 @@ const findExistingQuestionSuggestion = async (
     questionId,
     version,
   }).lean();
+
+const loadQuestionEligibilityGateDiagnosis = async ({
+  userId,
+  questionId,
+  version,
+}: GenerateQuestionSuggestionRequestInput): Promise<QuestionEligibilityGateDiagnosis | null> => {
+  const diagnosis = await EligibilityGateActionLog.findOne({
+    userId,
+    questionId,
+    version,
+    stage: "QUESTION_ELIGIBILITY_GATE",
+  })
+    .select(
+      "-_id decision questionEligibilityStatus userFacingReason internalReason",
+    )
+    .sort({ createdAt: -1 })
+    .lean<QuestionEligibilityGateDiagnosis>();
+
+  return diagnosis ?? null;
+};
 
 const loadQuestionSuggestionContext = async ({
   userId,
@@ -147,6 +176,11 @@ const loadQuestionSuggestionContext = async ({
     normalizeText(body),
     tags,
   );
+  const eligibilityGateDiagnosis = await loadQuestionEligibilityGateDiagnosis({
+    userId,
+    questionId,
+    version,
+  });
 
   return {
     question,
@@ -154,6 +188,7 @@ const loadQuestionSuggestionContext = async ({
     body,
     tags,
     questionText,
+    eligibilityGateDiagnosis,
   };
 };
 
@@ -358,6 +393,7 @@ export {
 };
 
 export type {
+  QuestionEligibilityGateDiagnosis,
   GenerateQuestionSuggestionRequestInput,
   GenerateQuestionSuggestionRequestResult,
   GenerateQuestionSuggestionRequestStatus,
