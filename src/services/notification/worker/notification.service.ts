@@ -46,15 +46,13 @@ const findAiSuggestionReadyNotification = ({
   event,
   target,
 }: Pick<NotificationJobData, "recipientId" | "event" | "target">) =>
-  Notification.findOne(
-    {
-      recipientId,
-      event,
-      "target.entityType": target.entityType,
-      "target.entityId": target.entityId,
-      "target.questionVersion": target.questionVersion,
-    } as any,
-  );
+  Notification.findOne({
+    recipientId,
+    event,
+    "target.entityType": target.entityType,
+    "target.entityId": target.entityId,
+    "target.questionVersion": target.questionVersion,
+  } as any);
 
 const createNotification = async ({
   recipientId,

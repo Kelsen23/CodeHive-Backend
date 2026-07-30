@@ -204,7 +204,4 @@ const withQuestionSuggestionLock = async <T>(
   }
 };
 
-export {
-  QuestionSuggestionLockConflictError,
-  withQuestionSuggestionLock,
-};
+export { QuestionSuggestionLockConflictError, withQuestionSuggestionLock };

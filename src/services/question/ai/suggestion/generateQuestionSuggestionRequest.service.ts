@@ -25,12 +25,18 @@ const generateQuestionSuggestionRequest = async ({
   questionId,
   version,
 }: GenerateQuestionSuggestionRequestInput): Promise<GenerateQuestionSuggestionRequestResult> => {
-  const { question, title, body, tags, questionText, eligibilityGateDiagnosis } =
-    await loadQuestionSuggestionContext({
-      userId,
-      questionId,
-      version,
-    });
+  const {
+    question,
+    title,
+    body,
+    tags,
+    questionText,
+    eligibilityGateDiagnosis,
+  } = await loadQuestionSuggestionContext({
+    userId,
+    questionId,
+    version,
+  });
 
   const existingSuggestion = await findExistingQuestionSuggestion(
     questionId,
