@@ -5,6 +5,9 @@ const require = createRequire(import.meta.url);
 
 const leoProfanity = require("leo-profanity");
 
-const objectIdSchema = z.string().regex(/^[a-f\d]{24}$/i, "Invalid ObjectId");
+const objectIdSchema = z
+  .string()
+  .regex(/^[a-f\d]{24}$/i, "Invalid ObjectId")
+  .transform((value) => value.toLowerCase());
 
 export { leoProfanity, objectIdSchema };
