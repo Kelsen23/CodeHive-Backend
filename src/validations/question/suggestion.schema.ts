@@ -30,7 +30,10 @@ const questionSuggestionSchema = z
       .max(20000, "Body must be at most 20000 characters"),
     suggestedTags: z
       .array(z.nativeEnum(Interest))
-      .max(5, "At most five tags are allowed"),
+      .max(5, "At most five tags are allowed")
+      .refine((tags) => new Set(tags).size === tags.length, {
+        message: "Suggested tags must be unique",
+      }),
     improvementTips: z
       .array(
         z
