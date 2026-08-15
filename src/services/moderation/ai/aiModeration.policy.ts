@@ -164,7 +164,10 @@ const getPolicyCategory = ({
     };
   }
 
-  if (sexualScore >= SEXUAL_POLICY_FLAG_MIN_SCORE) {
+  if (
+    sexualScore >= SEXUAL_POLICY_FLAG_MIN_SCORE &&
+    sexualScore >= providerTopScore
+  ) {
     return {
       primaryCategory: "sexual",
       policyScore: sexualScore,
@@ -201,8 +204,6 @@ const determineRecommendedAction = (
 
   if (!primaryCategory) return "WARN";
 
-  if (providerFlagged) return "WARN";
-
   if (isHighRiskCategory(primaryCategory)) {
     if (topScore >= HIGH_RISK_PERM_BAN_MIN_SCORE) return "BAN_PERM";
     if (topScore >= HIGH_RISK_TEMP_BAN_MIN_SCORE) return "BAN_TEMP";
@@ -217,10 +218,11 @@ const determineRecommendedAction = (
     const minimumWarnScore =
       primaryCategory === "sexual" ? SEXUAL_POLICY_FLAG_MIN_SCORE : 0.35;
 
-    return topScore >= minimumWarnScore ? "WARN" : "IGNORE";
+    if (topScore >= minimumWarnScore || providerFlagged) return "WARN";
+    return "IGNORE";
   }
 
-  return topScore >= 0.25 ? "WARN" : "IGNORE";
+  return topScore >= 0.25 || providerFlagged ? "WARN" : "IGNORE";
 };
 
 const buildModerationReasons = (

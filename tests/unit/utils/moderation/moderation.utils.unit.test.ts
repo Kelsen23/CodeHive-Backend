@@ -208,6 +208,22 @@ describe("moderation utils", () => {
     expect(result.reasons[0]).toContain("explicit sexual");
   });
 
+  it("does not let an incidental sexual score mask stronger provider categories", () => {
+    const result = buildAiModerationPolicy({
+      flagged: true,
+      category_scores: {
+        "violence/graphic": 0.9,
+        sexual: 0.1,
+      },
+    });
+
+    expect(result).toMatchObject({
+      primaryCategory: "violence/graphic",
+      confidence: 0.9,
+      recommendedAction: "BAN_PERM",
+    });
+  });
+
   it("keeps a provider flag enforceable below category thresholds", () => {
     const result = buildAiModerationPolicy({
       flagged: true,
@@ -218,6 +234,20 @@ describe("moderation utils", () => {
       flagged: true,
       primaryCategory: "violence",
       recommendedAction: "WARN",
+    });
+  });
+
+  it("preserves high-risk score-based bans over the provider warning floor", () => {
+    const result = buildAiModerationPolicy({
+      flagged: true,
+      category_scores: {
+        "violence/graphic": 0.6,
+      },
+    });
+
+    expect(result).toMatchObject({
+      primaryCategory: "violence/graphic",
+      recommendedAction: "BAN_PERM",
     });
   });
 
