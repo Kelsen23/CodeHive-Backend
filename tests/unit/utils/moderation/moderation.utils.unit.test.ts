@@ -125,6 +125,157 @@ describe("moderation utils", () => {
     expect(isLowConfidenceHighRiskCategory("sexual/minors", 0.2)).toBe(true);
   });
 
+  it("prioritizes a critical sexual-minors signal over a higher sexual score", () => {
+    const result = buildAiModerationPolicy({
+      flagged: true,
+      category_scores: {
+        sexual: 0.925,
+        "sexual/minors": 0.914,
+      },
+    });
+
+    expect(result).toMatchObject({
+      flagged: true,
+      primaryCategory: "sexual/minors",
+      recommendedAction: "BAN_PERM",
+    });
+    expect(result.reasons[0]).toContain("minor");
+    expect(result.severity).toBe(100);
+  });
+
+  it("applies sexual-minors temporary and permanent thresholds", () => {
+    expect(
+      buildAiModerationPolicy({
+        flagged: false,
+        category_scores: { "sexual/minors": 0.5 },
+      }).recommendedAction,
+    ).toBe("BAN_TEMP");
+
+    expect(
+      buildAiModerationPolicy({
+        flagged: false,
+        category_scores: { "sexual/minors": 0.55 },
+      }).recommendedAction,
+    ).toBe("BAN_PERM");
+
+    expect(
+      buildAiModerationPolicy({
+        flagged: false,
+        category_scores: { "sexual/minors": 0.499 },
+      }).recommendedAction,
+    ).toBe("IGNORE");
+  });
+
+  it("applies the combined violence and threatening-harassment override", () => {
+    const result = buildAiModerationPolicy({
+      flagged: true,
+      category_scores: {
+        violence: 0.943,
+        "harassment/threatening": 0.334,
+      },
+    });
+
+    expect(result).toMatchObject({
+      primaryCategory: "harassment/threatening",
+      recommendedAction: "BAN_TEMP",
+      severity: 100,
+    });
+
+    expect(
+      buildAiModerationPolicy({
+        flagged: false,
+        category_scores: {
+          violence: 0.9,
+          "harassment/threatening": 0.299,
+        },
+      }).recommendedAction,
+    ).toBe("IGNORE");
+  });
+
+  it("uses the Qanopy sexual threshold when the provider is not flagged", () => {
+    const result = buildAiModerationPolicy({
+      flagged: false,
+      category_scores: { sexual: 0.288 },
+    });
+
+    expect(result).toMatchObject({
+      flagged: true,
+      primaryCategory: "sexual",
+      recommendedAction: "WARN",
+    });
+    expect(result.confidence).toBe(0.288);
+    expect(result.severity).toBe(29);
+    expect(result.reasons[0]).toContain("explicit sexual");
+  });
+
+  it("does not let an incidental sexual score mask stronger provider categories", () => {
+    const result = buildAiModerationPolicy({
+      flagged: true,
+      category_scores: {
+        "violence/graphic": 0.9,
+        sexual: 0.1,
+      },
+    });
+
+    expect(result).toMatchObject({
+      primaryCategory: "violence/graphic",
+      confidence: 0.9,
+      recommendedAction: "BAN_PERM",
+    });
+  });
+
+  it("keeps a provider flag enforceable below category thresholds", () => {
+    const result = buildAiModerationPolicy({
+      flagged: true,
+      category_scores: { violence: 0.203 },
+    });
+
+    expect(result).toMatchObject({
+      flagged: true,
+      primaryCategory: "violence",
+      recommendedAction: "WARN",
+    });
+  });
+
+  it("preserves high-risk score-based bans over the provider warning floor", () => {
+    const result = buildAiModerationPolicy({
+      flagged: true,
+      category_scores: {
+        "violence/graphic": 0.6,
+      },
+    });
+
+    expect(result).toMatchObject({
+      primaryCategory: "violence/graphic",
+      recommendedAction: "BAN_PERM",
+    });
+  });
+
+  it("keeps safe and unknown unflagged vectors as IGNORE", () => {
+    expect(
+      buildAiModerationPolicy({
+        flagged: false,
+        category_scores: { sexual: 0.089 },
+      }),
+    ).toMatchObject({
+      flagged: false,
+      recommendedAction: "IGNORE",
+      severity: 0,
+    });
+
+    expect(
+      buildAiModerationPolicy({
+        flagged: false,
+        category_scores: { illicit: 0.9 },
+      }),
+    ).toMatchObject({
+      flagged: false,
+      primaryCategory: "illicit",
+      recommendedAction: "IGNORE",
+      reasons: ["No policy violation was identified."],
+    });
+  });
+
   it("normalizes AI moderation API success responses", async () => {
     llmGatewayModerate.mockResolvedValueOnce({
       flagged: true,

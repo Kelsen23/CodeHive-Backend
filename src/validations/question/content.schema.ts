@@ -16,7 +16,11 @@ const createQuestionSchema = z
       .string()
       .min(20, "Body must be at least 20 characters")
       .max(20000, "Body must be at most 20000 characters"),
-    tags: z.array(z.nativeEnum(Interest)),
+    tags: z
+      .array(z.nativeEnum(Interest))
+      .refine((tags) => new Set(tags).size === tags.length, {
+        message: "Tags must be unique",
+      }),
   })
   .superRefine((data, ctx) => {
     if (leoProfanity.check(data.title)) {
