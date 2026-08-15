@@ -19,6 +19,11 @@ const HIGH_RISK_CATEGORIES = new Set([
 
 const HIGH_RISK_TEMP_BAN_MIN_SCORE = 0.5;
 const HIGH_RISK_PERM_BAN_MIN_SCORE = 0.55;
+const SEXUAL_POLICY_FLAG_MIN_SCORE = 0.09;
+const SEXUAL_MINORS_POLICY_TEMP_BAN_MIN_SCORE = 0.5;
+const SEXUAL_MINORS_POLICY_PERM_BAN_MIN_SCORE = 0.55;
+const THREAT_VIOLENCE_MIN_SCORE = 0.9;
+const THREAT_HARASSMENT_MIN_SCORE = 0.3;
 
 const TEMP_BAN_CATEGORIES = new Set([
   "hate/threatening",
@@ -125,14 +130,78 @@ const isLowConfidenceHighRiskCategory = (
   isHighRiskCategory(primaryCategory) &&
   topScore < HIGH_RISK_TEMP_BAN_MIN_SCORE;
 
+const hasCombinedThreatSignal = (categoryScores: Record<string, number>) =>
+  (categoryScores.violence ?? 0) >= THREAT_VIOLENCE_MIN_SCORE &&
+  (categoryScores["harassment/threatening"] ?? 0) >=
+    THREAT_HARASSMENT_MIN_SCORE;
+
+const getPolicyCategory = ({
+  categoryScores,
+  providerPrimaryCategory,
+  providerTopScore,
+}: {
+  categoryScores: Record<string, number>;
+  providerPrimaryCategory: string | null;
+  providerTopScore: number;
+}) => {
+  const sexualMinorsScore = categoryScores["sexual/minors"] ?? 0;
+  const sexualScore = categoryScores.sexual ?? 0;
+  const harassmentThreateningScore =
+    categoryScores["harassment/threatening"] ?? 0;
+  const violenceScore = categoryScores.violence ?? 0;
+
+  if (sexualMinorsScore >= SEXUAL_MINORS_POLICY_TEMP_BAN_MIN_SCORE) {
+    return {
+      primaryCategory: "sexual/minors",
+      policyScore: sexualMinorsScore,
+    };
+  }
+
+  if (hasCombinedThreatSignal(categoryScores)) {
+    return {
+      primaryCategory: "harassment/threatening",
+      policyScore: Math.max(violenceScore, harassmentThreateningScore),
+    };
+  }
+
+  if (sexualScore >= SEXUAL_POLICY_FLAG_MIN_SCORE) {
+    return {
+      primaryCategory: "sexual",
+      policyScore: sexualScore,
+    };
+  }
+
+  return {
+    primaryCategory: providerPrimaryCategory,
+    policyScore: providerTopScore,
+  };
+};
+
 const determineRecommendedAction = (
   primaryCategory: string | null,
   topScore: number,
   flagged: boolean,
+  providerFlagged: boolean,
+  categoryScores: Record<string, number>,
 ): ModerationDecision => {
+  const sexualMinorsScore = categoryScores["sexual/minors"] ?? 0;
+
+  if (sexualMinorsScore >= SEXUAL_MINORS_POLICY_PERM_BAN_MIN_SCORE) {
+    return "BAN_PERM";
+  }
+
+  if (
+    sexualMinorsScore >= SEXUAL_MINORS_POLICY_TEMP_BAN_MIN_SCORE ||
+    hasCombinedThreatSignal(categoryScores)
+  ) {
+    return "BAN_TEMP";
+  }
+
   if (!flagged) return "IGNORE";
 
   if (!primaryCategory) return "WARN";
+
+  if (providerFlagged) return "WARN";
 
   if (isHighRiskCategory(primaryCategory)) {
     if (topScore >= HIGH_RISK_PERM_BAN_MIN_SCORE) return "BAN_PERM";
@@ -145,7 +214,10 @@ const determineRecommendedAction = (
   }
 
   if (WARN_CATEGORIES.has(primaryCategory)) {
-    return topScore >= 0.35 ? "WARN" : "IGNORE";
+    const minimumWarnScore =
+      primaryCategory === "sexual" ? SEXUAL_POLICY_FLAG_MIN_SCORE : 0.35;
+
+    return topScore >= minimumWarnScore ? "WARN" : "IGNORE";
   }
 
   return topScore >= 0.25 ? "WARN" : "IGNORE";
@@ -187,24 +259,44 @@ const buildAiModerationPolicy = (rawResult: {
     ]),
   );
 
-  const { primaryCategory, topScore } = getPrimaryCategory(categoryScores);
-  const flagged = Boolean(rawResult.flagged);
-  const confidence = flagged ? topScore : 1;
+  const {
+    primaryCategory: providerPrimaryCategory,
+    topScore: providerTopScore,
+  } = getPrimaryCategory(categoryScores);
+  const policyCategory = getPolicyCategory({
+    categoryScores,
+    providerPrimaryCategory,
+    providerTopScore,
+  });
+  const hasPolicyFlag =
+    (categoryScores.sexual ?? 0) >= SEXUAL_POLICY_FLAG_MIN_SCORE ||
+    (categoryScores["sexual/minors"] ?? 0) >=
+      SEXUAL_MINORS_POLICY_TEMP_BAN_MIN_SCORE ||
+    hasCombinedThreatSignal(categoryScores);
+  const flagged = Boolean(rawResult.flagged) || hasPolicyFlag;
+  const confidence = flagged ? policyCategory.policyScore : 1;
   const recommendedAction = determineRecommendedAction(
-    primaryCategory,
-    topScore,
+    policyCategory.primaryCategory,
+    policyCategory.policyScore,
+    flagged,
+    Boolean(rawResult.flagged),
+    categoryScores,
+  );
+  const reasons = buildModerationReasons(
+    policyCategory.primaryCategory,
     flagged,
   );
-  const reasons = buildModerationReasons(primaryCategory, flagged);
 
   const severity = !flagged
     ? 0
-    : isHighRiskCategory(primaryCategory)
-      ? Math.min(100, Math.round(topScore * 120))
-      : primaryCategory && TEMP_BAN_CATEGORIES.has(primaryCategory)
-        ? Math.min(100, Math.round(topScore * 110))
-        : primaryCategory && WARN_CATEGORIES.has(primaryCategory)
-          ? Math.min(100, Math.round(topScore * 100))
+    : isHighRiskCategory(policyCategory.primaryCategory)
+      ? Math.min(100, Math.round(policyCategory.policyScore * 120))
+      : policyCategory.primaryCategory &&
+          TEMP_BAN_CATEGORIES.has(policyCategory.primaryCategory)
+        ? Math.min(100, Math.round(policyCategory.policyScore * 110))
+        : policyCategory.primaryCategory &&
+            WARN_CATEGORIES.has(policyCategory.primaryCategory)
+          ? Math.min(100, Math.round(policyCategory.policyScore * 100))
           : 45;
 
   return {
@@ -213,7 +305,7 @@ const buildAiModerationPolicy = (rawResult: {
     severity,
     reasons,
     categoryScores,
-    primaryCategory,
+    primaryCategory: policyCategory.primaryCategory,
     recommendedAction,
   } satisfies AiModerationPolicyResult;
 };
