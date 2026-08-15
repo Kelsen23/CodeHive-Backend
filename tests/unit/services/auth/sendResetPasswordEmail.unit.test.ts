@@ -124,12 +124,14 @@ describe("sendResetPasswordEmail service", () => {
       expect.objectContaining({
         email: "alice@example.com",
         userId: "user_1",
-        purpose: "resetPassword",
+        purpose: "RESET_PASSWORD",
         subject: "Reset Password Request",
         htmlContent: "<otp-email>",
       }),
       expect.objectContaining({
         jobId: "job-id",
+        removeOnComplete: true,
+        removeOnFail: false,
       }),
     );
   });
