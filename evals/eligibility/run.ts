@@ -1,37 +1,39 @@
-import { mkdir, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
+import { mkdir, writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
-import { aiModerateContentWithMetadata } from "../../src/services/moderation/ai/aiModeration.service.js";
+import {
+  evaluateQuestionEligibilityWithMetadata,
+} from "../../src/services/question/ai/questionEligibilityGate.service.js";
 
 import { llmGatewayConfig } from "../../src/config/llmGateway.config.js";
 
-import { loadModerationEvalCases } from "./load.js";
+import { loadQuestionEligibilityEvalCases } from "./load.js";
 import {
-  runModerationEval,
-  type DatasetName,
+  runQuestionEligibilityEval,
   type DatasetConfig,
-  type ModerationEvalRunnerDependencies,
+  type DatasetName,
+  type QuestionEligibilityEvalRunnerDependencies,
 } from "./runner.js";
 
 const datasetConfigs: Record<DatasetName, DatasetConfig> = {
   dev: {
     path: fileURLToPath(new URL("./cases.dev.jsonl", import.meta.url)),
     reportDirectory: fileURLToPath(
-      new URL("../../.eval-results/moderation/dev/", import.meta.url),
+      new URL("../../.eval-results/eligibility/dev/", import.meta.url),
     ),
   },
   holdout: {
     path: fileURLToPath(new URL("./cases.holdout.v1.jsonl", import.meta.url)),
     reportDirectory: fileURLToPath(
-      new URL("../../.eval-results/moderation/holdout-v1/", import.meta.url),
+      new URL("../../.eval-results/eligibility/holdout-v1/", import.meta.url),
     ),
   },
   regression: {
     path: fileURLToPath(new URL("./cases.regression.jsonl", import.meta.url)),
     reportDirectory: fileURLToPath(
-      new URL("../../.eval-results/moderation/regression/", import.meta.url),
+      new URL("../../.eval-results/eligibility/regression/", import.meta.url),
     ),
   },
 };
@@ -49,7 +51,7 @@ const parseDatasetName = (args: string[]): DatasetName => {
   }
 
   throw new Error(
-    `Unsupported moderation eval dataset: ${dataset}. Expected dev, holdout, or regression.`,
+    `Unsupported question eligibility eval dataset: ${dataset}. Expected dev, holdout, or regression.`,
   );
 };
 
@@ -63,9 +65,9 @@ const getGitCommit = () => {
   }
 };
 
-const dependencies: ModerationEvalRunnerDependencies = {
-  loadCases: loadModerationEvalCases,
-  moderateContent: aiModerateContentWithMetadata,
+const dependencies: QuestionEligibilityEvalRunnerDependencies = {
+  loadCases: loadQuestionEligibilityEvalCases,
+  evaluateEligibility: evaluateQuestionEligibilityWithMetadata,
   now: () => performance.now(),
   getTimestamp: () => new Date().toISOString(),
   getGitCommit,
@@ -79,14 +81,13 @@ const dependencies: ModerationEvalRunnerDependencies = {
 
 const run = async () => {
   const dataset = parseDatasetName(process.argv.slice(2));
-  const datasetConfig = datasetConfigs[dataset];
 
-  await runModerationEval({
+  await runQuestionEligibilityEval({
     dataset,
-    datasetConfig,
+    datasetConfig: datasetConfigs[dataset],
     dependencies,
-    provider: llmGatewayConfig.routes.moderation.primary.provider,
-    model: llmGatewayConfig.routes.moderation.primary.model,
+    provider: llmGatewayConfig.routes.questionEligibilityGate.primary.provider,
+    model: llmGatewayConfig.routes.questionEligibilityGate.primary.model,
   });
 };
 

@@ -1,6 +1,7 @@
-import type { AiModerationResult } from "../../../src/services/moderation/ai/aiModeration.service.js";
+import type { AiModerationResult } from "../../../../src/services/moderation/ai/aiModeration.service.js";
 
-import type { ModerationEvalCase } from "../../../evals/moderation/schema.js";
+import type { ModerationEvalExecution } from "../../../../evals/moderation/runner.js";
+import type { ModerationEvalCase } from "../../../../evals/moderation/schema.js";
 
 const createModerationEvalCase = (
   overrides: Partial<ModerationEvalCase> = {},
@@ -41,4 +42,23 @@ const createModerationFailure = (
   error,
 });
 
-export { createModerationEvalCase, createModerationResult, createModerationFailure };
+const createModerationExecution = (
+  result: AiModerationResult = createModerationResult(),
+  overrides: Partial<NonNullable<ModerationEvalExecution["routing"]>> = {},
+): ModerationEvalExecution => ({
+  result,
+  routing: {
+    provider: "openai",
+    model: "fixture-model",
+    fallbackUsed: false,
+    routedModel: undefined,
+    ...overrides,
+  },
+});
+
+export {
+  createModerationEvalCase,
+  createModerationExecution,
+  createModerationResult,
+  createModerationFailure,
+};

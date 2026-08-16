@@ -2,10 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createModerationEvalCase,
+  createModerationExecution,
   createModerationFailure,
   createModerationResult,
-} from "../../../helpers/moderation-evals/fixtures.js";
-import { createModerationEvalRunnerMocks } from "../../../helpers/moderation-evals/mockModerationEvalRunner.js";
+} from "../../../helpers/evals/moderation/fixtures.js";
+import { createModerationEvalRunnerMocks } from "../../../helpers/evals/moderation/mockModerationEvalRunner.js";
 import {
   calculateSummary,
   getContentForModeration,
@@ -48,7 +49,13 @@ describe("moderation eval runner", () => {
 
   it("runs one case, preserves actual output, and records latency", async () => {
     const now = vi.fn<() => number>().mockReturnValueOnce(10).mockReturnValueOnce(35);
-    const moderateContent = vi.fn(async () => createModerationResult());
+    const execution = createModerationExecution(createModerationResult(), {
+      provider: "anthropic",
+      model: "fallback-model",
+      fallbackUsed: true,
+      routedModel: "fallback-model",
+    });
+    const moderateContent = vi.fn(async () => execution);
     const testCase = createModerationEvalCase();
 
     const result = await runCase(testCase, { moderateContent, now });
@@ -60,6 +67,7 @@ describe("moderation eval runner", () => {
       caseId: testCase.id,
       expected: testCase.expected,
       actual: createModerationResult(),
+      routing: execution.routing,
       status: "PASS",
       latencyMs: 25,
     });
@@ -72,7 +80,7 @@ describe("moderation eval runner", () => {
     ];
     const mocks = createModerationEvalRunnerMocks(cases);
     mocks.moderateContent
-      .mockResolvedValueOnce(createModerationResult())
+      .mockResolvedValueOnce(createModerationExecution())
       .mockRejectedValueOnce(new Error("provider unavailable"));
 
     const result = await runModerationEval({
@@ -174,8 +182,8 @@ describe("moderation eval runner", () => {
       expect.objectContaining({
         metadata: expect.objectContaining({
           dataset: "regression",
-          provider: "fixture-provider",
-          model: "fixture-model",
+          configuredProvider: "fixture-provider",
+          configuredModel: "fixture-model",
         }),
         summary: expect.objectContaining({
           totalCases: 0,

@@ -1,9 +1,14 @@
-import type { AiModerationResult } from "../../src/services/moderation/ai/aiModeration.service.js";
+import type { QuestionEligibilityGateResult } from "../../src/validations/question/eligibilityGate.schema.js";
 import type { LLMMetadata } from "../../src/services/llmGateway/llmGateway.types.js";
-import { buildContentFields } from "../../src/services/moderation/ai/contentModeration.shared.js";
 
-import type { ModerationEvalCase } from "./schema.js";
-import { scoreModerationCase } from "./score.js";
+import type {
+  QuestionEligibilityEvalCase,
+  QuestionEligibilityEvalInput,
+} from "./schema.js";
+import {
+  scoreQuestionEligibilityCase,
+  type EligibilityEvalActualResult,
+} from "./score.js";
 
 type DatasetName = "dev" | "holdout" | "regression";
 
@@ -12,14 +17,14 @@ type DatasetConfig = {
   reportDirectory: string;
 };
 
-type ModerationEvalCaseResult = {
+type QuestionEligibilityEvalCaseResult = {
   caseId: string;
   description: string;
   tags: string[];
-  status: ReturnType<typeof scoreModerationCase>["status"];
-  assertions: ReturnType<typeof scoreModerationCase>["assertions"];
-  expected: ModerationEvalCase["expected"];
-  actual: AiModerationResult;
+  status: ReturnType<typeof scoreQuestionEligibilityCase>["status"];
+  assertions: ReturnType<typeof scoreQuestionEligibilityCase>["assertions"];
+  expected: QuestionEligibilityEvalCase["expected"];
+  actual: EligibilityEvalActualResult;
   routing?: Pick<
     LLMMetadata,
     "provider" | "model" | "fallbackUsed" | "routedModel"
@@ -27,9 +32,9 @@ type ModerationEvalCaseResult = {
   latencyMs: number;
 };
 
-type ModerationEvalExecution = {
-  result: AiModerationResult;
-  routing?: Pick<
+type QuestionEligibilityEvalExecution = {
+  result: QuestionEligibilityGateResult;
+  routing: Pick<
     LLMMetadata,
     "provider" | "model" | "fallbackUsed" | "routedModel"
   >;
@@ -42,7 +47,7 @@ type TagSummary = {
   passRate: number | null;
 };
 
-type ModerationEvalSummary = {
+type QuestionEligibilityEvalSummary = {
   totalCases: number;
   successfulExecutions: number;
   executionFailures: number;
@@ -51,19 +56,25 @@ type ModerationEvalSummary = {
   qualityPassRate: number | null;
   averageLatencyMs: number | null;
   medianLatencyMs: number | null;
-  falsePositives: number;
-  falseNegatives: number;
-  falsePositiveRate: number | null;
-  falseNegativeRate: number | null;
-  flaggedFailures: number;
-  categoryFailures: number;
-  actionFailures: number;
+  decisionFailures: number;
+  downstreamEligibilityFailures: number;
+  understandabilityFailures: number;
+  softwareRelatedFailures: number;
+  realProblemFailures: number;
+  intentFailures: number;
+  questionableEntitiesFailures: number;
+  answerabilityFailures: number;
+  promptInjectionRiskFailures: number;
+  suspiciousInstructionFailures: number;
+  harmfulTechnicalIntentFailures: number;
   tags: Record<string, TagSummary>;
 };
 
-type ModerationEvalRunnerDependencies = {
-  loadCases: (filename: string) => Promise<ModerationEvalCase[]>;
-  moderateContent: (content: string) => Promise<ModerationEvalExecution>;
+type QuestionEligibilityEvalRunnerDependencies = {
+  loadCases: (filename: string) => Promise<QuestionEligibilityEvalCase[]>;
+  evaluateEligibility: (
+    input: QuestionEligibilityEvalInput,
+  ) => Promise<QuestionEligibilityEvalExecution>;
   now: () => number;
   getTimestamp: () => string;
   getGitCommit: () => string | undefined;
@@ -72,29 +83,27 @@ type ModerationEvalRunnerDependencies = {
   log: (...values: unknown[]) => void;
 };
 
-type RunModerationEvalOptions = {
+type RunQuestionEligibilityEvalOptions = {
   dataset: DatasetName;
   datasetConfig: DatasetConfig;
-  dependencies: ModerationEvalRunnerDependencies;
+  dependencies: QuestionEligibilityEvalRunnerDependencies;
   provider: string;
   model: string;
 };
 
-const getContentForModeration = (testCase: ModerationEvalCase) => {
-  return buildContentFields(testCase.input);
-};
-
 const runCase = async (
-  testCase: ModerationEvalCase,
-  dependencies: Pick<ModerationEvalRunnerDependencies, "moderateContent" | "now">,
-): Promise<ModerationEvalCaseResult> => {
-  const content = getContentForModeration(testCase);
+  testCase: QuestionEligibilityEvalCase,
+  dependencies: Pick<
+    QuestionEligibilityEvalRunnerDependencies,
+    "evaluateEligibility" | "now"
+  >,
+): Promise<QuestionEligibilityEvalCaseResult> => {
   const startedAt = dependencies.now();
-  let result: AiModerationResult;
-  let routing: ModerationEvalCaseResult["routing"];
+  let result: EligibilityEvalActualResult;
+  let routing: QuestionEligibilityEvalCaseResult["routing"];
 
   try {
-    const execution = await dependencies.moderateContent(content);
+    const execution = await dependencies.evaluateEligibility(testCase.input);
     result = execution.result;
     routing = execution.routing;
   } catch (error) {
@@ -104,8 +113,7 @@ const runCase = async (
     };
   }
 
-  const score = scoreModerationCase(testCase.expected, result);
-  const latencyMs = dependencies.now() - startedAt;
+  const score = scoreQuestionEligibilityCase(testCase.expected, result);
 
   return {
     caseId: testCase.id,
@@ -116,7 +124,7 @@ const runCase = async (
     expected: testCase.expected,
     actual: result,
     routing,
-    latencyMs,
+    latencyMs: dependencies.now() - startedAt,
   };
 };
 
@@ -124,31 +132,18 @@ const calculateRate = (numerator: number, denominator: number) =>
   denominator === 0 ? null : numerator / denominator;
 
 const calculateSummary = (
-  cases: ModerationEvalCaseResult[],
-): ModerationEvalSummary => {
+  cases: QuestionEligibilityEvalCaseResult[],
+): QuestionEligibilityEvalSummary => {
   const successfulCases = cases.filter(
     ({ status }) => status !== "EXECUTION_FAILURE",
   );
   const passedCases = cases.filter(({ status }) => status === "PASS");
-  const expectedSafeCases = successfulCases.filter(
-    ({ expected }) => !expected.flagged,
-  );
-  const expectedUnsafeCases = successfulCases.filter(
-    ({ expected }) => expected.flagged,
-  );
-  const falsePositives = expectedSafeCases.filter(
-    ({ actual }) => actual.ok && actual.flagged,
-  ).length;
-  const falseNegatives = expectedUnsafeCases.filter(
-    ({ actual }) => actual.ok && !actual.flagged,
-  ).length;
   const failedAssertions = cases.flatMap(({ assertions }) =>
     assertions.filter(({ passed }) => !passed),
   );
-
   const latencies = cases
     .map(({ latencyMs }) => latencyMs)
-    .sort((a, b) => a - b);
+    .sort((left, right) => left - right);
   const medianLatencyMs =
     latencies.length === 0
       ? null
@@ -181,6 +176,9 @@ const calculateSummary = (
     }
   }
 
+  const countFailures = (name: string) =>
+    failedAssertions.filter((assertion) => assertion.name === name).length;
+
   return {
     totalCases: cases.length,
     successfulExecutions: successfulCases.length,
@@ -194,19 +192,17 @@ const calculateSummary = (
       latencies.length,
     ),
     medianLatencyMs,
-    falsePositives,
-    falseNegatives,
-    falsePositiveRate: calculateRate(falsePositives, expectedSafeCases.length),
-    falseNegativeRate: calculateRate(
-      falseNegatives,
-      expectedUnsafeCases.length,
-    ),
-    flaggedFailures: failedAssertions.filter(({ name }) => name === "flagged")
-      .length,
-    categoryFailures: failedAssertions.filter(({ name }) => name === "category")
-      .length,
-    actionFailures: failedAssertions.filter(({ name }) => name === "action")
-      .length,
+    decisionFailures: countFailures("decision"),
+    downstreamEligibilityFailures: countFailures("downstreamEligibility"),
+    understandabilityFailures: countFailures("understandability"),
+    softwareRelatedFailures: countFailures("softwareRelated"),
+    realProblemFailures: countFailures("realProblem"),
+    intentFailures: countFailures("intent"),
+    questionableEntitiesFailures: countFailures("questionableEntities"),
+    answerabilityFailures: countFailures("answerability"),
+    promptInjectionRiskFailures: countFailures("promptInjectionRisk"),
+    suspiciousInstructionFailures: countFailures("suspiciousInstruction"),
+    harmfulTechnicalIntentFailures: countFailures("harmfulTechnicalIntent"),
     tags: Object.fromEntries(
       [...tagCounts.entries()].sort(([left], [right]) =>
         left.localeCompare(right),
@@ -220,25 +216,21 @@ const formatPercentage = (rate: number | null) =>
 
 const printSummary = (
   dataset: DatasetName,
-  summary: ModerationEvalSummary,
+  summary: QuestionEligibilityEvalSummary,
   reportPath: string,
   log: (...values: unknown[]) => void,
 ) => {
-  log(`Moderation eval: ${dataset}`);
+  log(`Question eligibility eval: ${dataset}`);
   log(`Cases: ${summary.totalCases}`);
   log(`Passed: ${summary.passedCases}`);
   log(`Quality failures: ${summary.qualityFailures}`);
   log(`Execution failures: ${summary.executionFailures}`);
+  log(`Quality pass rate: ${formatPercentage(summary.qualityPassRate)}`);
+  log(`Average latency: ${summary.averageLatencyMs ?? "n/a"}ms`);
+  log(`Median latency: ${summary.medianLatencyMs ?? "n/a"}ms`);
+  log("Assertion failures:");
   log(
-    `Quality pass rate: ${formatPercentage(summary.qualityPassRate)}`,
-  );
-  log(`False positives: ${summary.falsePositives}`);
-  log(`False negatives: ${summary.falseNegatives}`);
-  log(
-    `False-positive rate: ${formatPercentage(summary.falsePositiveRate)}`,
-  );
-  log(
-    `False-negative rate: ${formatPercentage(summary.falseNegativeRate)}`,
+    `  decision=${summary.decisionFailures}, downstreamEligibility=${summary.downstreamEligibilityFailures}, understandability=${summary.understandabilityFailures}, softwareRelated=${summary.softwareRelatedFailures}, realProblem=${summary.realProblemFailures}, intent=${summary.intentFailures}, questionableEntities=${summary.questionableEntitiesFailures}, answerability=${summary.answerabilityFailures}, promptInjectionRisk=${summary.promptInjectionRiskFailures}, suspiciousInstruction=${summary.suspiciousInstructionFailures}, harmfulTechnicalIntent=${summary.harmfulTechnicalIntentFailures}`,
   );
 
   if (Object.keys(summary.tags).length > 0) {
@@ -253,15 +245,15 @@ const printSummary = (
   log(`Report: ${reportPath}`);
 };
 
-const runModerationEval = async ({
+const runQuestionEligibilityEval = async ({
   dataset,
   datasetConfig,
   dependencies,
   provider,
   model,
-}: RunModerationEvalOptions) => {
+}: RunQuestionEligibilityEvalOptions) => {
   const testCases = await dependencies.loadCases(datasetConfig.path);
-  const caseResults: ModerationEvalCaseResult[] = [];
+  const caseResults: QuestionEligibilityEvalCaseResult[] = [];
 
   for (const testCase of testCases) {
     const result = await runCase(testCase, dependencies);
@@ -280,15 +272,18 @@ const runModerationEval = async ({
       }
     }
 
-    if (result.status === "EXECUTION_FAILURE" && !result.actual.ok) {
+    if (
+      result.status === "EXECUTION_FAILURE" &&
+      "ok" in result.actual &&
+      !result.actual.ok
+    ) {
       dependencies.log(`  ${result.actual.error}`);
     }
   }
 
   const summary = calculateSummary(caseResults);
   const timestamp = dependencies.getTimestamp();
-  const reportDirectory = datasetConfig.reportDirectory;
-  const reportPath = `${reportDirectory}/run-${timestamp.replace(/[.:]/g, "-")}.json`;
+  const reportPath = `${datasetConfig.reportDirectory}/run-${timestamp.replace(/[.:]/g, "-")}.json`;
   const report = {
     metadata: {
       timestamp,
@@ -302,7 +297,7 @@ const runModerationEval = async ({
     cases: caseResults,
   };
 
-  await dependencies.createReportDirectory(reportDirectory);
+  await dependencies.createReportDirectory(datasetConfig.reportDirectory);
   await dependencies.writeReport(reportPath, report);
   printSummary(dataset, summary, reportPath, dependencies.log);
 
@@ -312,16 +307,11 @@ const runModerationEval = async ({
 export type {
   DatasetName,
   DatasetConfig,
-  ModerationEvalCaseResult,
-  ModerationEvalSummary,
-  ModerationEvalRunnerDependencies,
-  RunModerationEvalOptions,
-  ModerationEvalExecution,
+  QuestionEligibilityEvalCaseResult,
+  QuestionEligibilityEvalSummary,
+  QuestionEligibilityEvalRunnerDependencies,
+  RunQuestionEligibilityEvalOptions,
+  QuestionEligibilityEvalExecution,
 };
 
-export {
-  calculateSummary,
-  getContentForModeration,
-  runCase,
-  runModerationEval,
-};
+export { calculateSummary, runCase, runQuestionEligibilityEval };
