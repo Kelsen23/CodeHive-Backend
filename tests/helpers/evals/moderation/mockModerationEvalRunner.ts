@@ -1,12 +1,12 @@
 import { vi } from "vitest";
 
-import type { AiModerationResult } from "../../../src/services/moderation/ai/aiModeration.service.js";
+import type { AiModerationResult } from "../../../../src/services/moderation/ai/aiModeration.service.js";
 
 import type {
   DatasetConfig,
   ModerationEvalRunnerDependencies,
-} from "../../../evals/moderation/runner.js";
-import type { ModerationEvalCase } from "../../../evals/moderation/schema.js";
+} from "../../../../evals/moderation/runner.js";
+import type { ModerationEvalCase } from "../../../../evals/moderation/schema.js";
 
 const createModerationEvalRunnerMocks = (
   cases: ModerationEvalCase[] = [],

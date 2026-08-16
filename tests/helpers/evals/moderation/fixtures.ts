@@ -1,6 +1,6 @@
-import type { AiModerationResult } from "../../../src/services/moderation/ai/aiModeration.service.js";
+import type { AiModerationResult } from "../../../../src/services/moderation/ai/aiModeration.service.js";
 
-import type { ModerationEvalCase } from "../../../evals/moderation/schema.js";
+import type { ModerationEvalCase } from "../../../../evals/moderation/schema.js";
 
 const createModerationEvalCase = (
   overrides: Partial<ModerationEvalCase> = {},

@@ -4,8 +4,8 @@ import {
   createModerationEvalCase,
   createModerationFailure,
   createModerationResult,
-} from "../../../helpers/moderation-evals/fixtures.js";
-import { createModerationEvalRunnerMocks } from "../../../helpers/moderation-evals/mockModerationEvalRunner.js";
+} from "../../../helpers/evals/moderation/fixtures.js";
+import { createModerationEvalRunnerMocks } from "../../../helpers/evals/moderation/mockModerationEvalRunner.js";
 import {
   calculateSummary,
   getContentForModeration,

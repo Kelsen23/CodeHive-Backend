@@ -4,7 +4,7 @@ import {
   createModerationEvalCase,
   createModerationFailure,
   createModerationResult,
-} from "../../../helpers/moderation-evals/fixtures.js";
+} from "../../../helpers/evals/moderation/fixtures.js";
 import { scoreModerationCase } from "../../../../evals/moderation/score.js";
 
 describe("scoreModerationCase", () => {
