@@ -282,6 +282,16 @@ describe("moderation utils", () => {
       categoryScores: {
         harassment: 0.8,
       },
+      metadata: {
+        feature: "moderation",
+        provider: "openai",
+        model: "fixture-model",
+        fallbackUsed: false,
+        promptHash: "fixture-prompt-hash",
+        latencyMs: 10,
+        usage: {},
+        cost: {},
+      },
     });
 
     const result = await aiModerateContent("abusive content");
