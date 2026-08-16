@@ -57,13 +57,17 @@ const aiModerateContentWithMetadata = async (
       result: {
         ok: false,
         error:
-          error instanceof Error ? error.message : "Unknown AI moderation error",
+          error instanceof Error
+            ? error.message
+            : "Unknown AI moderation error",
       },
     };
   }
 };
 
-const aiModerateContent = async (content: string): Promise<AiModerationResult> =>
+const aiModerateContent = async (
+  content: string,
+): Promise<AiModerationResult> =>
   (await aiModerateContentWithMetadata(content)).result;
 
 export type {
