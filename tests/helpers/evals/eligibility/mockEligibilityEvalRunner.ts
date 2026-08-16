@@ -5,13 +5,13 @@ import type {
   QuestionEligibilityEvalRunnerDependencies,
 } from "../../../../evals/eligibility/runner.js";
 import type { QuestionEligibilityEvalCase } from "../../../../evals/eligibility/schema.js";
-import { createEligibilityResult } from "./fixtures.js";
+import { createEligibilityExecution } from "./fixtures.js";
 
 const createEligibilityEvalRunnerMocks = (
   cases: QuestionEligibilityEvalCase[] = [],
 ) => {
   const loadCases = vi.fn(async (_filename: string) => cases);
-  const evaluateEligibility = vi.fn(async () => createEligibilityResult());
+  const evaluateEligibility = vi.fn(async () => createEligibilityExecution());
   const now = vi
     .fn<() => number>()
     .mockReturnValueOnce(100)

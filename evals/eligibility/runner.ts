@@ -1,4 +1,5 @@
 import type { QuestionEligibilityGateResult } from "../../src/validations/question/eligibilityGate.schema.js";
+import type { LLMMetadata } from "../../src/services/llmGateway/llmGateway.types.js";
 
 import type {
   QuestionEligibilityEvalCase,
@@ -24,7 +25,19 @@ type QuestionEligibilityEvalCaseResult = {
   assertions: ReturnType<typeof scoreQuestionEligibilityCase>["assertions"];
   expected: QuestionEligibilityEvalCase["expected"];
   actual: EligibilityEvalActualResult;
+  routing?: Pick<
+    LLMMetadata,
+    "provider" | "model" | "fallbackUsed" | "routedModel"
+  >;
   latencyMs: number;
+};
+
+type QuestionEligibilityEvalExecution = {
+  result: QuestionEligibilityGateResult;
+  routing: Pick<
+    LLMMetadata,
+    "provider" | "model" | "fallbackUsed" | "routedModel"
+  >;
 };
 
 type TagSummary = {
@@ -61,7 +74,7 @@ type QuestionEligibilityEvalRunnerDependencies = {
   loadCases: (filename: string) => Promise<QuestionEligibilityEvalCase[]>;
   evaluateEligibility: (
     input: QuestionEligibilityEvalInput,
-  ) => Promise<QuestionEligibilityGateResult>;
+  ) => Promise<QuestionEligibilityEvalExecution>;
   now: () => number;
   getTimestamp: () => string;
   getGitCommit: () => string | undefined;
@@ -87,9 +100,12 @@ const runCase = async (
 ): Promise<QuestionEligibilityEvalCaseResult> => {
   const startedAt = dependencies.now();
   let result: EligibilityEvalActualResult;
+  let routing: QuestionEligibilityEvalCaseResult["routing"];
 
   try {
-    result = await dependencies.evaluateEligibility(testCase.input);
+    const execution = await dependencies.evaluateEligibility(testCase.input);
+    result = execution.result;
+    routing = execution.routing;
   } catch (error) {
     result = {
       ok: false,
@@ -107,6 +123,7 @@ const runCase = async (
     assertions: score.assertions,
     expected: testCase.expected,
     actual: result,
+    routing,
     latencyMs: dependencies.now() - startedAt,
   };
 };
@@ -273,8 +290,8 @@ const runQuestionEligibilityEval = async ({
       dataset,
       latencyScope: "all_attempted_calls",
       gitCommit: dependencies.getGitCommit(),
-      provider,
-      model,
+      configuredProvider: provider,
+      configuredModel: model,
     },
     summary,
     cases: caseResults,
@@ -294,6 +311,7 @@ export type {
   QuestionEligibilityEvalSummary,
   QuestionEligibilityEvalRunnerDependencies,
   RunQuestionEligibilityEvalOptions,
+  QuestionEligibilityEvalExecution,
 };
 
 export { calculateSummary, runCase, runQuestionEligibilityEval };

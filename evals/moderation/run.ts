@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
-import aiModerateContent from "../../src/services/moderation/ai/aiModeration.service.js";
+import { aiModerateContentWithMetadata } from "../../src/services/moderation/ai/aiModeration.service.js";
 
 import { llmGatewayConfig } from "../../src/config/llmGateway.config.js";
 
@@ -65,7 +65,7 @@ const getGitCommit = () => {
 
 const dependencies: ModerationEvalRunnerDependencies = {
   loadCases: loadModerationEvalCases,
-  moderateContent: aiModerateContent,
+  moderateContent: aiModerateContentWithMetadata,
   now: () => performance.now(),
   getTimestamp: () => new Date().toISOString(),
   getGitCommit,

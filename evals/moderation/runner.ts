@@ -1,4 +1,5 @@
 import type { AiModerationResult } from "../../src/services/moderation/ai/aiModeration.service.js";
+import type { LLMMetadata } from "../../src/services/llmGateway/llmGateway.types.js";
 import { buildContentFields } from "../../src/services/moderation/ai/contentModeration.shared.js";
 
 import type { ModerationEvalCase } from "./schema.js";
@@ -19,7 +20,19 @@ type ModerationEvalCaseResult = {
   assertions: ReturnType<typeof scoreModerationCase>["assertions"];
   expected: ModerationEvalCase["expected"];
   actual: AiModerationResult;
+  routing?: Pick<
+    LLMMetadata,
+    "provider" | "model" | "fallbackUsed" | "routedModel"
+  >;
   latencyMs: number;
+};
+
+type ModerationEvalExecution = {
+  result: AiModerationResult;
+  routing?: Pick<
+    LLMMetadata,
+    "provider" | "model" | "fallbackUsed" | "routedModel"
+  >;
 };
 
 type TagSummary = {
@@ -50,7 +63,7 @@ type ModerationEvalSummary = {
 
 type ModerationEvalRunnerDependencies = {
   loadCases: (filename: string) => Promise<ModerationEvalCase[]>;
-  moderateContent: (content: string) => Promise<AiModerationResult>;
+  moderateContent: (content: string) => Promise<ModerationEvalExecution>;
   now: () => number;
   getTimestamp: () => string;
   getGitCommit: () => string | undefined;
@@ -78,9 +91,12 @@ const runCase = async (
   const content = getContentForModeration(testCase);
   const startedAt = dependencies.now();
   let result: AiModerationResult;
+  let routing: ModerationEvalCaseResult["routing"];
 
   try {
-    result = await dependencies.moderateContent(content);
+    const execution = await dependencies.moderateContent(content);
+    result = execution.result;
+    routing = execution.routing;
   } catch (error) {
     result = {
       ok: false,
@@ -99,6 +115,7 @@ const runCase = async (
     assertions: score.assertions,
     expected: testCase.expected,
     actual: result,
+    routing,
     latencyMs,
   };
 };
@@ -278,8 +295,8 @@ const runModerationEval = async ({
       dataset,
       latencyScope: "all_attempted_calls",
       gitCommit: dependencies.getGitCommit(),
-      provider,
-      model,
+      configuredProvider: provider,
+      configuredModel: model,
     },
     summary,
     cases: caseResults,
@@ -299,6 +316,7 @@ export type {
   ModerationEvalSummary,
   ModerationEvalRunnerDependencies,
   RunModerationEvalOptions,
+  ModerationEvalExecution,
 };
 
 export {

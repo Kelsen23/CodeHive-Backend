@@ -3,7 +3,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
-import evaluateQuestionEligibility from "../../src/services/question/ai/questionEligibilityGate.service.js";
+import {
+  evaluateQuestionEligibilityWithMetadata,
+} from "../../src/services/question/ai/questionEligibilityGate.service.js";
 
 import { llmGatewayConfig } from "../../src/config/llmGateway.config.js";
 
@@ -65,7 +67,7 @@ const getGitCommit = () => {
 
 const dependencies: QuestionEligibilityEvalRunnerDependencies = {
   loadCases: loadQuestionEligibilityEvalCases,
-  evaluateEligibility: evaluateQuestionEligibility,
+  evaluateEligibility: evaluateQuestionEligibilityWithMetadata,
   now: () => performance.now(),
   getTimestamp: () => new Date().toISOString(),
   getGitCommit,

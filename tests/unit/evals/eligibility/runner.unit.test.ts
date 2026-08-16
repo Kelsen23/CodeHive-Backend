@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createEligibilityFailure,
+  createEligibilityExecution,
   createEligibilityResult,
   createQuestionEligibilityEvalCase,
 } from "../../../helpers/evals/eligibility/fixtures.js";
@@ -19,7 +20,13 @@ describe("question eligibility eval runner", () => {
       .fn<() => number>()
       .mockReturnValueOnce(10)
       .mockReturnValueOnce(35);
-    const evaluateEligibility = vi.fn(async () => createEligibilityResult());
+    const execution = createEligibilityExecution(createEligibilityResult(), {
+      provider: "anthropic",
+      model: "fallback-model",
+      fallbackUsed: true,
+      routedModel: "fallback-model",
+    });
+    const evaluateEligibility = vi.fn(async () => execution);
 
     const result = await runCase(testCase, { evaluateEligibility, now });
 
@@ -28,6 +35,7 @@ describe("question eligibility eval runner", () => {
       caseId: testCase.id,
       expected: testCase.expected,
       actual: createEligibilityResult(),
+      routing: execution.routing,
       status: "PASS",
       latencyMs: 25,
     });
@@ -40,7 +48,7 @@ describe("question eligibility eval runner", () => {
     ];
     const mocks = createEligibilityEvalRunnerMocks(cases);
     mocks.evaluateEligibility
-      .mockResolvedValueOnce(createEligibilityResult())
+      .mockResolvedValueOnce(createEligibilityExecution())
       .mockRejectedValueOnce(new Error("provider unavailable"));
 
     const result = await runQuestionEligibilityEval({
@@ -62,7 +70,13 @@ describe("question eligibility eval runner", () => {
     );
     expect(mocks.writeReport).toHaveBeenCalledWith(
       "/fixtures/reports/run-2026-01-01T00-00-00-000Z.json",
-      expect.objectContaining({ cases: result.cases }),
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          configuredProvider: "fixture-provider",
+          configuredModel: "fixture-model",
+        }),
+        cases: result.cases,
+      }),
     );
   });
 

@@ -1,8 +1,11 @@
 import type { QuestionEligibilityGateResult } from "../../../../src/validations/question/eligibilityGate.schema.js";
 
+import type { QuestionEligibilityEvalExecution } from "../../../../evals/eligibility/runner.js";
 import type { QuestionEligibilityEvalCase } from "../../../../evals/eligibility/schema.js";
 
-type DeepPartial<T> = T extends object
+type DeepPartial<T> = T extends readonly unknown[]
+  ? T
+  : T extends object
   ? { [Key in keyof T]?: DeepPartial<T[Key]> }
   : T;
 
@@ -41,27 +44,6 @@ const createEligibilityResult = (
 ): QuestionEligibilityGateResult => ({
   decision: "ALLOW",
   eligibleForDownstreamProcessing: true,
-  understandability: {
-    status: "UNDERSTANDABLE",
-    reason: "Fixture reason",
-  },
-  softwareValidity: {
-    isSoftwareRelated: true,
-    hasRealQuestionOrProblem: true,
-    intent: "DEBUGGING",
-    technologies: ["TypeScript"],
-    questionableEntities: [],
-  },
-  answerability: {
-    status: "ANSWERABLE",
-    missingContext: [],
-  },
-  security: {
-    promptInjectionRisk: "NONE",
-    hasSuspiciousInstructionalText: false,
-    harmfulTechnicalIntent: "NONE",
-    reason: "Fixture security reason",
-  },
   userFacingReason: "Fixture user-facing reason",
   internalReason: "Fixture internal reason",
   ...overrides,
@@ -99,8 +81,23 @@ const createEligibilityFailure = (
   error,
 });
 
+const createEligibilityExecution = (
+  result: QuestionEligibilityGateResult = createEligibilityResult(),
+  overrides: Partial<QuestionEligibilityEvalExecution["routing"]> = {},
+): QuestionEligibilityEvalExecution => ({
+  result,
+  routing: {
+    provider: "openai",
+    model: "fixture-model",
+    fallbackUsed: false,
+    routedModel: undefined,
+    ...overrides,
+  },
+});
+
 export {
   createEligibilityFailure,
+  createEligibilityExecution,
   createEligibilityResult,
   createQuestionEligibilityEvalCase,
 };

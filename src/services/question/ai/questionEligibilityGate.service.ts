@@ -1,3 +1,5 @@
+import type { LLMMetadata } from "../../llmGateway/llmGateway.types.js";
+
 import llmGateway from "../../llmGateway/llmGateway.service.js";
 
 import convertQuestionToLLMText from "../../../utils/question/convertQuestionToLLMText.util.js";
@@ -140,7 +142,15 @@ Output rules:
 - Do not wrap the JSON in markdown.
 - Do not include commentary outside the JSON.`;
 
-const evaluateQuestionEligibility = async ({
+type QuestionEligibilityEvaluation = {
+  result: QuestionEligibilityGateResult;
+  routing: Pick<
+    LLMMetadata,
+    "provider" | "model" | "fallbackUsed" | "routedModel"
+  >;
+};
+
+const evaluateQuestionEligibilityWithMetadata = async ({
   title,
   body,
   tags,
@@ -148,7 +158,7 @@ const evaluateQuestionEligibility = async ({
   title: string;
   body: string;
   tags: string[];
-}): Promise<QuestionEligibilityGateResult> => {
+}): Promise<QuestionEligibilityEvaluation> => {
   const questionText = convertQuestionToLLMText(
     normalizeText(title),
     normalizeText(body),
@@ -180,8 +190,27 @@ const evaluateQuestionEligibility = async ({
     throw new Error("Question eligibility gate response was not JSON");
   }
 
-  return response.data;
+  return {
+    result: response.data,
+    routing: {
+      provider: response.metadata.provider,
+      model: response.metadata.model,
+      fallbackUsed: response.metadata.fallbackUsed,
+      routedModel: response.metadata.routedModel,
+    },
+  };
 };
 
+const evaluateQuestionEligibility = async (input: {
+  title: string;
+  body: string;
+  tags: string[];
+}): Promise<QuestionEligibilityGateResult> =>
+  (await evaluateQuestionEligibilityWithMetadata(input)).result;
+
 export default evaluateQuestionEligibility;
-export { questionEligibilityGatePrompt };
+export {
+  evaluateQuestionEligibilityWithMetadata,
+  questionEligibilityGatePrompt,
+};
+export type { QuestionEligibilityEvaluation };
