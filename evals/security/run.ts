@@ -3,35 +3,35 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
-import { evaluateQuestionEligibilityWithMetadata } from "../../src/services/question/ai/questionEligibilityGate.service.js";
+import { verifyQuestionSecurityWithMetadata } from "../../src/services/question/ai/securityVerifier.service.js";
 
 import { llmGatewayConfig } from "../../src/config/llmGateway.config.js";
 
-import { loadQuestionEligibilityEvalCases } from "./load.js";
+import { loadSecurityEvalCases } from "./load.js";
 import {
-  runQuestionEligibilityEval,
+  runSecurityEval,
   type DatasetConfig,
   type DatasetName,
-  type QuestionEligibilityEvalRunnerDependencies,
+  type SecurityEvalRunnerDependencies,
 } from "./runner.js";
 
 const datasetConfigs: Record<DatasetName, DatasetConfig> = {
   dev: {
     path: fileURLToPath(new URL("./cases.dev.jsonl", import.meta.url)),
     reportDirectory: fileURLToPath(
-      new URL("../../.eval-results/eligibility/dev/", import.meta.url),
+      new URL("../../.eval-results/security/dev/", import.meta.url),
     ),
   },
   holdout: {
     path: fileURLToPath(new URL("./cases.holdout.v1.jsonl", import.meta.url)),
     reportDirectory: fileURLToPath(
-      new URL("../../.eval-results/eligibility/holdout-v1/", import.meta.url),
+      new URL("../../.eval-results/security/holdout-v1/", import.meta.url),
     ),
   },
   regression: {
     path: fileURLToPath(new URL("./cases.regression.jsonl", import.meta.url)),
     reportDirectory: fileURLToPath(
-      new URL("../../.eval-results/eligibility/regression/", import.meta.url),
+      new URL("../../.eval-results/security/regression/", import.meta.url),
     ),
   },
 };
@@ -71,7 +71,7 @@ const parseDatasetName = (args: string[]): DatasetName => {
   }
 
   throw new Error(
-    `Unsupported question eligibility eval dataset: ${dataset}. Expected dev, holdout, or regression.`,
+    `Unsupported security eval dataset: ${dataset}. Expected dev, holdout, or regression.`,
   );
 };
 
@@ -85,9 +85,9 @@ const getGitCommit = () => {
   }
 };
 
-const dependencies: QuestionEligibilityEvalRunnerDependencies = {
-  loadCases: loadQuestionEligibilityEvalCases,
-  evaluateEligibility: evaluateQuestionEligibilityWithMetadata,
+const dependencies: SecurityEvalRunnerDependencies = {
+  loadCases: loadSecurityEvalCases,
+  verifySecurity: verifyQuestionSecurityWithMetadata,
   now: () => performance.now(),
   getTimestamp: () => new Date().toISOString(),
   getGitCommit,
@@ -102,12 +102,12 @@ const dependencies: QuestionEligibilityEvalRunnerDependencies = {
 const run = async () => {
   const dataset = parseDatasetName(process.argv.slice(2));
 
-  await runQuestionEligibilityEval({
+  await runSecurityEval({
     dataset,
     datasetConfig: datasetConfigs[dataset],
     dependencies,
-    provider: llmGatewayConfig.routes.questionEligibilityGate.primary.provider,
-    model: llmGatewayConfig.routes.questionEligibilityGate.primary.model,
+    provider: llmGatewayConfig.routes.securityVerifier.primary.provider,
+    model: llmGatewayConfig.routes.securityVerifier.primary.model,
   });
 };
 

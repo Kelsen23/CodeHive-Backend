@@ -38,10 +38,32 @@ const datasetConfigs: Record<DatasetName, DatasetConfig> = {
 
 const parseDatasetName = (args: string[]): DatasetName => {
   const datasetArgumentIndex = args.findIndex((arg) => arg === "--dataset");
-  const datasetArgument =
-    datasetArgumentIndex >= 0
-      ? args[datasetArgumentIndex + 1]
-      : args.find((arg) => arg.startsWith("--dataset="))?.slice(10);
+  let datasetArgument: string | undefined;
+
+  if (datasetArgumentIndex >= 0) {
+    const value = args[datasetArgumentIndex + 1];
+
+    if (!value || value.startsWith("--")) {
+      throw new Error(
+        "Missing value for --dataset. Expected dev, holdout, or regression.",
+      );
+    }
+
+    datasetArgument = value;
+  } else {
+    const inlineArgument = args.find((arg) => arg.startsWith("--dataset="));
+
+    if (inlineArgument !== undefined) {
+      datasetArgument = inlineArgument.slice(10);
+    }
+  }
+
+  if (datasetArgument === "") {
+    throw new Error(
+      "Missing value for --dataset. Expected dev, holdout, or regression.",
+    );
+  }
+
   const dataset = datasetArgument ?? "dev";
 
   if (dataset === "dev" || dataset === "holdout" || dataset === "regression") {
