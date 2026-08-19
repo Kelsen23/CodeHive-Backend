@@ -1,13 +1,14 @@
 import mongoose from "mongoose";
 
 import Question from "../../../models/question.model.js";
+import SimilarQuestion from "../../../models/similarQuestion.model.js";
+import type { RetrievalCandidate } from "./retrieval/retrieval.types.js";
 
 import { downstreamAllowedSecurityVerifierStatuses } from "./similarQuestions.shared.js";
 
 type LockedSimilarQuestionsQuestion = {
   _id: unknown;
   userId: unknown;
-  embedding?: number[] | null;
 };
 
 const lockQuestionForSimilarQuestions = async (
@@ -20,12 +21,12 @@ const lockQuestionForSimilarQuestions = async (
       currentVersion: version,
       isActive: true,
       isDeleted: false,
+      embeddingStatus: "READY",
       moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
       questionEligibilityStatus: "ALLOWED",
       securityVerifierStatus: {
         $in: downstreamAllowedSecurityVerifierStatuses,
       },
-      embeddingStatus: "READY",
       similarQuestionsStatus: "NONE",
     },
     { $set: { similarQuestionsStatus: "PROCESSING" } },
@@ -48,13 +49,69 @@ const resetSimilarQuestionsProcessing = async (
 const finalizeSimilarQuestions = async ({
   questionId,
   version,
-  similarQuestionIds,
+  candidates,
+  retrievalVersion,
 }: {
   questionId: string;
   version: number;
-  similarQuestionIds: mongoose.Types.ObjectId[];
-}) =>
-  Question.updateOne(
+  candidates: RetrievalCandidate[];
+  retrievalVersion: string;
+}) => {
+  const materializedCandidates = candidates.slice(0, 15);
+  await SimilarQuestion.deleteMany({
+    sourceQuestionId: questionId,
+    sourceVersion: version,
+    retrievalVersion,
+    ...(materializedCandidates.length
+      ? {
+          $nor: materializedCandidates.map((candidate) => ({
+            targetQuestionId: new mongoose.Types.ObjectId(candidate.questionId),
+            targetVersion: candidate.version,
+          })),
+        }
+      : {}),
+  });
+
+  if (materializedCandidates.length) {
+    const sourceQuestionObjectId = new mongoose.Types.ObjectId(questionId);
+    await SimilarQuestion.bulkWrite(
+      materializedCandidates.map((candidate, index) => ({
+        updateOne: {
+          filter: {
+            sourceQuestionId: sourceQuestionObjectId,
+            sourceVersion: version,
+            targetQuestionId: new mongoose.Types.ObjectId(candidate.questionId),
+            targetVersion: candidate.version,
+            retrievalVersion,
+          },
+          update: {
+            $set: {
+              rank: index + 1,
+              score: candidate.score,
+              computedAt: new Date(),
+              model: candidate.model,
+              representationVersion: candidate.representationVersion,
+            },
+            $setOnInsert: {
+              sourceQuestionId: sourceQuestionObjectId,
+              sourceVersion: version,
+              targetQuestionId: new mongoose.Types.ObjectId(
+                candidate.questionId,
+              ),
+              targetVersion: candidate.version,
+              retrievalVersion,
+              model: candidate.model,
+              representationVersion: candidate.representationVersion,
+              computedAt: new Date(),
+            },
+          },
+          upsert: true,
+        },
+      })),
+    );
+  }
+
+  return Question.updateOne(
     {
       _id: questionId,
       currentVersion: version,
@@ -62,11 +119,11 @@ const finalizeSimilarQuestions = async ({
     },
     {
       $set: {
-        similarQuestionIds,
         similarQuestionsStatus: "READY",
       },
     },
   );
+};
 
 const loadReadyQuestionForSimilarSideEffects = async (
   questionId: string,
@@ -77,18 +134,17 @@ const loadReadyQuestionForSimilarSideEffects = async (
     currentVersion: version,
     isActive: true,
     isDeleted: false,
+    embeddingStatus: "READY",
     moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
     questionEligibilityStatus: "ALLOWED",
     securityVerifierStatus: {
       $in: downstreamAllowedSecurityVerifierStatuses,
     },
-    embeddingStatus: "READY",
     similarQuestionsStatus: "READY",
   })
-    .select("userId similarQuestionIds")
+    .select("userId")
     .lean<{
       userId: unknown;
-      similarQuestionIds: mongoose.Types.ObjectId[];
     }>();
 
 export {

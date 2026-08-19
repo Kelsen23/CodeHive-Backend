@@ -1,13 +1,13 @@
 import Question from "../../../models/question.model.js";
 import QuestionVersion from "../../../models/questionVersion.model.js";
+import QuestionEmbedding from "../../../models/questionEmbedding.model.js";
 
 import { downstreamAllowedSecurityVerifierStatuses } from "./questionEmbedding.shared.js";
+import { denseRepresentationVersion } from "./questionEmbedding.shared.js";
 
 type LockedEmbeddingQuestion = {
   _id: unknown;
   userId: unknown;
-  embedding?: number[] | null;
-  embeddingHash?: string | null;
 };
 
 type EmbeddingQuestionVersion = {
@@ -64,28 +64,44 @@ const finalizeQuestionEmbedding = async ({
   questionId,
   version,
   embedding,
-  embeddingHash,
+  model,
 }: {
   questionId: string;
   version: number;
   embedding: number[];
-  embeddingHash: string;
+  model: string;
 }) =>
-  Question.updateOne(
+  QuestionEmbedding.updateOne(
     {
-      _id: questionId,
-      currentVersion: version,
-      embeddingStatus: "PROCESSING",
+      questionId,
+      version,
+      model,
+      representationVersion: denseRepresentationVersion,
     },
     {
-      $set: {
-        embedding,
-        embeddingHash,
-        embeddingStatus: "READY",
-        similarQuestionsStatus: "NONE",
+      $set: { vector: embedding, dimensions: embedding.length },
+      $setOnInsert: {
+        questionId,
+        version,
+        model,
+        representationVersion: denseRepresentationVersion,
       },
     },
-  );
+    { upsert: true },
+  ).then(async (embeddingResult) => {
+    if (embeddingResult.acknowledged) {
+      await Question.updateOne(
+        {
+          _id: questionId,
+          currentVersion: version,
+          embeddingStatus: "PROCESSING",
+        },
+        { $set: { embeddingStatus: "READY", similarQuestionsStatus: "NONE" } },
+      );
+    }
+
+    return embeddingResult;
+  });
 
 const loadReadyQuestionForEmbeddingSideEffects = async (
   questionId: string,

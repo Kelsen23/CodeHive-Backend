@@ -1,5 +1,6 @@
-const similarQuestionScoreThreshold = 0.75;
-const similarQuestionResultLimit = 3;
+const similarQuestionScoreThreshold = 0;
+const similarQuestionResultLimit = 15;
+const denseCandidateLimit = 50;
 const aiAnswerSimilarQuestionScoreThreshold = 0.7;
 const aiAnswerSimilarQuestionResultLimit = 8;
 
@@ -18,6 +19,7 @@ export {
   aiAnswerSimilarQuestionResultLimit,
   aiAnswerSimilarQuestionScoreThreshold,
   downstreamAllowedSecurityVerifierStatuses,
+  denseCandidateLimit,
   similarQuestionResultLimit,
   similarQuestionScoreThreshold,
   type SimilarQuestionsJobData,

@@ -8,7 +8,12 @@ import {
   resetQuestionEmbeddingProcessing,
 } from "../embedding/questionEmbeddingState.service.js";
 import buildQuestionEmbeddingInput from "../embedding/questionEmbeddingText.service.js";
-import type { QuestionEmbeddingJobData } from "../embedding/questionEmbedding.shared.js";
+import {
+  denseRepresentationVersion,
+  type QuestionEmbeddingJobData,
+} from "../embedding/questionEmbedding.shared.js";
+
+import QuestionEmbedding from "../../../models/questionEmbedding.model.js";
 
 const runReadySideEffectsIfCurrent = async ({
   questionId,
@@ -53,35 +58,52 @@ const processQuestionEmbeddingJob = async ({
     return;
   }
 
-  const { text, hash } = buildQuestionEmbeddingInput({
+  const { text } = buildQuestionEmbeddingInput({
     title: questionVersion.title,
     body: questionVersion.body,
-    tags: Array.isArray(questionVersion.tags) ? questionVersion.tags : [],
   });
 
-  let embedding = locked.embedding;
+  const existingEmbedding = await QuestionEmbedding.findOne({
+    questionId,
+    version,
+    representationVersion: denseRepresentationVersion,
+  }).lean();
 
-  if (
-    locked.embeddingHash !== hash ||
-    !Array.isArray(embedding) ||
-    embedding.length === 0
-  ) {
-    try {
-      embedding = await generateEmbedding(text);
-    } catch (error) {
-      await resetQuestionEmbeddingProcessing(questionId, version);
-      throw error;
+  if (existingEmbedding?.vector?.length) {
+    const updated = await finalizeQuestionEmbedding({
+      questionId,
+      version,
+      embedding: existingEmbedding.vector,
+      model: existingEmbedding.model,
+    });
+
+    if (updated.acknowledged) {
+      await runReadySideEffectsIfCurrent({
+        questionId,
+        version,
+        userId: locked.userId,
+      });
     }
+
+    return;
+  }
+
+  let generated;
+  try {
+    generated = await generateEmbedding(text);
+  } catch (error) {
+    await resetQuestionEmbeddingProcessing(questionId, version);
+    throw error;
   }
 
   const updated = await finalizeQuestionEmbedding({
     questionId,
     version,
-    embedding,
-    embeddingHash: hash,
+    embedding: generated.embedding,
+    model: generated.model,
   });
 
-  if (updated.modifiedCount === 0) return;
+  if (!updated.acknowledged) return;
 
   await runReadySideEffectsIfCurrent({
     questionId,

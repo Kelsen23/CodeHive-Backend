@@ -1,5 +1,3 @@
-import mongoose from "mongoose";
-
 import routeNotification from "../../notification/routeNotification.service.js";
 
 import { getRedisCacheClient } from "../../../config/redis.config.js";
@@ -13,7 +11,7 @@ const runSimilarQuestionsReadySideEffects = async ({
   questionId: string;
   version: number;
   userId: string;
-  similarQuestionIds: mongoose.Types.ObjectId[];
+  similarQuestionIds: string[];
 }) => {
   await getRedisCacheClient().del(
     `question:${questionId}`,

@@ -1,79 +1,100 @@
-import mongoose from "mongoose";
-
-import { getQuestionVectorSearchIndexName } from "../../../config/mongodb.config.js";
-
-import Question from "../../../models/question.model.js";
+import generateEmbedding from "../ai/generateEmbedding.service.js";
+import buildQuestionEmbeddingInput from "../embedding/questionEmbeddingText.service.js";
 
 import {
-  downstreamAllowedSecurityVerifierStatuses,
+  denseRepresentationVersion,
+  loadCurrentEligibleQuestionVersions,
+  loadCurrentEligibleQuestionVersionsById,
+  streamDenseEmbeddings,
+} from "./retrieval/denseCorpus.service.js";
+import {
+  scanDenseEmbeddings,
+  selectTopCandidates,
+} from "./retrieval/denseScoring.service.js";
+import {
+  filterEligibleCandidates,
+  makeEligibleQuestionVersionSet,
+} from "./retrieval/denseValidation.service.js";
+import type {
+  DenseCorpusSource,
+  RetrievalCandidate,
+  RetrievalInput,
+} from "./retrieval/retrieval.types.js";
+import {
+  denseCandidateLimit,
   similarQuestionResultLimit,
   similarQuestionScoreThreshold,
 } from "./similarQuestions.shared.js";
 
-type SimilarQuestionSearchResult = {
-  _id: mongoose.Types.ObjectId;
-  score: number;
-};
-
-const findSimilarQuestionIds = async ({
-  questionId,
-  embedding,
-  resultLimit = similarQuestionResultLimit,
-  scoreThreshold = similarQuestionScoreThreshold,
-  numCandidates = 150,
-  vectorSearchLimit = 20,
-}: {
-  questionId: string;
-  embedding: number[];
+type DenseRetrievalRequest = RetrievalInput & {
+  queryVector?: number[];
+  model?: string;
   resultLimit?: number;
   scoreThreshold?: number;
-  numCandidates?: number;
-  vectorSearchLimit?: number;
-}) => {
-  const id = new mongoose.Types.ObjectId(questionId);
-
-  const results = await Question.aggregate<SimilarQuestionSearchResult>([
-    {
-      $vectorSearch: {
-        index: getQuestionVectorSearchIndexName(),
-        path: "embedding",
-        queryVector: embedding,
-        numCandidates,
-        limit: vectorSearchLimit,
-      },
-    },
-    {
-      $project: {
-        _id: 1,
-        isActive: 1,
-        isDeleted: 1,
-        moderationStatus: 1,
-        embeddingStatus: 1,
-        questionEligibilityStatus: 1,
-        securityVerifierStatus: 1,
-        score: { $meta: "vectorSearchScore" },
-      },
-    },
-    {
-      $match: {
-        _id: { $ne: id },
-        isActive: true,
-        isDeleted: false,
-        moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
-        embeddingStatus: "READY",
-        questionEligibilityStatus: "ALLOWED",
-        securityVerifierStatus: {
-          $in: downstreamAllowedSecurityVerifierStatuses,
-        },
-      },
-    },
-  ]);
-
-  return results
-    .filter((result) => result.score >= scoreThreshold)
-    .sort((left, right) => right.score - left.score)
-    .slice(0, resultLimit)
-    .map((result) => result._id);
+  corpus?: DenseCorpusSource;
 };
 
-export default findSimilarQuestionIds;
+const findSimilarQuestionCandidates = async ({
+  sourceQuestionId,
+  title,
+  body,
+  limit = denseCandidateLimit,
+  queryVector,
+  model: requestedModel,
+  resultLimit = similarQuestionResultLimit,
+  scoreThreshold = similarQuestionScoreThreshold,
+  corpus = {
+    loadCurrentEligibleQuestionVersions,
+    streamDenseEmbeddings,
+    loadCurrentEligibleQuestionVersionsById,
+  },
+}: DenseRetrievalRequest): Promise<RetrievalCandidate[]> => {
+  let vector = queryVector;
+  let model = requestedModel;
+
+  if (!vector) {
+    const generated = await generateEmbedding(
+      buildQuestionEmbeddingInput({ title, body }).text,
+    );
+
+    vector = generated.embedding;
+    model = generated.model;
+  }
+
+  if (!model) throw new Error("Dense retrieval requires an embedding model");
+
+  const prevalidatedVersions = makeEligibleQuestionVersionSet(
+    await corpus.loadCurrentEligibleQuestionVersions(),
+  );
+  const embeddingCursor = corpus.streamDenseEmbeddings({ model });
+  try {
+    const candidates = await scanDenseEmbeddings({
+      queryVector: vector,
+      embeddings: embeddingCursor,
+      eligibleVersions: prevalidatedVersions,
+      sourceQuestionId,
+      limit: Math.max(limit, denseCandidateLimit),
+      scoreThreshold,
+    });
+
+    const postvalidatedVersions = makeEligibleQuestionVersionSet(
+      await corpus.loadCurrentEligibleQuestionVersionsById(
+        candidates.map((candidate) => candidate.questionId),
+      ),
+    );
+
+    return selectTopCandidates(
+      filterEligibleCandidates(
+        candidates,
+        postvalidatedVersions,
+        sourceQuestionId,
+      ),
+      resultLimit,
+    );
+  } finally {
+    await embeddingCursor.close?.();
+  }
+};
+
+export { denseRepresentationVersion, findSimilarQuestionCandidates };
+export default findSimilarQuestionCandidates;
