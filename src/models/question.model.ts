@@ -17,20 +17,12 @@ const QuestionSchema: Schema = new Schema(
     basedOnVersion: { type: Number, default: 1, min: 1 },
     lastRollbackVersion: { type: Number, default: null, required: false },
 
-    similarQuestionIds: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "Question",
-      default: [],
-      index: true,
-    },
     similarQuestionsStatus: {
       type: String,
       enum: ["NONE", "PENDING", "PROCESSING", "READY"],
       default: "NONE",
     },
 
-    embedding: { type: [Number], default: null, required: false },
-    embeddingHash: { type: String, default: null, required: false },
     embeddingStatus: {
       type: String,
       enum: ["NONE", "PENDING", "PROCESSING", "READY"],
