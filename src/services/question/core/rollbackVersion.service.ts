@@ -157,7 +157,6 @@ const rollbackVersion = async (
           securityVerifierUpdatedAt: null,
           securityVerifierSourceVersion: nextVersion,
           embeddingStatus: "NONE",
-          similarQuestionIds: [],
           similarQuestionsStatus: "NONE",
         },
         { session },

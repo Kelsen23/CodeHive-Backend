@@ -64,7 +64,6 @@ const editQuestion = async (
       securityVerifierUpdatedAt: null,
       securityVerifierSourceVersion: newVersion,
       embeddingStatus: "NONE",
-      similarQuestionIds: [],
       similarQuestionsStatus: "NONE",
     },
     { returnDocument: "after" },

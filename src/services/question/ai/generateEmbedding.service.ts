@@ -6,7 +6,10 @@ const generateEmbedding = async (text: string) => {
     inputType: "document",
   });
 
-  return response.embedding;
+  return {
+    embedding: response.embedding,
+    model: response.metadata.model,
+  };
 };
 
 export default generateEmbedding;
