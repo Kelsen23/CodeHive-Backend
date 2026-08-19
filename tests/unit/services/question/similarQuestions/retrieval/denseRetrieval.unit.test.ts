@@ -1,0 +1,87 @@
+import { describe, expect, it } from "vitest";
+
+import findSimilarQuestionCandidates from "../../../../../../src/services/question/similarQuestions/similarQuestionsSearch.service.js";
+
+const embedding = (questionId: string, version: number, vector: number[]) => ({
+  questionId,
+  version,
+  vector,
+  model: "test-model",
+  representationVersion: "dense-v1",
+});
+
+describe("dense retrieval orchestration", () => {
+  it("supports an injected corpus and post-retrieval validation", async () => {
+    let streamClosed = false;
+
+    const candidates = await findSimilarQuestionCandidates({
+      sourceQuestionId: "source",
+      sourceVersion: 1,
+      title: "Source title",
+      body: "Source body",
+      tags: [],
+      limit: 50,
+      resultLimit: 50,
+      queryVector: [1, 0],
+      model: "test-model",
+      corpus: {
+        loadCurrentEligibleQuestionVersions: async () => [
+          { questionId: "source", version: 1 },
+          { questionId: "candidate", version: 2 },
+        ],
+        streamDenseEmbeddings: () => {
+          const stream = (async function* () {
+            yield embedding("source", 1, [1, 0]);
+            yield embedding("candidate", 2, [1, 0]);
+          })();
+
+          return Object.assign(stream, {
+            close: async () => {
+              streamClosed = true;
+            },
+          });
+        },
+        loadCurrentEligibleQuestionVersionsById: async () => [
+          { questionId: "candidate", version: 2 },
+        ],
+      },
+    });
+
+    expect(candidates).toEqual([
+      {
+        questionId: "candidate",
+        version: 2,
+        score: 1,
+        retrievalVersion: "dense-v1",
+        model: "test-model",
+        representationVersion: "dense-v1",
+      },
+    ]);
+    expect(streamClosed).toBe(true);
+  });
+
+  it("removes a candidate that becomes ineligible during retrieval", async () => {
+    const candidates = await findSimilarQuestionCandidates({
+      sourceQuestionId: "source",
+      sourceVersion: 1,
+      title: "Source title",
+      body: "Source body",
+      tags: [],
+      limit: 50,
+      queryVector: [1, 0],
+      model: "test-model",
+      corpus: {
+        loadCurrentEligibleQuestionVersions: async () => [
+          { questionId: "candidate", version: 1 },
+        ],
+        streamDenseEmbeddings: () =>
+          (async function* () {
+            yield embedding("candidate", 1, [1, 0]);
+          })(),
+        loadCurrentEligibleQuestionVersionsById: async () => [],
+      },
+    });
+
+    expect(candidates).toEqual([]);
+  });
+});
