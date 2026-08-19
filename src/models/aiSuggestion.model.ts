@@ -9,7 +9,6 @@ const AiSuggestionSchema = new Schema(
     },
 
     version: { type: Number, required: true, min: 1 },
-
     suggestedTitle: {
       type: String,
       minlength: 10,
