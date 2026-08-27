@@ -3,11 +3,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
-import findSimilarQuestionCandidates from "../../src/services/question/similarQuestions/similarQuestionsSearch.service.js";
-import type { DenseCorpusSource } from "../../src/services/question/similarQuestions/retrieval/retrieval.types.js";
+import type { HybridCorpusSource } from "../../src/services/question/similarQuestions/retrieval/retrieval.types.js";
+
+import findHybridQuestionCandidates from "../../src/services/question/similarQuestions/retrieval/hybridRetrieval.service.js";
 
 import { loadRetrievalCorpus, loadRetrievalEvalDataset } from "./load.js";
-import { prepareDenseEvalCorpus } from "./prepare.js";
+import { prepareHybridEvalCorpus } from "./prepare.js";
 import {
   runRetrievalEval,
   type DatasetConfig,
@@ -89,21 +90,21 @@ const getGitCommit = () => {
   }
 };
 
-let preparedCorpus: DenseCorpusSource | undefined;
+let preparedCorpus: HybridCorpusSource | undefined;
 
 const dependencies: RetrievalEvalRunnerDependencies = {
   loadCases: loadRetrievalEvalDataset,
   loadCorpus: async (filename) => {
     const corpus = await loadRetrievalCorpus(filename);
-    preparedCorpus = await prepareDenseEvalCorpus(corpus);
+    preparedCorpus = await prepareHybridEvalCorpus(corpus);
     return corpus;
   },
   retrieve: (input) => {
     if (!preparedCorpus) {
-      throw new Error("Dense eval corpus has not been prepared");
+      throw new Error("Hybrid eval corpus has not been prepared");
     }
 
-    return findSimilarQuestionCandidates({
+    return findHybridQuestionCandidates({
       ...input,
       corpus: preparedCorpus,
     });
@@ -121,7 +122,7 @@ const dependencies: RetrievalEvalRunnerDependencies = {
 const run = async () => {
   const dataset = parseDatasetName(process.argv.slice(2));
   await runRetrievalEval({
-    retrievalName: "dense-v1",
+    retrievalName: "hybrid-v1",
     dataset,
     datasetConfig: datasetConfigs[dataset],
     dependencies,

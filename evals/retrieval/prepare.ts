@@ -1,11 +1,12 @@
-import generateEmbedding from "../../src/services/question/ai/generateEmbedding.service.js";
-import buildQuestionEmbeddingInput from "../../src/services/question/embedding/questionEmbeddingText.service.js";
 import type {
   DenseCorpusSource,
   DenseEmbeddingRecord,
+  HybridCorpusSource,
 } from "../../src/services/question/similarQuestions/retrieval/retrieval.types.js";
-
 import type { RetrievalCorpus } from "./schema.js";
+
+import generateEmbedding from "../../src/services/question/ai/generateEmbedding.service.js";
+import buildQuestionEmbeddingInput from "../../src/services/question/embedding/questionEmbeddingText.service.js";
 
 type EmbeddingGenerator = (text: string) => Promise<{
   embedding: number[];
@@ -36,7 +37,7 @@ const prepareDenseEvalCorpus = async (
 
   if (models.size !== 1) {
     throw new Error(
-      `Dense eval corpus must use exactly one embedding model; found ${models.size}`,
+      `Retrieval eval corpus must use exactly one embedding model; found ${models.size}`,
     );
   }
 
@@ -69,4 +70,27 @@ const prepareDenseEvalCorpus = async (
   };
 };
 
-export { prepareDenseEvalCorpus };
+const prepareHybridEvalCorpus = async (
+  corpus: RetrievalCorpus,
+  embeddingGenerator: EmbeddingGenerator = generateEmbedding,
+): Promise<HybridCorpusSource> => {
+  const denseCorpus = await prepareDenseEvalCorpus(corpus, embeddingGenerator);
+  const loadCurrentEligibleQuestionDocuments = async () => corpus;
+  const loadCurrentEligibleQuestionDocumentsById = async (
+    questionIds: string[],
+  ) => {
+    const questionIdSet = new Set(questionIds);
+
+    return corpus
+      .filter(({ questionId }) => questionIdSet.has(questionId))
+      .map(({ questionId, version }) => ({ questionId, version }));
+  };
+
+  return {
+    ...denseCorpus,
+    loadCurrentEligibleQuestionDocuments,
+    loadCurrentEligibleQuestionDocumentsById,
+  };
+};
+
+export { prepareDenseEvalCorpus, prepareHybridEvalCorpus };

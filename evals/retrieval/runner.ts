@@ -2,7 +2,6 @@ import type {
   RetrievalCandidate,
   RetrievalInput,
 } from "../../src/services/question/similarQuestions/retrieval/retrieval.types.js";
-
 import type { RetrievalCorpus, RetrievalEvalCase } from "./schema.js";
 import { scoreRetrievalCase, type RetrievalCaseScore } from "./score.js";
 
@@ -230,7 +229,7 @@ const printSummary = (
   reportPath: string,
   log: (...values: unknown[]) => void,
 ) => {
-  log(`Dense retrieval eval: ${dataset}`);
+  log(`Retrieval eval: ${dataset}`);
   log(`Cases: ${summary.totalCases}`);
   log(`Execution failures: ${summary.executionFailures}`);
   log(`Mean Recall@5: ${summary.meanRecallAt5 ?? "n/a"}`);
