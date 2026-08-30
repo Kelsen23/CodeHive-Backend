@@ -60,6 +60,7 @@ type RunRetrievalEvalOptions = {
   retrievalName: string;
   dataset: DatasetName;
   datasetConfig: DatasetConfig;
+  reportMetadata?: Record<string, unknown>;
   dependencies: RetrievalEvalRunnerDependencies;
 };
 
@@ -248,6 +249,7 @@ const runRetrievalEval = async ({
   retrievalName,
   dataset,
   datasetConfig,
+  reportMetadata,
   dependencies,
 }: RunRetrievalEvalOptions) => {
   const [testCases, corpus] = await Promise.all([
@@ -278,6 +280,7 @@ const runRetrievalEval = async ({
       retrievalName,
       latencyScope: "all_attempted_calls",
       gitCommit: dependencies.getGitCommit(),
+      ...reportMetadata,
     },
     summary,
     cases: caseResults,

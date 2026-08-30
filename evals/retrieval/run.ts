@@ -1,132 +1,27 @@
-import { execFileSync } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
-import { performance } from "node:perf_hooks";
-import { fileURLToPath } from "node:url";
-
-import type { HybridCorpusSource } from "../../src/services/question/similarQuestions/retrieval/retrieval.types.js";
-
-import findHybridQuestionCandidates from "../../src/services/question/similarQuestions/retrieval/hybridRetrieval.service.js";
-
-import { loadRetrievalCorpus, loadRetrievalEvalDataset } from "./load.js";
-import { prepareHybridEvalCorpus } from "./prepare.js";
 import {
-  runRetrievalEval,
-  type DatasetConfig,
-  type DatasetName,
-  type RetrievalEvalRunnerDependencies,
-} from "./runner.js";
-
-const datasetConfigs: Record<DatasetName, DatasetConfig> = {
-  dev: {
-    casesPath: fileURLToPath(new URL("./cases.dev.jsonl", import.meta.url)),
-    corpusPath: fileURLToPath(new URL("./corpus.v1.jsonl", import.meta.url)),
-    reportDirectory: fileURLToPath(
-      new URL("../../.eval-results/retrieval/dev/", import.meta.url),
-    ),
-  },
-  holdout: {
-    casesPath: fileURLToPath(
-      new URL("./cases.holdout.v1.jsonl", import.meta.url),
-    ),
-    corpusPath: fileURLToPath(new URL("./corpus.v1.jsonl", import.meta.url)),
-    reportDirectory: fileURLToPath(
-      new URL("../../.eval-results/retrieval/holdout-v1/", import.meta.url),
-    ),
-  },
-  regression: {
-    casesPath: fileURLToPath(
-      new URL("./cases.regression.jsonl", import.meta.url),
-    ),
-    corpusPath: fileURLToPath(new URL("./corpus.v1.jsonl", import.meta.url)),
-    reportDirectory: fileURLToPath(
-      new URL("../../.eval-results/retrieval/regression/", import.meta.url),
-    ),
-  },
-};
-
-const parseDatasetName = (args: string[]): DatasetName => {
-  const datasetArgumentIndex = args.findIndex((arg) => arg === "--dataset");
-  let datasetArgument: string | undefined;
-
-  if (datasetArgumentIndex >= 0) {
-    const value = args[datasetArgumentIndex + 1];
-
-    if (!value || value.startsWith("--")) {
-      throw new Error(
-        "Missing value for --dataset. Expected dev, holdout, or regression.",
-      );
-    }
-
-    datasetArgument = value;
-  } else {
-    const inlineArgument = args.find((arg) => arg.startsWith("--dataset="));
-
-    if (inlineArgument !== undefined) {
-      datasetArgument = inlineArgument.slice(10);
-    }
-  }
-
-  if (datasetArgument === "")
-    throw new Error(
-      "Missing value for --dataset. Expected dev, holdout, or regression.",
-    );
-
-  const dataset = datasetArgument ?? "dev";
-
-  if (dataset === "dev" || dataset === "holdout" || dataset === "regression")
-    return dataset;
-  throw new Error(
-    `Unsupported retrieval eval dataset: ${dataset}. Expected dev, holdout, or regression.`,
-  );
-};
-
-const getGitCommit = () => {
-  try {
-    return execFileSync("git", ["rev-parse", "HEAD"], {
-      encoding: "utf8",
-    }).trim();
-  } catch {
-    return undefined;
-  }
-};
-
-let preparedCorpus: HybridCorpusSource | undefined;
-
-const dependencies: RetrievalEvalRunnerDependencies = {
-  loadCases: loadRetrievalEvalDataset,
-  loadCorpus: async (filename) => {
-    const corpus = await loadRetrievalCorpus(filename);
-    preparedCorpus = await prepareHybridEvalCorpus(corpus);
-    return corpus;
-  },
-  retrieve: (input) => {
-    if (!preparedCorpus) {
-      throw new Error("Hybrid eval corpus has not been prepared");
-    }
-
-    return findHybridQuestionCandidates({
-      ...input,
-      corpus: preparedCorpus,
-    });
-  },
-  now: () => performance.now(),
-  getTimestamp: () => new Date().toISOString(),
-  getGitCommit,
-  createReportDirectory: async (directory) =>
-    mkdir(directory, { recursive: true }) as Promise<void>,
-  writeReport: (filename, report) =>
-    writeFile(filename, `${JSON.stringify(report, null, 2)}\n`, "utf8"),
-  log: (...values) => console.log(...values),
-};
+  closeRetrievalWorkers,
+  createRetrievalDependencies,
+} from "./dependencies.js";
+import { datasetConfigs, getReportMetadata } from "./config.js";
+import { runRetrievalEval } from "./runner.js";
+import { parseDatasetName, parseRetrievalName } from "./retrievals.js";
 
 const run = async () => {
-  const dataset = parseDatasetName(process.argv.slice(2));
-  await runRetrievalEval({
-    retrievalName: "hybrid-v1",
-    dataset,
-    datasetConfig: datasetConfigs[dataset],
-    dependencies,
-  });
+  const args = process.argv.slice(2);
+  const dataset = parseDatasetName(args);
+  const retrievalName = parseRetrievalName(args);
+
+  try {
+    await runRetrievalEval({
+      retrievalName,
+      dataset,
+      datasetConfig: datasetConfigs[dataset],
+      reportMetadata: getReportMetadata(retrievalName),
+      dependencies: createRetrievalDependencies(retrievalName),
+    });
+  } finally {
+    await closeRetrievalWorkers();
+  }
 };
 
 void run().catch((error) => {
