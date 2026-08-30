@@ -36,6 +36,12 @@ QuestionMultiVectorEmbeddingSchema.index(
   { questionId: 1, version: 1, model: 1, representationVersion: 1 },
   { unique: true },
 );
+QuestionMultiVectorEmbeddingSchema.index({
+  representationVersion: 1,
+  model: 1,
+  questionId: 1,
+  version: 1,
+});
 
 export default mongoose.model(
   "QuestionMultiVectorEmbedding",
