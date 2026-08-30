@@ -35,6 +35,12 @@ QuestionSparseEmbeddingSchema.index(
   { questionId: 1, version: 1, model: 1, representationVersion: 1 },
   { unique: true },
 );
+QuestionSparseEmbeddingSchema.index({
+  representationVersion: 1,
+  model: 1,
+  questionId: 1,
+  version: 1,
+});
 
 export default mongoose.model(
   "QuestionSparseEmbedding",
