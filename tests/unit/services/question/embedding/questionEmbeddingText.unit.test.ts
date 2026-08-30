@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import buildQuestionEmbeddingInput from "../../../../../src/services/question/embedding/questionEmbeddingText.service.js";
+import buildQuestionEmbeddingInput from "../../../../../src/services/question/embedding/dense/questionEmbeddingText.service.js";
 
 describe("buildQuestionEmbeddingInput", () => {
   it("builds the production query and document representation", () => {

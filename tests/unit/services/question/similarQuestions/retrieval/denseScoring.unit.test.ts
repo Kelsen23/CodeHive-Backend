@@ -5,7 +5,7 @@ import {
   scanDenseEmbeddings,
   scoreDenseEmbedding,
   selectTopCandidates,
-} from "../../../../../../src/services/question/similarQuestions/retrieval/denseScoring.service.js";
+} from "../../../../../../src/services/question/similarQuestions/retrieval/dense/denseScoring.service.js";
 
 const embedding = (questionId: string, version: number, vector: number[]) => ({
   questionId,

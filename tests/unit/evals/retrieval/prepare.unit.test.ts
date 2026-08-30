@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { prepareDenseEvalCorpus } from "../../../../evals/retrieval/prepare.js";
+import {
+  prepareColbertEvalCorpus,
+  prepareDenseEvalCorpus,
+} from "../../../../evals/retrieval/prepare.js";
 import type { RetrievalCorpus } from "../../../../evals/retrieval/schema.js";
 
 const corpus: RetrievalCorpus = [
@@ -65,5 +68,31 @@ describe("prepareDenseEvalCorpus", () => {
         model: index++ === 0 ? "model-a" : "model-b",
       })),
     ).rejects.toThrow("exactly one embedding model");
+  });
+});
+
+describe("prepareColbertEvalCorpus", () => {
+  it("encodes each document once and exposes matching multivectors", async () => {
+    const inputs: Array<{ title: string; body: string; tags: string[] }> = [];
+    const prepared = await prepareColbertEvalCorpus(corpus, async (input) => {
+      inputs.push(input);
+      return {
+        vectors: [[1, 0]],
+        dimensions: 2,
+        tokenCount: 1,
+        model: "colbert-fixture",
+        representationVersion: "colbert-v1",
+      };
+    });
+
+    expect(inputs).toEqual(corpus);
+    await expect(
+      collectAsyncIterable(
+        prepared.streamMultiVectorEmbeddings({ model: "colbert-fixture" }),
+      ),
+    ).resolves.toMatchObject([
+      { questionId: "q1", vectors: [[1, 0]], tokenCount: 1 },
+      { questionId: "q2", vectors: [[1, 0]], tokenCount: 1 },
+    ]);
   });
 });
