@@ -1,17 +1,17 @@
 import generateEmbedding from "../ai/generateEmbedding.service.js";
-import runQuestionEmbeddingReadySideEffects from "../embedding/questionEmbeddingSideEffects.service.js";
+import runQuestionEmbeddingReadySideEffects from "../embedding/dense/questionEmbeddingSideEffects.service.js";
 import {
   finalizeQuestionEmbedding,
   loadCurrentQuestionVersionForEmbedding,
   loadReadyQuestionForEmbeddingSideEffects,
   lockQuestionForEmbedding,
   resetQuestionEmbeddingProcessing,
-} from "../embedding/questionEmbeddingState.service.js";
-import buildQuestionEmbeddingInput from "../embedding/questionEmbeddingText.service.js";
+} from "../embedding/dense/questionEmbeddingState.service.js";
+import buildQuestionEmbeddingInput from "../embedding/dense/questionEmbeddingText.service.js";
 import {
   denseRepresentationVersion,
   type QuestionEmbeddingJobData,
-} from "../embedding/questionEmbedding.shared.js";
+} from "../embedding/dense/questionEmbedding.shared.js";
 
 import QuestionEmbedding from "../../../models/questionEmbedding.model.js";
 
