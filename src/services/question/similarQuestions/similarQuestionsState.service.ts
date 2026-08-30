@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 import type { RetrievalCandidate } from "./retrieval/retrieval.types.js";
 
-import { downstreamAllowedSecurityVerifierStatuses } from "./similarQuestions.shared.js";
+import { currentLiveEligibleQuestionMatch } from "./similarQuestions.shared.js";
 
 import Question from "../../../models/question.model.js";
 import SimilarQuestion from "../../../models/similarQuestion.model.js";
@@ -20,15 +20,9 @@ const lockQuestionForSimilarQuestions = async (
     {
       _id: new mongoose.Types.ObjectId(questionId),
       currentVersion: version,
-      isActive: true,
-      isDeleted: false,
+      ...currentLiveEligibleQuestionMatch,
       embeddingStatus: "READY",
-      moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
-      questionEligibilityStatus: "ALLOWED",
-      securityVerifierStatus: {
-        $in: downstreamAllowedSecurityVerifierStatuses,
-      },
-      similarQuestionsStatus: "NONE",
+      similarQuestionsStatus: { $in: ["NONE", "PENDING"] },
     },
     { $set: { similarQuestionsStatus: "PROCESSING" } },
     { returnDocument: "after" },
@@ -44,7 +38,28 @@ const resetSimilarQuestionsProcessing = async (
       currentVersion: version,
       similarQuestionsStatus: "PROCESSING",
     },
-    { $set: { similarQuestionsStatus: "NONE" } },
+    {
+      $set: {
+        similarQuestionsStatus: "NONE",
+        similarQuestionsComputedAt: null,
+        similarQuestionsComputedVersion: null,
+      },
+    },
+  );
+
+const invalidateSimilarQuestions = async (
+  questionId: string,
+  version: number,
+) =>
+  Question.updateOne(
+    { _id: questionId, currentVersion: version },
+    {
+      $set: {
+        similarQuestionsStatus: "NONE",
+        similarQuestionsComputedAt: null,
+        similarQuestionsComputedVersion: null,
+      },
+    },
   );
 
 const finalizeSimilarQuestions = async ({
@@ -59,71 +74,80 @@ const finalizeSimilarQuestions = async ({
   retrievalVersion: string;
 }) => {
   const materializedCandidates = candidates.slice(0, 15);
-  await SimilarQuestion.deleteMany({
-    sourceQuestionId: questionId,
-    sourceVersion: version,
-    retrievalVersion,
-    ...(materializedCandidates.length
-      ? {
-          $nor: materializedCandidates.map((candidate) => ({
-            targetQuestionId: new mongoose.Types.ObjectId(candidate.questionId),
-            targetVersion: candidate.version,
-          })),
-        }
-      : {}),
-  });
+  const session = await mongoose.startSession();
+  const computedAt = new Date();
 
-  if (materializedCandidates.length) {
-    const sourceQuestionObjectId = new mongoose.Types.ObjectId(questionId);
-    await SimilarQuestion.bulkWrite(
-      materializedCandidates.map((candidate, index) => ({
-        updateOne: {
-          filter: {
+  try {
+    let updateResult;
+
+    await session.withTransaction(async () => {
+      const source = await Question.findOne({
+        _id: questionId,
+        currentVersion: version,
+        ...currentLiveEligibleQuestionMatch,
+        embeddingStatus: "READY",
+        similarQuestionsStatus: "PROCESSING",
+      })
+        .select("_id")
+        .session(session)
+        .lean();
+
+      if (!source) return;
+
+      await SimilarQuestion.deleteMany(
+        {
+          sourceQuestionId: questionId,
+          sourceVersion: version,
+          retrievalVersion,
+        },
+        { session },
+      );
+
+      if (materializedCandidates.length) {
+        const sourceQuestionObjectId = new mongoose.Types.ObjectId(questionId);
+
+        await SimilarQuestion.insertMany(
+          materializedCandidates.map((candidate, index) => ({
             sourceQuestionId: sourceQuestionObjectId,
             sourceVersion: version,
             targetQuestionId: new mongoose.Types.ObjectId(candidate.questionId),
             targetVersion: candidate.version,
+            rank: index + 1,
+            score: candidate.score,
             retrievalVersion,
-          },
-          update: {
-            $set: {
-              rank: index + 1,
-              score: candidate.score,
-              computedAt: new Date(),
-              model: candidate.model,
-              representationVersion: candidate.representationVersion,
-            },
-            $setOnInsert: {
-              sourceQuestionId: sourceQuestionObjectId,
-              sourceVersion: version,
-              targetQuestionId: new mongoose.Types.ObjectId(
-                candidate.questionId,
-              ),
-              targetVersion: candidate.version,
-              retrievalVersion,
-              model: candidate.model,
-              representationVersion: candidate.representationVersion,
-              computedAt: new Date(),
-            },
-          },
-          upsert: true,
-        },
-      })),
-    );
-  }
+            model: candidate.model,
+            representationVersion: candidate.representationVersion,
+            computedAt,
+          })),
+          { session, ordered: true },
+        );
+      }
 
-  return Question.updateOne(
-    {
-      _id: questionId,
-      currentVersion: version,
-      similarQuestionsStatus: "PROCESSING",
-    },
-    {
-      $set: {
-        similarQuestionsStatus: "READY",
-      },
-    },
-  );
+      updateResult = await Question.updateOne(
+        {
+          _id: questionId,
+          currentVersion: version,
+          similarQuestionsStatus: "PROCESSING",
+        },
+        {
+          $set: {
+            similarQuestionsStatus: "READY",
+            similarQuestionsComputedAt: computedAt,
+            similarQuestionsComputedVersion: version,
+          },
+        },
+        { session },
+      );
+    });
+
+    if (!updateResult) {
+      await resetSimilarQuestionsProcessing(questionId, version);
+    }
+
+    return updateResult ?? { modifiedCount: 0 };
+  } finally {
+    await session.endSession();
+  }
 };
 
 const loadReadyQuestionForSimilarSideEffects = async (
@@ -133,14 +157,8 @@ const loadReadyQuestionForSimilarSideEffects = async (
   Question.findOne({
     _id: questionId,
     currentVersion: version,
-    isActive: true,
-    isDeleted: false,
+    ...currentLiveEligibleQuestionMatch,
     embeddingStatus: "READY",
-    moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
-    questionEligibilityStatus: "ALLOWED",
-    securityVerifierStatus: {
-      $in: downstreamAllowedSecurityVerifierStatuses,
-    },
     similarQuestionsStatus: "READY",
   })
     .select("userId")
@@ -150,6 +168,7 @@ const loadReadyQuestionForSimilarSideEffects = async (
 
 export {
   finalizeSimilarQuestions,
+  invalidateSimilarQuestions,
   loadReadyQuestionForSimilarSideEffects,
   lockQuestionForSimilarQuestions,
   resetSimilarQuestionsProcessing,

@@ -1,3 +1,5 @@
+import { invalidateSimilarQuestions } from "../similarQuestions/similarQuestionsState.service.js";
+
 import { getRedisCacheClient } from "../../../config/redis.config.js";
 
 import {
@@ -71,6 +73,10 @@ const deleteContent = async (
     await Model.findByIdAndUpdate(foundContent._id || foundContent.id, {
       $set: { isDeleted: true, isActive: false },
     });
+    await invalidateSimilarQuestions(
+      String(foundContent._id || foundContent.id),
+      Number(foundContent.currentVersion),
+    );
 
     await statsQueue.add(
       "DELETE_QUESTION",

@@ -1,9 +1,11 @@
+import {
+  denseRepresentationVersion,
+  downstreamAllowedSecurityVerifierStatuses,
+} from "./questionEmbedding.shared.js";
+
 import Question from "../../../../models/question.model.js";
 import QuestionVersion from "../../../../models/questionVersion.model.js";
 import QuestionEmbedding from "../../../../models/questionEmbedding.model.js";
-
-import { downstreamAllowedSecurityVerifierStatuses } from "./questionEmbedding.shared.js";
-import { denseRepresentationVersion } from "./questionEmbedding.shared.js";
 
 type LockedEmbeddingQuestion = {
   _id: unknown;
@@ -96,7 +98,14 @@ const finalizeQuestionEmbedding = async ({
           currentVersion: version,
           embeddingStatus: "PROCESSING",
         },
-        { $set: { embeddingStatus: "READY", similarQuestionsStatus: "NONE" } },
+        {
+          $set: {
+            embeddingStatus: "READY",
+            similarQuestionsStatus: "NONE",
+            similarQuestionsComputedAt: null,
+            similarQuestionsComputedVersion: null,
+          },
+        },
       );
     }
 

@@ -3,28 +3,14 @@ import type {
   EligibleQuestionVersion,
 } from "../retrieval.types.js";
 
+import { denseRepresentationVersion } from "../../../embedding/dense/questionEmbedding.shared.js";
 import {
-  denseRepresentationVersion,
-  downstreamAllowedSecurityVerifierStatuses,
-} from "../../../embedding/dense/questionEmbedding.shared.js";
+  currentEligibleQuestionMatch,
+  currentLiveEligibleQuestionMatch,
+} from "../../similarQuestions.shared.js";
 
 import Question from "../../../../../models/question.model.js";
 import QuestionEmbedding from "../../../../../models/questionEmbedding.model.js";
-
-const currentLiveEligibleQuestionMatch = {
-  isActive: true,
-  isDeleted: false,
-  moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
-  questionEligibilityStatus: "ALLOWED",
-  securityVerifierStatus: {
-    $in: downstreamAllowedSecurityVerifierStatuses,
-  },
-};
-
-const currentEligibleQuestionMatch = {
-  ...currentLiveEligibleQuestionMatch,
-  embeddingStatus: "READY",
-};
 
 const loadCurrentEligibleQuestionVersions = async () => {
   const questions = await Question.find(currentEligibleQuestionMatch)

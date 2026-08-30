@@ -40,7 +40,7 @@ const scoreDenseEmbedding = (
   if (score === null) return null;
 
   return {
-    questionId: embedding.questionId,
+    questionId: String(embedding.questionId),
     version: embedding.version,
     score,
     retrievalVersion: denseRepresentationVersion,
@@ -93,10 +93,12 @@ const scanDenseEmbeddings = async ({
   let topCandidates: RetrievalCandidate[] = [];
 
   for await (const embedding of embeddings) {
+    const embeddingQuestionId = String(embedding.questionId);
+
     if (
-      embedding.questionId === sourceQuestionId ||
+      embeddingQuestionId === sourceQuestionId ||
       !eligibleVersions.has(
-        makeQuestionVersionKey(embedding.questionId, embedding.version),
+        makeQuestionVersionKey(embeddingQuestionId, embedding.version),
       )
     ) {
       continue;

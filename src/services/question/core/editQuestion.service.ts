@@ -1,4 +1,5 @@
 import { queueQuestionContentFinalize } from "../contentFinalize/contentFinalizeQueue.service.js";
+import { toPublicQuestion } from "../question.response.js";
 
 import { getRedisCacheClient } from "../../../config/redis.config.js";
 
@@ -9,8 +10,6 @@ import {
 } from "../../../utils/cache/clearCache.util.js";
 
 import Question from "../../../models/question.model.js";
-
-import { toPublicQuestion } from "../question.response.js";
 
 const editQuestion = async (
   userId: string,
@@ -65,6 +64,8 @@ const editQuestion = async (
       securityVerifierSourceVersion: newVersion,
       embeddingStatus: "NONE",
       similarQuestionsStatus: "NONE",
+      similarQuestionsComputedAt: null,
+      similarQuestionsComputedVersion: null,
     },
     { returnDocument: "after" },
   );
