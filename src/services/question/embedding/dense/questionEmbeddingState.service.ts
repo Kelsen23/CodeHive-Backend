@@ -1,6 +1,6 @@
-import Question from "../../../models/question.model.js";
-import QuestionVersion from "../../../models/questionVersion.model.js";
-import QuestionEmbedding from "../../../models/questionEmbedding.model.js";
+import Question from "../../../../models/question.model.js";
+import QuestionVersion from "../../../../models/questionVersion.model.js";
+import QuestionEmbedding from "../../../../models/questionEmbedding.model.js";
 
 import { downstreamAllowedSecurityVerifierStatuses } from "./questionEmbedding.shared.js";
 import { denseRepresentationVersion } from "./questionEmbedding.shared.js";

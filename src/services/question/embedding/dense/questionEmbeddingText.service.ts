@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-import normalizeText from "../../../utils/question/normalizeText.util.js";
+import normalizeText from "../../../../utils/question/normalizeText.util.js";
 
 const buildQuestionEmbeddingInput = ({
   title,
