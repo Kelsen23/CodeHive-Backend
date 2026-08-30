@@ -1,17 +1,20 @@
+import type { SimilarQuestionsJobData } from "../similarQuestions/similarQuestions.shared.js";
+
 import runSimilarQuestionsReadySideEffects from "../similarQuestions/similarQuestionsSideEffects.service.js";
-import findSimilarQuestionCandidates from "../similarQuestions/similarQuestionsSearch.service.js";
+import findDenseQuestionCandidates from "../similarQuestions/similarQuestionsSearch.service.js";
 import {
   finalizeSimilarQuestions,
   loadReadyQuestionForSimilarSideEffects,
   lockQuestionForSimilarQuestions,
   resetSimilarQuestionsProcessing,
 } from "../similarQuestions/similarQuestionsState.service.js";
-import type { SimilarQuestionsJobData } from "../similarQuestions/similarQuestions.shared.js";
+import { denseCandidateLimit } from "../similarQuestions/similarQuestions.shared.js";
+
 import QuestionEmbedding from "../../../models/questionEmbedding.model.js";
 import QuestionVersion from "../../../models/questionVersion.model.js";
 import SimilarQuestion from "../../../models/similarQuestion.model.js";
-import { denseRepresentationVersion } from "../embedding/questionEmbedding.shared.js";
-import { denseCandidateLimit } from "../similarQuestions/similarQuestions.shared.js";
+
+const similarQuestionsRetrievalVersion = "dense-v1";
 
 const runReadySideEffectsIfCurrent = async ({
   questionId,
@@ -22,7 +25,7 @@ const runReadySideEffectsIfCurrent = async ({
   questionId: string;
   version: number;
   userId?: unknown;
-  candidates?: Awaited<ReturnType<typeof findSimilarQuestionCandidates>>;
+  candidates?: Awaited<ReturnType<typeof findDenseQuestionCandidates>>;
 }) => {
   const readyQuestion =
     userId && candidates
@@ -37,7 +40,7 @@ const runReadySideEffectsIfCurrent = async ({
       await SimilarQuestion.find({
         sourceQuestionId: questionId,
         sourceVersion: version,
-        retrievalVersion: "dense-v1",
+        retrievalVersion: similarQuestionsRetrievalVersion,
       })
         .sort({ rank: 1 })
         .select("targetQuestionId")
@@ -98,10 +101,10 @@ const processSimilarQuestionSearchJob = async ({
     return;
   }
 
-  let candidates: Awaited<ReturnType<typeof findSimilarQuestionCandidates>>;
+  let candidates: Awaited<ReturnType<typeof findDenseQuestionCandidates>>;
 
   try {
-    candidates = await findSimilarQuestionCandidates({
+    candidates = await findDenseQuestionCandidates({
       sourceQuestionId: questionId,
       sourceVersion: version,
       title: questionVersion.title,
@@ -120,7 +123,7 @@ const processSimilarQuestionSearchJob = async ({
     questionId,
     version,
     candidates: candidates.slice(0, 15),
-    retrievalVersion: denseRepresentationVersion,
+    retrievalVersion: similarQuestionsRetrievalVersion,
   });
 
   if (updated.modifiedCount === 0) return;
