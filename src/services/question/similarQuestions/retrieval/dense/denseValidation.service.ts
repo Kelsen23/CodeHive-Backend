@@ -1,7 +1,7 @@
 import type {
   EligibleQuestionVersion,
   RetrievalCandidate,
-} from "./retrieval.types.js";
+} from "../retrieval.types.js";
 
 const makeQuestionVersionKey = (questionId: string, version: number) =>
   `${questionId}:${version}`;

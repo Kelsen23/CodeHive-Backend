@@ -1,25 +1,29 @@
-import Question from "../../../../models/question.model.js";
-import QuestionEmbedding from "../../../../models/questionEmbedding.model.js";
+import type {
+  DenseEmbeddingRecord,
+  EligibleQuestionVersion,
+} from "../retrieval.types.js";
 
 import {
   denseRepresentationVersion,
   downstreamAllowedSecurityVerifierStatuses,
-} from "../../embedding/questionEmbedding.shared.js";
+} from "../../../embedding/dense/questionEmbedding.shared.js";
 
-import type {
-  DenseEmbeddingRecord,
-  EligibleQuestionVersion,
-} from "./retrieval.types.js";
+import Question from "../../../../../models/question.model.js";
+import QuestionEmbedding from "../../../../../models/questionEmbedding.model.js";
 
-const currentEligibleQuestionMatch = {
+const currentLiveEligibleQuestionMatch = {
   isActive: true,
   isDeleted: false,
-  embeddingStatus: "READY",
   moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
   questionEligibilityStatus: "ALLOWED",
   securityVerifierStatus: {
     $in: downstreamAllowedSecurityVerifierStatuses,
   },
+};
+
+const currentEligibleQuestionMatch = {
+  ...currentLiveEligibleQuestionMatch,
+  embeddingStatus: "READY",
 };
 
 const loadCurrentEligibleQuestionVersions = async () => {
@@ -60,10 +64,30 @@ const loadCurrentEligibleQuestionVersionsById = async (
   }));
 };
 
+const loadCurrentLiveEligibleQuestionVersionsById = async (
+  questionIds: string[],
+) => {
+  if (questionIds.length === 0) return [];
+
+  const questions = await Question.find({
+    _id: { $in: questionIds },
+    ...currentLiveEligibleQuestionMatch,
+  })
+    .select("_id currentVersion")
+    .lean<{ _id: unknown; currentVersion: number }[]>();
+
+  return questions.map<EligibleQuestionVersion>((question) => ({
+    questionId: String(question._id),
+    version: question.currentVersion,
+  }));
+};
+
 export {
   currentEligibleQuestionMatch,
+  currentLiveEligibleQuestionMatch,
   denseRepresentationVersion,
   loadCurrentEligibleQuestionVersions,
   loadCurrentEligibleQuestionVersionsById,
+  loadCurrentLiveEligibleQuestionVersionsById,
   streamDenseEmbeddings,
 };

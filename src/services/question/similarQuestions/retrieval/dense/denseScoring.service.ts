@@ -1,9 +1,9 @@
 import type {
   DenseEmbeddingRecord,
   RetrievalCandidate,
-} from "./retrieval.types.js";
+} from "../retrieval.types.js";
 
-import { denseRepresentationVersion } from "../../embedding/questionEmbedding.shared.js";
+import { denseRepresentationVersion } from "../../../embedding/dense/questionEmbedding.shared.js";
 import { makeQuestionVersionKey } from "./denseValidation.service.js";
 
 const cosineSimilarity = (left: number[], right: number[]) => {
