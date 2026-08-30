@@ -22,6 +22,8 @@ const QuestionSchema: Schema = new Schema(
       enum: ["NONE", "PENDING", "PROCESSING", "READY"],
       default: "NONE",
     },
+    similarQuestionsComputedAt: { type: Date, default: null },
+    similarQuestionsComputedVersion: { type: Number, default: null, min: 1 },
 
     embeddingStatus: {
       type: String,
@@ -80,5 +82,21 @@ const QuestionSchema: Schema = new Schema(
     },
   },
 );
+
+QuestionSchema.index({
+  similarQuestionsStatus: 1,
+  similarQuestionsComputedAt: 1,
+  currentVersion: 1,
+});
+
+QuestionSchema.index({
+  isActive: 1,
+  isDeleted: 1,
+  moderationStatus: 1,
+  questionEligibilityStatus: 1,
+  securityVerifierStatus: 1,
+  embeddingStatus: 1,
+  similarQuestionsComputedAt: 1,
+});
 
 export default mongoose.model("Question", QuestionSchema);
