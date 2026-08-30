@@ -10,6 +10,21 @@ const downstreamAllowedSecurityVerifierStatuses = [
   "ALLOWED_WITH_CONSTRAINTS",
 ] as const;
 
+const currentLiveEligibleQuestionMatch = {
+  isActive: true,
+  isDeleted: false,
+  moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
+  questionEligibilityStatus: "ALLOWED",
+  securityVerifierStatus: {
+    $in: downstreamAllowedSecurityVerifierStatuses,
+  },
+};
+
+const currentEligibleQuestionMatch = {
+  ...currentLiveEligibleQuestionMatch,
+  embeddingStatus: "READY",
+};
+
 type SimilarQuestionsJobData = {
   questionId: string;
   version: number;
@@ -19,6 +34,8 @@ export {
   aiAnswerSimilarQuestionResultLimit,
   aiAnswerSimilarQuestionScoreThreshold,
   downstreamAllowedSecurityVerifierStatuses,
+  currentEligibleQuestionMatch,
+  currentLiveEligibleQuestionMatch,
   denseCandidateLimit,
   similarQuestionResultLimit,
   similarQuestionScoreThreshold,
