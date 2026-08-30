@@ -1,20 +1,20 @@
 import generateEmbedding from "../ai/generateEmbedding.service.js";
-import buildQuestionEmbeddingInput from "../embedding/questionEmbeddingText.service.js";
+import buildQuestionEmbeddingInput from "../embedding/dense/questionEmbeddingText.service.js";
 
 import {
   denseRepresentationVersion,
   loadCurrentEligibleQuestionVersions,
   loadCurrentEligibleQuestionVersionsById,
   streamDenseEmbeddings,
-} from "./retrieval/denseCorpus.service.js";
+} from "./retrieval/dense/denseCorpus.service.js";
 import {
   scanDenseEmbeddings,
   selectTopCandidates,
-} from "./retrieval/denseScoring.service.js";
+} from "./retrieval/dense/denseScoring.service.js";
 import {
   filterEligibleCandidates,
   makeEligibleQuestionVersionSet,
-} from "./retrieval/denseValidation.service.js";
+} from "./retrieval/dense/denseValidation.service.js";
 import type {
   DenseCorpusSource,
   RetrievalCandidate,

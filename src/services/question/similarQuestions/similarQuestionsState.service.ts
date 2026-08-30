@@ -1,10 +1,11 @@
 import mongoose from "mongoose";
 
-import Question from "../../../models/question.model.js";
-import SimilarQuestion from "../../../models/similarQuestion.model.js";
 import type { RetrievalCandidate } from "./retrieval/retrieval.types.js";
 
 import { downstreamAllowedSecurityVerifierStatuses } from "./similarQuestions.shared.js";
+
+import Question from "../../../models/question.model.js";
+import SimilarQuestion from "../../../models/similarQuestion.model.js";
 
 type LockedSimilarQuestionsQuestion = {
   _id: unknown;
