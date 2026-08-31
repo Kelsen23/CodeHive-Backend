@@ -28,11 +28,16 @@ describe("dense retrieval orchestration", () => {
         loadCurrentEligibleQuestionVersions: async () => [
           { questionId: "source", version: 1 },
           { questionId: "candidate", version: 2 },
+          { questionId: "weak-candidate", version: 1 },
         ],
         streamDenseEmbeddings: () => {
           const stream = (async function* () {
             yield embedding("source", 1, [1, 0]);
             yield embedding("candidate", 2, [1, 0]);
+            yield embedding("weak-candidate", 1, [
+              0.7,
+              Math.sqrt(1 - 0.7 ** 2),
+            ]);
           })();
 
           return Object.assign(stream, {
@@ -43,6 +48,7 @@ describe("dense retrieval orchestration", () => {
         },
         loadCurrentEligibleQuestionVersionsById: async () => [
           { questionId: "candidate", version: 2 },
+          { questionId: "weak-candidate", version: 1 },
         ],
       },
     });

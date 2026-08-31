@@ -81,4 +81,20 @@ describe("dense scoring", () => {
       candidates.map(({ questionId, version }) => `${questionId}:${version}`),
     ).toEqual(["valid:2"]);
   });
+
+  it("filters candidates below the configured similarity threshold", async () => {
+    const candidates = await scanDenseEmbeddings({
+      queryVector: [1, 0],
+      embeddings: (async function* () {
+        yield embedding("strong", 1, [1, 0]);
+        yield embedding("weak", 1, [0.7, Math.sqrt(1 - 0.7 ** 2)]);
+      })(),
+      eligibleVersions: new Set(["strong:1", "weak:1"]),
+      sourceQuestionId: "source",
+      limit: 50,
+      scoreThreshold: 0.72,
+    });
+
+    expect(candidates.map(({ questionId }) => questionId)).toEqual(["strong"]);
+  });
 });
