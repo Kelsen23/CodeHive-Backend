@@ -9,7 +9,6 @@ const AiAnswerSchema = new Schema(
     },
 
     questionVersion: { type: Number, min: 1, required: true },
-
     body: { type: String, minlength: 20, maxlength: 20000, required: true },
 
     confidence: {
@@ -28,7 +27,6 @@ const AiAnswerSchema = new Schema(
       type: Schema.Types.Mixed,
       default: {},
     },
-
     isPublished: { type: Boolean, default: false },
   },
   {

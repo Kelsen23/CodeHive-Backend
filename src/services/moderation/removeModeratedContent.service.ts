@@ -1,3 +1,5 @@
+import { invalidateSimilarQuestions } from "../question/similarQuestions/similarQuestionsState.service.js";
+
 import HttpError from "../../utils/http/httpError.util.js";
 import { getRedisCacheClient } from "../../config/redis.config.js";
 import {
@@ -78,6 +80,10 @@ const removeModeratedContent = async (
   });
 
   if (targetType === "QUESTION") {
+    await invalidateSimilarQuestions(
+      targetId,
+      Number(foundContent.currentVersion),
+    );
     await getRedisCacheClient().del(`question:${targetId}`);
     await clearVersionHistoryCache(targetId);
     await clearQuestionDiscoveryCache();

@@ -1,7 +1,7 @@
-import { queueAiAnswerUnlockedNotification } from "../ai/unlockNotification.service.js";
-import { queueContentPipelineRoute } from "../pipelineRouter/pipelineRouting.service.js";
+import { queueAiAnswerUnlockedNotification } from "../../ai/unlockNotification.service.js";
+import { queueContentPipelineRoute } from "../../pipelineRouter/pipelineRouting.service.js";
 
-import { getRedisCacheClient } from "../../../config/redis.config.js";
+import { getRedisCacheClient } from "../../../../config/redis.config.js";
 
 const runQuestionEmbeddingReadySideEffects = async ({
   questionId,

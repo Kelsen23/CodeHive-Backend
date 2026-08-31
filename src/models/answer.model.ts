@@ -8,9 +8,7 @@ const AnswerSchema: Schema = new Schema(
       required: true,
     },
     userId: { type: String, required: true },
-
     body: { type: String, minlength: 20, maxlength: 20000, required: true },
-
     upvoteCount: { type: Number, default: 0, min: 0 },
     downvoteCount: { type: Number, default: 0, min: 0 },
     replyCount: { type: Number, default: 0, min: 0 },

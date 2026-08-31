@@ -17,20 +17,14 @@ const QuestionSchema: Schema = new Schema(
     basedOnVersion: { type: Number, default: 1, min: 1 },
     lastRollbackVersion: { type: Number, default: null, required: false },
 
-    similarQuestionIds: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "Question",
-      default: [],
-      index: true,
-    },
     similarQuestionsStatus: {
       type: String,
       enum: ["NONE", "PENDING", "PROCESSING", "READY"],
       default: "NONE",
     },
+    similarQuestionsComputedAt: { type: Date, default: null },
+    similarQuestionsComputedVersion: { type: Number, default: null, min: 1 },
 
-    embedding: { type: [Number], default: null, required: false },
-    embeddingHash: { type: String, default: null, required: false },
     embeddingStatus: {
       type: String,
       enum: ["NONE", "PENDING", "PROCESSING", "READY"],
@@ -88,5 +82,21 @@ const QuestionSchema: Schema = new Schema(
     },
   },
 );
+
+QuestionSchema.index({
+  similarQuestionsStatus: 1,
+  similarQuestionsComputedAt: 1,
+  currentVersion: 1,
+});
+
+QuestionSchema.index({
+  isActive: 1,
+  isDeleted: 1,
+  moderationStatus: 1,
+  questionEligibilityStatus: 1,
+  securityVerifierStatus: 1,
+  embeddingStatus: 1,
+  similarQuestionsComputedAt: 1,
+});
 
 export default mongoose.model("Question", QuestionSchema);

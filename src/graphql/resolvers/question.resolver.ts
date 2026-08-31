@@ -27,6 +27,7 @@ import QuestionVersion from "../../models/questionVersion.model.js";
 import AiAnswer from "../../models/aiAnswer.model.js";
 import AiAnswerFeedback from "../../models/aiAnswerFeedback.model.js";
 import UserInterest from "../../models/userInterest.model.js";
+import SimilarQuestion from "../../models/similarQuestion.model.js";
 
 type RecommendedQuestionsCursor = {
   id: string;
@@ -297,13 +298,13 @@ const questionResolver = {
 
       const questions = await Question.aggregate(pipeline);
 
-      const uniqueUserIds = [...new Set(questions.map((q) => q.userId))];
+      const uniqueUserIds = [...new Set(questions.map((q: any) => q.userId))];
 
       const users = await loaders.userLoader.loadMany(uniqueUserIds);
 
       const userMap = new Map(users.map((u: any) => [u?.id, u]));
 
-      const questionsWithUsers = questions.map((q) => {
+      const questionsWithUsers = questions.map((q: any) => {
         let user = userMap.get(q.userId);
 
         if (!user) {
@@ -455,7 +456,6 @@ const questionResolver = {
         ...result,
         isActive: question.isActive,
         isDeleted: question.isDeleted,
-        embedding: Array.isArray(question.embedding) ? question.embedding : [],
         moderationStatus: question.moderationStatus,
         questionEligibilityStatus: question.questionEligibilityStatus,
         securityVerifierStatus: question.securityVerifierStatus,
@@ -502,7 +502,7 @@ const questionResolver = {
         isDeleted: false,
         ...publicQuestionVisibilityMatch,
       })
-        .select("similarQuestionIds")
+        .select("currentVersion")
         .lean();
 
       if (!foundQuestion) {
@@ -516,19 +516,17 @@ const questionResolver = {
         return [];
       }
 
-      const uniqueLimitedIds = (
-        Array.isArray(foundQuestion.similarQuestionIds)
-          ? (foundQuestion.similarQuestionIds as Array<
-              string | mongoose.Types.ObjectId
-            >)
-          : []
-      )
-        .map((id) => String(id))
-        .filter((id) => mongoose.isValidObjectId(id))
-        .filter((id, index, arr) => arr.indexOf(id) === index)
-        .slice(0, 3);
+      const edges = await SimilarQuestion.find({
+        sourceQuestionId: questionId,
+        sourceVersion: foundQuestion.currentVersion,
+        retrievalVersion: "dense-v1",
+      })
+        .sort({ rank: 1 })
+        .limit(15)
+        .lean();
+      const uniqueEdgeIds = edges.map((edge) => String(edge.targetQuestionId));
 
-      if (uniqueLimitedIds.length === 0) {
+      if (uniqueEdgeIds.length === 0) {
         await getRedisCacheClient().set(
           cacheKey,
           JSON.stringify([]),
@@ -541,7 +539,7 @@ const questionResolver = {
 
       const similarQuestions = await Question.find({
         _id: {
-          $in: uniqueLimitedIds.map((id) => new mongoose.Types.ObjectId(id)),
+          $in: uniqueEdgeIds.map((id) => new mongoose.Types.ObjectId(id)),
         },
         isActive: true,
         isDeleted: false,
@@ -553,20 +551,32 @@ const questionResolver = {
         .lean();
 
       const questionMap = new Map(
-        similarQuestions.map((q) => [String(q._id), q]),
+        similarQuestions.map((q: any) => [String(q._id), q]),
+      );
+      const edgeMap = new Map(
+        edges.map((edge) => [
+          String(edge.targetQuestionId),
+          edge.targetVersion,
+        ]),
       );
 
-      const orderedSimilarQuestions = uniqueLimitedIds
-        .map((id) => questionMap.get(id))
+      const orderedSimilarQuestions = uniqueEdgeIds
+        .map((id) => {
+          const question = questionMap.get(id) as any;
+          return question && question.currentVersion === edgeMap.get(id)
+            ? question
+            : null;
+        })
         .filter(Boolean);
+      const limitedSimilarQuestions = orderedSimilarQuestions.slice(0, 5);
 
       const uniqueUserIds = [
-        ...new Set(orderedSimilarQuestions.map((q: any) => q.userId)),
+        ...new Set(limitedSimilarQuestions.map((q: any) => q.userId)),
       ];
       const users = await loaders.userLoader.loadMany(uniqueUserIds);
       const userMap = new Map(users.map((u: any) => [u?.id, u]));
 
-      const result = orderedSimilarQuestions.map((q: any) => ({
+      const result = limitedSimilarQuestions.map((q: any) => ({
         id: q._id,
         userId: q.userId,
         title: q.title,
@@ -1210,7 +1220,7 @@ const questionResolver = {
         { $project: { id: "$_id", _id: 0, title: 1 } },
       ]);
 
-      const suggestions = results.map((r) => r.title);
+      const suggestions = results.map((r: any) => r.title);
 
       await getRedisCacheClient().set(
         `searchSuggestions:${normalizedKeyword}:${normalizedLimitCount}`,
@@ -1409,13 +1419,13 @@ const questionResolver = {
 
       const questions = await Question.aggregate(pipeline);
 
-      const uniqueUserIds = [...new Set(questions.map((q) => q.userId))];
+      const uniqueUserIds = [...new Set(questions.map((q: any) => q.userId))];
 
       const users = await loaders.userLoader.loadMany(uniqueUserIds);
 
       const userMap = new Map(users.map((u: any) => [u?.id, u]));
 
-      const questionsWithUsers = questions.map((q) => ({
+      const questionsWithUsers = questions.map((q: any) => ({
         ...q,
         user: userMap.get(q.userId) || null,
       }));

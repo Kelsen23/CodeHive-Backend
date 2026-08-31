@@ -2,6 +2,10 @@
 dist/
 .eval-results/
 .env
+.venv-splade/
+.venv-colbert/
+.venv-reranker/
+__pycache__/
 
 npm-debug.log*
 yarn-debug.log*

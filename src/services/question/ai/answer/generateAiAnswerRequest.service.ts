@@ -11,6 +11,7 @@ import { makeJobId } from "../../../../utils/job/makeJobId.util.js";
 
 import Question from "../../../../models/question.model.js";
 import AiAnswer from "../../../../models/aiAnswer.model.js";
+import QuestionEmbedding from "../../../../models/questionEmbedding.model.js";
 
 import questionAiAnswerQueue from "../../../../queues/questionAiAnswer.queue.js";
 
@@ -25,7 +26,7 @@ const generateAiAnswerRequest = async (
     userId,
   })
     .select(
-      "_id isActive currentVersion moderationStatus embedding embeddingStatus questionEligibilityStatus securityVerifierStatus",
+      "_id isActive currentVersion moderationStatus embeddingStatus questionEligibilityStatus securityVerifierStatus",
     )
     .lean();
 
@@ -41,10 +42,15 @@ const generateAiAnswerRequest = async (
   if (!["APPROVED", "FLAGGED"].includes(String(foundQuestion.moderationStatus)))
     throw new HttpError("Question moderation status is not eligible", 400);
 
-  if (
-    !Array.isArray(foundQuestion.embedding) ||
-    foundQuestion.embedding.length === 0
-  )
+  const embedding = await QuestionEmbedding.findOne({
+    questionId,
+    version,
+    representationVersion: "dense-v1",
+  })
+    .select("vector")
+    .lean();
+
+  if (!embedding?.vector?.length)
     throw new HttpError("Question does not have embedding", 400);
 
   if (!canGetAIAnswer(foundQuestion))

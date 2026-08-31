@@ -12,8 +12,11 @@ type QuestionEmbeddingJobData = {
   version: number;
 };
 
+const denseRepresentationVersion = "dense-v1";
+
 export {
   downstreamAllowedSecurityVerifierStatuses,
   type DownstreamAllowedSecurityVerifierStatus,
   type QuestionEmbeddingJobData,
+  denseRepresentationVersion,
 };

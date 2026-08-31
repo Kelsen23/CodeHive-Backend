@@ -7,8 +7,9 @@ import refundCreditCharge from "../../user/credits/refundCreditCharge.service.js
 import {
   aiAnswerSimilarQuestionResultLimit,
   aiAnswerSimilarQuestionScoreThreshold,
+  denseCandidateLimit,
 } from "../similarQuestions/similarQuestions.shared.js";
-import findSimilarQuestionIds from "../similarQuestions/similarQuestionsSearch.service.js";
+import findSimilarQuestionCandidates from "../similarQuestions/similarQuestionsSearch.service.js";
 import { getAiAnswerCancelKey } from "../../../services/redis/aiAnswerSession.service.js";
 
 import { getRedisCacheClient } from "../../../config/redis.config.js";
@@ -16,6 +17,7 @@ import { getRedisCacheClient } from "../../../config/redis.config.js";
 import publishSocketEvent from "../../../utils/socket/publishSocketEvent.util.js";
 
 import Question from "../../../models/question.model.js";
+import QuestionEmbedding from "../../../models/questionEmbedding.model.js";
 
 type ProcessAiAnswerJobData = {
   userId: string;
@@ -38,7 +40,7 @@ const processQuestionAiAnswerJob = async ({
   try {
     const foundQuestion = await Question.findById(questionId)
       .select(
-        "_id isActive isDeleted currentVersion title body moderationStatus embedding embeddingStatus questionEligibilityStatus securityVerifierStatus",
+        "_id isActive isDeleted currentVersion title body tags moderationStatus embeddingStatus questionEligibilityStatus securityVerifierStatus",
       )
       .lean();
 
@@ -57,10 +59,12 @@ const processQuestionAiAnswerJob = async ({
       throw new Error("Question is not eligible for AI answer");
     }
 
-    if (
-      !Array.isArray(foundQuestion.embedding) ||
-      foundQuestion.embedding.length === 0
-    ) {
+    const embedding = await QuestionEmbedding.findOne({
+      questionId,
+      version,
+      representationVersion: "dense-v1",
+    }).lean();
+    if (!embedding?.vector?.length) {
       throw new Error("Question does not have embedding");
     }
 
@@ -74,15 +78,22 @@ const processQuestionAiAnswerJob = async ({
 
     await getRedisCacheClient().del(cancelKey);
 
-    const similarQuestionIds = await findSimilarQuestionIds({
-      questionId,
-      embedding: foundQuestion.embedding,
+    const candidates = await findSimilarQuestionCandidates({
+      sourceQuestionId: questionId,
+      sourceVersion: version,
+      title: String(foundQuestion.title ?? ""),
+      body: String(foundQuestion.body ?? ""),
+      tags: Array.isArray(foundQuestion.tags) ? foundQuestion.tags : [],
+      limit: denseCandidateLimit,
+      queryVector: embedding.vector,
+      model: embedding.model,
       resultLimit: aiAnswerSimilarQuestionResultLimit,
       scoreThreshold: aiAnswerSimilarQuestionScoreThreshold,
-      numCandidates: 150,
-      vectorSearchLimit: 20,
     });
 
+    const similarQuestionIds = candidates.map(
+      (candidate) => candidate.questionId,
+    );
     if (similarQuestionIds.length === 0) {
       await fullAnswerService(
         userId,

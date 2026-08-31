@@ -93,10 +93,12 @@ const queueQuestionPipelineStep = async ({
   questionId,
   version,
   step,
+  refresh = false,
 }: {
   questionId: string;
   version: number;
   step: QuestionPipelineStep;
+  refresh?: boolean;
 }) => {
   if (step === "ELIGIBILITY_GATE") {
     return queueJobIfNeeded({
@@ -128,7 +130,7 @@ const queueQuestionPipelineStep = async ({
   return queueJobIfNeeded({
     queue: similarQuestionSearchQueue,
     jobName: "SIMILAR_QUESTION_SEARCH",
-    data: { questionId, version },
+    data: { questionId, version, ...(refresh ? { refresh: true } : {}) },
     jobId: makeJobId("similarQuestionSearch", questionId, version),
   });
 };

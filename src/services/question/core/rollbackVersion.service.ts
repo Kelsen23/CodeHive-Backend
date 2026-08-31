@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 import { queueContentPipelineRoute } from "../pipelineRouter/pipelineRouting.service.js";
+import { toPublicQuestionVersion } from "../question.response.js";
 
 import { getRedisCacheClient } from "../../../config/redis.config.js";
 
@@ -12,8 +13,6 @@ import {
 
 import Question from "../../../models/question.model.js";
 import QuestionVersion from "../../../models/questionVersion.model.js";
-
-import { toPublicQuestionVersion } from "../question.response.js";
 
 const moderationSeverity = {
   PENDING: 0,
@@ -157,8 +156,9 @@ const rollbackVersion = async (
           securityVerifierUpdatedAt: null,
           securityVerifierSourceVersion: nextVersion,
           embeddingStatus: "NONE",
-          similarQuestionIds: [],
           similarQuestionsStatus: "NONE",
+          similarQuestionsComputedAt: null,
+          similarQuestionsComputedVersion: null,
         },
         { session },
       );

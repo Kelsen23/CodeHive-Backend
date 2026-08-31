@@ -9,15 +9,12 @@ const AiAnswerFeedbackSchema = new Schema(
     },
 
     userId: { type: String, required: true },
-
     type: {
       type: String,
       enum: ["HELPFUL", "NOT_HELPFUL"],
       required: true,
     },
-
     body: { type: String, minlength: 1, maxlength: 150, default: null },
-
     questionVersionAtFeedback: { type: Number, min: 1, required: true },
 
     moderationStatus: {
@@ -48,6 +45,7 @@ const AiAnswerFeedbackSchema = new Schema(
 );
 
 AiAnswerFeedbackSchema.index({ aiAnswerId: 1, createdAt: -1 });
+
 AiAnswerFeedbackSchema.index(
   { aiAnswerId: 1, userId: 1 },
   {

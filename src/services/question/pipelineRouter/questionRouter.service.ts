@@ -2,6 +2,7 @@ import {
   queueContentModerationRoute,
   queueQuestionPipelineStep,
 } from "./pipelineRouting.service.js";
+import { invalidateSimilarQuestions } from "../similarQuestions/similarQuestionsState.service.js";
 
 import Question from "../../../models/question.model.js";
 import QuestionVersion from "../../../models/questionVersion.model.js";
@@ -31,6 +32,8 @@ type QuestionPipelineRouteState = {
     | "REJECTED";
   embeddingStatus?: "NONE" | "PENDING" | "PROCESSING" | "READY";
   similarQuestionsStatus?: "NONE" | "PENDING" | "PROCESSING" | "READY";
+  isActive: boolean;
+  isDeleted: boolean;
   isCurrentVersion: boolean;
 };
 
@@ -50,33 +53,27 @@ const loadQuestionPipelineRouteState = async (
 
   if (!questionVersion) return null;
 
-  if (
-    questionVersion.moderationStatus === "PENDING" ||
-    questionVersion.moderationStatus === "REJECTED"
-  ) {
-    return {
-      moderationStatus: questionVersion.moderationStatus,
-      isCurrentVersion: true,
-    };
-  }
-
   const question = await Question.findOne({
     _id: questionId,
     currentVersion: version,
   })
     .select(
-      "questionEligibilityStatus securityVerifierStatus embeddingStatus similarQuestionsStatus",
+      "questionEligibilityStatus securityVerifierStatus embeddingStatus similarQuestionsStatus isActive isDeleted",
     )
     .lean<{
       questionEligibilityStatus: QuestionPipelineRouteState["questionEligibilityStatus"];
       securityVerifierStatus: QuestionPipelineRouteState["securityVerifierStatus"];
       embeddingStatus: QuestionPipelineRouteState["embeddingStatus"];
       similarQuestionsStatus: QuestionPipelineRouteState["similarQuestionsStatus"];
+      isActive: boolean;
+      isDeleted: boolean;
     }>();
 
   if (!question) {
     return {
       moderationStatus: questionVersion.moderationStatus,
+      isActive: false,
+      isDeleted: true,
       isCurrentVersion: false,
     };
   }
@@ -87,6 +84,8 @@ const loadQuestionPipelineRouteState = async (
     securityVerifierStatus: question.securityVerifierStatus,
     embeddingStatus: question.embeddingStatus,
     similarQuestionsStatus: question.similarQuestionsStatus,
+    isActive: question.isActive,
+    isDeleted: question.isDeleted,
     isCurrentVersion: true,
   };
 };
@@ -124,7 +123,8 @@ const resolveQuestionPipelineRouteDecision = (
 
   if (
     state.embeddingStatus === "READY" &&
-    state.similarQuestionsStatus === "NONE"
+    (state.similarQuestionsStatus === "NONE" ||
+      state.similarQuestionsStatus === "PENDING")
   ) {
     return { type: "SIMILAR" };
   }
@@ -133,9 +133,26 @@ const resolveQuestionPipelineRouteDecision = (
 };
 
 const questionRouter = async (questionId: string, version: number) => {
-  const routeDecision = resolveQuestionPipelineRouteDecision(
-    await loadQuestionPipelineRouteState(questionId, version),
-  );
+  const routeState = await loadQuestionPipelineRouteState(questionId, version);
+
+  if (
+    routeState?.isCurrentVersion &&
+    (routeState.moderationStatus === "PENDING" ||
+      routeState.moderationStatus === "REJECTED" ||
+      !routeState.isActive ||
+      routeState.isDeleted ||
+      routeState.questionEligibilityStatus !== "ALLOWED" ||
+      !completedSecurityVerifierStatuses.has(
+        routeState.securityVerifierStatus as NonNullable<
+          QuestionPipelineRouteState["securityVerifierStatus"]
+        >,
+      ) ||
+      routeState.embeddingStatus !== "READY")
+  ) {
+    await invalidateSimilarQuestions(questionId, version);
+  }
+
+  const routeDecision = resolveQuestionPipelineRouteDecision(routeState);
 
   if (routeDecision.type === "MODERATE") {
     return queueContentModerationRoute({
