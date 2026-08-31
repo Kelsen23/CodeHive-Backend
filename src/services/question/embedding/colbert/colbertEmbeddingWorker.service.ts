@@ -27,31 +27,47 @@ const rejectPending = (error: Error) => {
   pending.clear();
 };
 
-const stopWorker = (error: Error) => {
-  responseReader?.close();
+const stopWorker = (
+  error: Error,
+  expectedWorker?: ChildProcessWithoutNullStreams,
+) => {
+  if (expectedWorker && worker !== expectedWorker) return;
+
+  const currentReader = responseReader;
+  const currentWorker = worker;
   responseReader = undefined;
-  worker?.kill();
   worker = undefined;
+
+  currentReader?.close();
+  currentWorker?.kill();
   rejectPending(error);
 };
 
 const ensureWorker = () => {
   if (worker && responseReader) return;
 
-  worker = spawn(colbertConfig.pythonExecutable, [colbertConfig.workerPath], {
-    stdio: ["pipe", "pipe", "pipe"],
-    env: {
-      ...process.env,
-      COLBERT_CHECKPOINT_PATH: colbertConfig.checkpointPath,
+  const spawnedWorker = spawn(
+    colbertConfig.pythonExecutable,
+    [colbertConfig.workerPath],
+    {
+      stdio: ["pipe", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        COLBERT_CHECKPOINT_PATH: colbertConfig.checkpointPath,
+      },
     },
-  });
-  responseReader = createInterface({ input: worker.stdout });
+  );
+  worker = spawnedWorker;
+  responseReader = createInterface({ input: spawnedWorker.stdout });
   responseReader.on("line", (line) => {
     let response: ColbertResponse;
     try {
       response = JSON.parse(line) as ColbertResponse;
     } catch {
-      stopWorker(new Error("ColBERT worker returned invalid JSON"));
+      stopWorker(
+        new Error("ColBERT worker returned invalid JSON"),
+        spawnedWorker,
+      );
       return;
     }
 
@@ -60,17 +76,18 @@ const ensureWorker = () => {
     pending.delete(response.id);
     request.resolve(response);
   });
-  worker.stderr.on("data", (chunk) => {
+  spawnedWorker.stderr.on("data", (chunk) => {
     process.stderr.write(`[colbert] ${chunk}`);
   });
-  worker.once("error", (error) => stopWorker(error));
-  worker.once("exit", (code, signal) => {
-    if (worker)
-      stopWorker(
-        new Error(
-          `ColBERT worker exited (${signal ?? `code ${code ?? "unknown"}`})`,
-        ),
-      );
+
+  spawnedWorker.once("error", (error) => stopWorker(error, spawnedWorker));
+  spawnedWorker.once("exit", (code, signal) => {
+    stopWorker(
+      new Error(
+        `ColBERT worker exited (${signal ?? `code ${code ?? "unknown"}`})`,
+      ),
+      spawnedWorker,
+    );
   });
 };
 

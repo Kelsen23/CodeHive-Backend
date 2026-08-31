@@ -98,7 +98,7 @@ const scanSparseEmbeddings = async ({
     )
       continue;
     const candidate = scoreSparseEmbedding(query, embedding);
-    if (candidate)
+    if (candidate && candidate.score > 0)
       candidates = selectTopSparseCandidates([...candidates, candidate], limit);
   }
   return candidates;

@@ -78,39 +78,37 @@ const processSimilarQuestionSearchJob = async ({
     return;
   }
 
-  const embeddingDocument = await QuestionEmbedding.findOne({
-    questionId,
-    version,
-    representationVersion: "dense-v1",
-  }).lean();
-  const embedding = embeddingDocument?.vector;
-
-  if (!Array.isArray(embedding) || embedding.length === 0) {
-    await resetSimilarQuestionsProcessing(questionId, version);
-    return;
-  }
-
-  const questionVersion = await QuestionVersion.findOne({
-    questionId,
-    version,
-    isActive: true,
-  })
-    .select("title body tags")
-    .lean<{
-      title: string;
-      body: string;
-      tags?: string[];
-    }>();
-
-  if (!questionVersion) {
-    await resetSimilarQuestionsProcessing(questionId, version);
-    return;
-  }
-
-  let candidates: Awaited<ReturnType<typeof findDenseQuestionCandidates>>;
-
   try {
-    candidates = await findDenseQuestionCandidates({
+    const embeddingDocument = await QuestionEmbedding.findOne({
+      questionId,
+      version,
+      representationVersion: "dense-v1",
+    }).lean();
+    const embedding = embeddingDocument?.vector;
+
+    if (!Array.isArray(embedding) || embedding.length === 0) {
+      await resetSimilarQuestionsProcessing(questionId, version);
+      return;
+    }
+
+    const questionVersion = await QuestionVersion.findOne({
+      questionId,
+      version,
+      isActive: true,
+    })
+      .select("title body tags")
+      .lean<{
+        title: string;
+        body: string;
+        tags?: string[];
+      }>();
+
+    if (!questionVersion) {
+      await resetSimilarQuestionsProcessing(questionId, version);
+      return;
+    }
+
+    const candidates = await findDenseQuestionCandidates({
       sourceQuestionId: questionId,
       sourceVersion: version,
       title: questionVersion.title,
@@ -120,26 +118,26 @@ const processSimilarQuestionSearchJob = async ({
       queryVector: embedding,
       model: embeddingDocument?.model,
     });
+
+    const updated = await finalizeSimilarQuestions({
+      questionId,
+      version,
+      candidates: candidates.slice(0, 15),
+      retrievalVersion: similarQuestionsRetrievalVersion,
+    });
+
+    if (updated.modifiedCount === 0) return;
+
+    await runReadySideEffectsIfCurrent({
+      questionId,
+      version,
+      candidates: candidates.slice(0, 15),
+      notify: !refresh,
+    });
   } catch (error) {
     await resetSimilarQuestionsProcessing(questionId, version);
     throw error;
   }
-
-  const updated = await finalizeSimilarQuestions({
-    questionId,
-    version,
-    candidates: candidates.slice(0, 15),
-    retrievalVersion: similarQuestionsRetrievalVersion,
-  });
-
-  if (updated.modifiedCount === 0) return;
-
-  await runReadySideEffectsIfCurrent({
-    questionId,
-    version,
-    candidates: candidates.slice(0, 15),
-    notify: !refresh,
-  });
 };
 
 export default processSimilarQuestionSearchJob;

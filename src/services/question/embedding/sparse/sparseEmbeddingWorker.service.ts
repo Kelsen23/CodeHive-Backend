@@ -30,28 +30,44 @@ const rejectPending = (error: Error) => {
   pending.clear();
 };
 
-const stopWorker = (error: Error) => {
-  responseReader?.close();
+const stopWorker = (
+  error: Error,
+  expectedWorker?: ChildProcessWithoutNullStreams,
+) => {
+  if (expectedWorker && worker !== expectedWorker) return;
+
+  const currentReader = responseReader;
+  const currentWorker = worker;
   responseReader = undefined;
-  worker?.kill();
   worker = undefined;
+
+  currentReader?.close();
+  currentWorker?.kill();
   rejectPending(error);
 };
 
 const ensureWorker = () => {
   if (worker && responseReader) return;
 
-  worker = spawn(spladeConfig.pythonExecutable, [spladeConfig.workerPath], {
-    stdio: ["pipe", "pipe", "pipe"],
-    env: { ...process.env, SPLADE_MODEL: spladeConfig.model },
-  });
-  responseReader = createInterface({ input: worker.stdout });
+  const spawnedWorker = spawn(
+    spladeConfig.pythonExecutable,
+    [spladeConfig.workerPath],
+    {
+      stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, SPLADE_MODEL: spladeConfig.model },
+    },
+  );
+  worker = spawnedWorker;
+  responseReader = createInterface({ input: spawnedWorker.stdout });
   responseReader.on("line", (line) => {
     let response: WorkerResponse;
     try {
       response = JSON.parse(line) as WorkerResponse;
     } catch {
-      stopWorker(new Error("SPLADE worker returned invalid JSON"));
+      stopWorker(
+        new Error("SPLADE worker returned invalid JSON"),
+        spawnedWorker,
+      );
       return;
     }
 
@@ -60,18 +76,17 @@ const ensureWorker = () => {
     pending.delete(response.id);
     request.resolve(response);
   });
-  worker.stderr.on("data", (chunk) => {
+  spawnedWorker.stderr.on("data", (chunk) => {
     process.stderr.write(`[splade] ${chunk}`);
   });
-  worker.once("error", (error) => stopWorker(error));
-  worker.once("exit", (code, signal) => {
-    if (worker) {
-      stopWorker(
-        new Error(
-          `SPLADE worker exited (${signal ?? `code ${code ?? "unknown"}`})`,
-        ),
-      );
-    }
+  spawnedWorker.once("error", (error) => stopWorker(error, spawnedWorker));
+  spawnedWorker.once("exit", (code, signal) => {
+    stopWorker(
+      new Error(
+        `SPLADE worker exited (${signal ?? `code ${code ?? "unknown"}`})`,
+      ),
+      spawnedWorker,
+    );
   });
 };
 

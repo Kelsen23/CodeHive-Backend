@@ -45,23 +45,31 @@ const stopWorker = (
 const ensureWorker = () => {
   if (worker && reader) return;
 
-  worker = spawn(rerankerConfig.pythonExecutable, [rerankerConfig.workerPath], {
-    stdio: ["pipe", "pipe", "pipe"],
-    env: {
-      ...process.env,
-      RERANKER_CHECKPOINT_PATH: rerankerConfig.checkpointPath,
-      RERANKER_BATCH_SIZE: String(rerankerConfig.batchSize),
+  const spawnedWorker = spawn(
+    rerankerConfig.pythonExecutable,
+    [rerankerConfig.workerPath],
+    {
+      stdio: ["pipe", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        RERANKER_CHECKPOINT_PATH: rerankerConfig.checkpointPath,
+        RERANKER_BATCH_SIZE: String(rerankerConfig.batchSize),
+      },
     },
-  });
+  );
+  worker = spawnedWorker;
 
-  reader = createInterface({ input: worker.stdout });
+  reader = createInterface({ input: spawnedWorker.stdout });
 
   reader.on("line", (line) => {
     let response: RerankerResponse;
     try {
       response = JSON.parse(line) as RerankerResponse;
     } catch {
-      stopWorker(new Error("Reranker worker returned invalid JSON"));
+      stopWorker(
+        new Error("Reranker worker returned invalid JSON"),
+        spawnedWorker,
+      );
       return;
     }
 
@@ -72,15 +80,12 @@ const ensureWorker = () => {
     request.resolve(response);
   });
 
-  worker.stderr.on("data", (chunk) =>
+  spawnedWorker.stderr.on("data", (chunk) =>
     process.stderr.write(`[reranker] ${chunk}`),
   );
+  spawnedWorker.once("error", (error) => stopWorker(error, spawnedWorker));
 
-  const spawnedWorker = worker;
-
-  worker.once("error", (error) => stopWorker(error, spawnedWorker));
-
-  worker.once("exit", (code, signal) => {
+  spawnedWorker.once("exit", (code, signal) => {
     stopWorker(
       new Error(
         `Reranker worker exited (${signal ?? `code ${code ?? "unknown"}`})`,
