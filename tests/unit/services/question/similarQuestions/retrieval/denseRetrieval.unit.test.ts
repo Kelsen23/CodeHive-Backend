@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import findSimilarQuestionCandidates from "../../../../../../src/services/question/similarQuestions/similarQuestionsSearch.service.js";
 
@@ -89,5 +89,90 @@ describe("dense retrieval orchestration", () => {
     });
 
     expect(candidates).toEqual([]);
+  });
+
+  it("uses indexed retrieval without scanning the full corpus", async () => {
+    const searchDenseEmbeddings = vi.fn(async () => [
+      {
+        questionId: "source",
+        version: 1,
+        score: 0.99,
+        retrievalVersion: "dense-v1",
+        model: "test-model",
+        representationVersion: "dense-v1",
+      },
+      {
+        questionId: "candidate",
+        version: 2,
+        score: 0.8,
+        retrievalVersion: "dense-v1",
+        model: "test-model",
+        representationVersion: "dense-v1",
+      },
+      {
+        questionId: "stale-candidate",
+        version: 1,
+        score: 0.9,
+        retrievalVersion: "dense-v1",
+        model: "test-model",
+        representationVersion: "dense-v1",
+      },
+      {
+        questionId: "below-threshold",
+        version: 1,
+        score: 0.71,
+        retrievalVersion: "dense-v1",
+        model: "test-model",
+        representationVersion: "dense-v1",
+      },
+    ]);
+    const loadCurrentEligibleQuestionVersions = vi.fn(async () => {
+      throw new Error("indexed retrieval must not scan the full corpus");
+    });
+    const loadCurrentEligibleQuestionVersionsById = vi.fn(async () => [
+      { questionId: "candidate", version: 2 },
+    ]);
+
+    const candidates = await findSimilarQuestionCandidates({
+      sourceQuestionId: "source",
+      sourceVersion: 1,
+      title: "Source title",
+      body: "Source body",
+      tags: [],
+      limit: 50,
+      queryVector: [1, 0],
+      model: "test-model",
+      scoreThreshold: 0.72,
+      corpus: {
+        loadCurrentEligibleQuestionVersions,
+        streamDenseEmbeddings: () => {
+          throw new Error("indexed retrieval must not stream embeddings");
+        },
+        loadCurrentEligibleQuestionVersionsById,
+        searchDenseEmbeddings,
+      },
+    });
+
+    expect(searchDenseEmbeddings).toHaveBeenCalledWith({
+      queryVector: [1, 0],
+      model: "test-model",
+      limit: 50,
+    });
+    expect(loadCurrentEligibleQuestionVersions).not.toHaveBeenCalled();
+    expect(loadCurrentEligibleQuestionVersionsById).toHaveBeenCalledWith([
+      "source",
+      "candidate",
+      "stale-candidate",
+    ]);
+    expect(candidates).toEqual([
+      {
+        questionId: "candidate",
+        version: 2,
+        score: 0.8,
+        retrievalVersion: "dense-v1",
+        model: "test-model",
+        representationVersion: "dense-v1",
+      },
+    ]);
   });
 });

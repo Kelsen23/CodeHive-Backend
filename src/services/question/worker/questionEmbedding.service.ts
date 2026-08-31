@@ -8,10 +8,13 @@ import {
   resetQuestionEmbeddingProcessing,
 } from "../embedding/dense/questionEmbeddingState.service.js";
 import buildQuestionEmbeddingInput from "../embedding/dense/questionEmbeddingText.service.js";
+
 import {
   denseRepresentationVersion,
   type QuestionEmbeddingJobData,
 } from "../embedding/dense/questionEmbedding.shared.js";
+
+import { getLlmFeatureRoute } from "../../../config/llmGateway.config.js";
 
 import QuestionEmbedding from "../../../models/questionEmbedding.model.js";
 
@@ -65,6 +68,7 @@ const processQuestionEmbeddingJob = async ({
   const existingEmbedding = await QuestionEmbedding.findOne({
     questionId,
     version,
+    model: getLlmFeatureRoute("embeddings").primary.model,
     representationVersion: denseRepresentationVersion,
   }).lean();
 

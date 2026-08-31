@@ -26,9 +26,6 @@ const getQuestionAutocompleteIndexName = () =>
 const getQuestionSearchIndexName = () =>
   getMongoDBConfig().questionSearchIndexName;
 
-const getQuestionVectorSearchIndexName = () =>
-  getMongoDBConfig().questionVectorSearchIndexName;
-
 const connectMongoDB = async (mongoUrl: string) => {
   try {
     await mongoose.connect(mongoUrl);
@@ -42,7 +39,6 @@ const connectMongoDB = async (mongoUrl: string) => {
 export {
   getQuestionAutocompleteIndexName,
   getQuestionSearchIndexName,
-  getQuestionVectorSearchIndexName,
   getRecommendedQuestionsIndexName,
 };
 

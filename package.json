@@ -69,6 +69,7 @@
     "google-auth-library": "^10.5.0",
     "graphql": "^16.11.0",
     "graphql-tag": "^2.12.6",
+    "hnswlib-node": "^3.0.0",
     "ioredis": "^5.7.0",
     "jsonwebtoken": "^9.0.2",
     "leo-profanity": "^1.8.0",

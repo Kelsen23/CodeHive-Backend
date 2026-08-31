@@ -49,7 +49,7 @@ const scoreColbertEmbedding = (
   const score = maxSimScore(queryVectors, embedding.vectors);
   if (score === null) return null;
   return {
-    questionId: embedding.questionId,
+    questionId: String(embedding.questionId),
     version: embedding.version,
     score,
     retrievalVersion: colbertRepresentationVersion,
@@ -103,9 +103,11 @@ const scanColbertEmbeddings = async ({
 }) => {
   let candidates: RetrievalCandidate[] = [];
   for await (const embedding of embeddings) {
+    const embeddingQuestionId = String(embedding.questionId);
+
     if (
-      embedding.questionId === sourceQuestionId ||
-      !eligibleVersions.has(`${embedding.questionId}:${embedding.version}`)
+      embeddingQuestionId === sourceQuestionId ||
+      !eligibleVersions.has(`${embeddingQuestionId}:${embedding.version}`)
     )
       continue;
     const candidate = scoreColbertEmbedding(queryVectors, embedding);

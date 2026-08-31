@@ -16,6 +16,7 @@ import generateEmbedding from "../../src/services/question/ai/generateEmbedding.
 import buildQuestionEmbeddingInput from "../../src/services/question/embedding/dense/questionEmbeddingText.service.js";
 import { generateSparseEmbedding } from "../../src/services/question/embedding/sparse/sparseEmbedding.service.js";
 import { generateColbertEmbedding } from "../../src/services/question/embedding/colbert/colbertEmbedding.service.js";
+import { buildDenseAnnIndex } from "../../src/services/question/similarQuestions/retrieval/dense/denseAnnIndex.service.js";
 
 type EmbeddingGenerator = (text: string) => Promise<{
   embedding: number[];
@@ -73,6 +74,9 @@ const prepareDenseEvalCorpus = async (
     );
   }
 
+  const useHnsw = process.env.RETRIEVAL_EVAL_USE_HNSW !== "false";
+  const denseAnnIndex = useHnsw ? buildDenseAnnIndex(embeddings) : null;
+
   const loadCurrentEligibleQuestionVersions = async () =>
     corpus.map(({ questionId, version }) => ({ questionId, version }));
   const loadCurrentEligibleQuestionVersionsById = async (
@@ -99,6 +103,22 @@ const prepareDenseEvalCorpus = async (
         close: async () => undefined,
       });
     },
+    ...(denseAnnIndex
+      ? {
+          searchDenseEmbeddings: async ({
+            queryVector,
+            model,
+            limit,
+          }: {
+            queryVector: number[];
+            model: string;
+            limit: number;
+          }) =>
+            model === embeddings[0]?.model
+              ? denseAnnIndex.search(queryVector, Math.max(limit * 5 + 1, 101))
+              : [],
+        }
+      : {}),
   };
 };
 

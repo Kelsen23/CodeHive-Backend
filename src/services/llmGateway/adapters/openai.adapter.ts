@@ -75,7 +75,10 @@ const toUsage = (usage?: OpenAiUsage): LLMUsage => {
 const toOpenAiReasoningEffort = (reasoning?: LLMReasoningOptions) => {
   if (!reasoning?.effort) return undefined;
 
-  return reasoning.effort === "max" ? "xhigh" : reasoning.effort;
+  return (reasoning.effort === "max" ? "xhigh" : reasoning.effort) as
+    | "low"
+    | "medium"
+    | "high";
 };
 
 const usesDefaultOnlyTemperature = (model: string) =>

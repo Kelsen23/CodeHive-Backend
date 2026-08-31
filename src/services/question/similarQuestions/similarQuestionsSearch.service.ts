@@ -5,6 +5,7 @@ import {
   denseRepresentationVersion,
   loadCurrentEligibleQuestionVersions,
   loadCurrentEligibleQuestionVersionsById,
+  searchDenseEmbeddings,
   streamDenseEmbeddings,
 } from "./retrieval/dense/denseCorpus.service.js";
 import {
@@ -47,6 +48,7 @@ const findSimilarQuestionCandidates = async ({
     loadCurrentEligibleQuestionVersions,
     streamDenseEmbeddings,
     loadCurrentEligibleQuestionVersionsById,
+    searchDenseEmbeddings,
   },
 }: DenseRetrievalRequest): Promise<RetrievalCandidate[]> => {
   let vector = queryVector;
@@ -62,6 +64,31 @@ const findSimilarQuestionCandidates = async ({
   }
 
   if (!model) throw new Error("Dense retrieval requires an embedding model");
+
+  if (corpus.searchDenseEmbeddings) {
+    const candidates = (
+      await corpus.searchDenseEmbeddings({
+        queryVector: vector,
+        model,
+        limit: Math.max(limit, denseCandidateLimit),
+      })
+    ).filter((candidate) => candidate.score >= scoreThreshold);
+
+    const postvalidatedVersions = makeEligibleQuestionVersionSet(
+      await corpus.loadCurrentEligibleQuestionVersionsById(
+        candidates.map((candidate) => candidate.questionId),
+      ),
+    );
+
+    return selectTopCandidates(
+      filterEligibleCandidates(
+        candidates,
+        postvalidatedVersions,
+        sourceQuestionId,
+      ),
+      resultLimit,
+    );
+  }
 
   const prevalidatedVersions = makeEligibleQuestionVersionSet(
     await corpus.loadCurrentEligibleQuestionVersions(),

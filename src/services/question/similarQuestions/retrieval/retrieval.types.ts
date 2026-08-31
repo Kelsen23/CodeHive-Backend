@@ -103,6 +103,11 @@ type DenseCorpusSource = {
   loadCurrentEligibleQuestionVersionsById: (
     questionIds: string[],
   ) => Promise<EligibleQuestionVersion[]>;
+  searchDenseEmbeddings?: (input: {
+    queryVector: number[];
+    model: string;
+    limit: number;
+  }) => Promise<RetrievalCandidate[]>;
 };
 
 type SparseEmbeddingStream = AsyncIterable<SparseEmbeddingRecord> & {
