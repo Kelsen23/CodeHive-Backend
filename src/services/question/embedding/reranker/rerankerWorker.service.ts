@@ -25,12 +25,19 @@ const rejectPending = (error: Error) => {
   pending.clear();
 };
 
-const stopWorker = (error: Error) => {
-  reader?.close();
-  reader = undefined;
+const stopWorker = (
+  error: Error,
+  expectedWorker?: ChildProcessWithoutNullStreams,
+) => {
+  if (expectedWorker && worker !== expectedWorker) return;
 
-  worker?.kill();
+  const currentReader = reader;
+  const currentWorker = worker;
+  reader = undefined;
   worker = undefined;
+
+  currentReader?.close();
+  currentWorker?.kill();
 
   rejectPending(error);
 };
@@ -69,15 +76,17 @@ const ensureWorker = () => {
     process.stderr.write(`[reranker] ${chunk}`),
   );
 
-  worker.once("error", stopWorker);
+  const spawnedWorker = worker;
+
+  worker.once("error", (error) => stopWorker(error, spawnedWorker));
 
   worker.once("exit", (code, signal) => {
-    if (worker)
-      stopWorker(
-        new Error(
-          `Reranker worker exited (${signal ?? `code ${code ?? "unknown"}`})`,
-        ),
-      );
+    stopWorker(
+      new Error(
+        `Reranker worker exited (${signal ?? `code ${code ?? "unknown"}`})`,
+      ),
+      spawnedWorker,
+    );
   });
 };
 

@@ -95,6 +95,8 @@ const findDenseRerankerQuestionCandidates = async ({
     };
   });
 
+  if (pairs.length === 0) return [];
+
   const { scores, model } = await scoreRerankerTextPairs(pairs);
 
   const reranked = candidates

@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 import {
   denseRepresentationVersion,
   downstreamAllowedSecurityVerifierStatuses,
@@ -72,45 +74,66 @@ const finalizeQuestionEmbedding = async ({
   version: number;
   embedding: number[];
   model: string;
-}) =>
-  QuestionEmbedding.updateOne(
-    {
-      questionId,
-      version,
-      model,
-      representationVersion: denseRepresentationVersion,
-    },
-    {
-      $set: { vector: embedding, dimensions: embedding.length },
-      $setOnInsert: {
-        questionId,
-        version,
-        model,
-        representationVersion: denseRepresentationVersion,
-      },
-    },
-    { upsert: true },
-  ).then(async (embeddingResult) => {
-    if (embeddingResult.acknowledged) {
-      await Question.updateOne(
+}) => {
+  const session = await mongoose.startSession();
+  let questionUpdated = false;
+
+  try {
+    const embeddingResult = await session.withTransaction(async () => {
+      const result = await QuestionEmbedding.updateOne(
         {
-          _id: questionId,
-          currentVersion: version,
-          embeddingStatus: "PROCESSING",
+          questionId,
+          version,
+          model,
+          representationVersion: denseRepresentationVersion,
         },
         {
-          $set: {
-            embeddingStatus: "READY",
-            similarQuestionsStatus: "NONE",
-            similarQuestionsComputedAt: null,
-            similarQuestionsComputedVersion: null,
+          $set: { vector: embedding, dimensions: embedding.length },
+          $setOnInsert: {
+            questionId,
+            version,
+            model,
+            representationVersion: denseRepresentationVersion,
           },
         },
+        { upsert: true, session },
       );
-    }
 
-    return embeddingResult;
-  });
+      if (result.acknowledged) {
+        const questionUpdate = await Question.updateOne(
+          {
+            _id: questionId,
+            currentVersion: version,
+            isActive: true,
+            isDeleted: false,
+            moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
+            questionEligibilityStatus: "ALLOWED",
+            securityVerifierStatus: {
+              $in: downstreamAllowedSecurityVerifierStatuses,
+            },
+            embeddingStatus: "PROCESSING",
+          },
+          {
+            $set: {
+              embeddingStatus: "READY",
+              similarQuestionsStatus: "NONE",
+              similarQuestionsComputedAt: null,
+              similarQuestionsComputedVersion: null,
+            },
+          },
+          { session },
+        );
+        questionUpdated = questionUpdate.matchedCount === 1;
+      }
+
+      return result;
+    });
+
+    return { ...embeddingResult, questionUpdated };
+  } finally {
+    await session.endSession();
+  }
+};
 
 const loadReadyQuestionForEmbeddingSideEffects = async (
   questionId: string,

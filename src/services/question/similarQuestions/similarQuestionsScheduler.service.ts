@@ -72,6 +72,7 @@ const scheduleStaleSimilarQuestions = async () => {
         questionId,
         version: question.currentVersion,
         step: "SIMILAR",
+        refresh: true,
       });
       queued += 1;
     } catch (error) {

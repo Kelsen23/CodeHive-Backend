@@ -7,30 +7,33 @@ const runSimilarQuestionsReadySideEffects = async ({
   version,
   userId,
   similarQuestionIds,
+  notify = true,
 }: {
   questionId: string;
   version: number;
   userId: string;
   similarQuestionIds: string[];
+  notify?: boolean;
 }) => {
   await getRedisCacheClient().del(
     `question:${questionId}`,
     `similarQuestions:${questionId}`,
   );
 
-  await routeNotification({
-    recipientId: userId,
-    event: "SIMILAR_QUESTIONS_READY",
-    target: {
-      entityType: "QUESTION",
-      entityId: questionId,
-      questionVersion: version,
-    },
-    meta: {
-      count: similarQuestionIds.length,
-      previewIds: similarQuestionIds.slice(0, 3),
-    },
-  });
+  if (notify)
+    await routeNotification({
+      recipientId: userId,
+      event: "SIMILAR_QUESTIONS_READY",
+      target: {
+        entityType: "QUESTION",
+        entityId: questionId,
+        questionVersion: version,
+      },
+      meta: {
+        count: similarQuestionIds.length,
+        previewIds: similarQuestionIds.slice(0, 3),
+      },
+    });
 };
 
 export default runSimilarQuestionsReadySideEffects;

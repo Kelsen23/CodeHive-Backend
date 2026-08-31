@@ -19,18 +19,18 @@ const similarQuestionsRetrievalVersion = "dense-v1";
 const runReadySideEffectsIfCurrent = async ({
   questionId,
   version,
-  userId,
   candidates,
+  notify = true,
 }: {
   questionId: string;
   version: number;
-  userId?: unknown;
   candidates?: Awaited<ReturnType<typeof findDenseQuestionCandidates>>;
+  notify?: boolean;
 }) => {
-  const readyQuestion =
-    userId && candidates
-      ? { userId, candidates }
-      : await loadReadyQuestionForSimilarSideEffects(questionId, version);
+  const readyQuestion = await loadReadyQuestionForSimilarSideEffects(
+    questionId,
+    version,
+  );
 
   if (!readyQuestion) return;
 
@@ -58,17 +58,23 @@ const runReadySideEffectsIfCurrent = async ({
             : String(candidate.questionId),
         )
       : [],
+    notify,
   });
 };
 
 const processSimilarQuestionSearchJob = async ({
   questionId,
   version,
+  refresh = false,
 }: SimilarQuestionsJobData) => {
   const locked = await lockQuestionForSimilarQuestions(questionId, version);
 
   if (!locked) {
-    await runReadySideEffectsIfCurrent({ questionId, version });
+    await runReadySideEffectsIfCurrent({
+      questionId,
+      version,
+      notify: !refresh,
+    });
     return;
   }
 
@@ -131,8 +137,8 @@ const processSimilarQuestionSearchJob = async ({
   await runReadySideEffectsIfCurrent({
     questionId,
     version,
-    userId: locked.userId,
     candidates: candidates.slice(0, 15),
+    notify: !refresh,
   });
 };
 

@@ -18,15 +18,14 @@ import QuestionEmbedding from "../../../models/questionEmbedding.model.js";
 const runReadySideEffectsIfCurrent = async ({
   questionId,
   version,
-  userId,
 }: {
   questionId: string;
   version: number;
-  userId?: unknown;
 }) => {
-  const readyQuestion = userId
-    ? { userId }
-    : await loadReadyQuestionForEmbeddingSideEffects(questionId, version);
+  const readyQuestion = await loadReadyQuestionForEmbeddingSideEffects(
+    questionId,
+    version,
+  );
 
   if (!readyQuestion) return;
 
@@ -77,11 +76,10 @@ const processQuestionEmbeddingJob = async ({
       model: existingEmbedding.model,
     });
 
-    if (updated.acknowledged) {
+    if (updated.questionUpdated) {
       await runReadySideEffectsIfCurrent({
         questionId,
         version,
-        userId: locked.userId,
       });
     }
 
@@ -103,12 +101,11 @@ const processQuestionEmbeddingJob = async ({
     model: generated.model,
   });
 
-  if (!updated.acknowledged) return;
+  if (!updated.questionUpdated) return;
 
   await runReadySideEffectsIfCurrent({
     questionId,
     version,
-    userId: locked.userId,
   });
 };
 

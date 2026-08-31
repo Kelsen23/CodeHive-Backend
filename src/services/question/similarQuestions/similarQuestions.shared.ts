@@ -30,6 +30,7 @@ const currentEligibleQuestionMatch = {
 type SimilarQuestionsJobData = {
   questionId: string;
   version: number;
+  refresh?: boolean;
 };
 
 export {

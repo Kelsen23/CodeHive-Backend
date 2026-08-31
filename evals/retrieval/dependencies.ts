@@ -150,6 +150,7 @@ const createRetrievalDependencies = (
       if (retrievalName === "dense-reranker-v1")
         return findDenseRerankerQuestionCandidates({
           ...input,
+          resultLimit: 50,
           corpus: preparedCorpus as RerankerCorpusSource,
         });
 
