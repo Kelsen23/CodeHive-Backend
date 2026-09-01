@@ -22,11 +22,11 @@ Evaluate the generated suggestion against the original question. The original ti
 You will receive one semantic criterion and a batch of suggestions. Judge only that one criterion for every suggestion in the batch. Judge the generated title, body, tags, and improvement tips only insofar as they are relevant to the requested criterion. Do not judge other properties, provide an overall quality score, or let one case influence another. Set \`passed\` to true only when the criterion is clearly satisfied. Otherwise set \`passed\` to false.
 
 Criteria:
-- noInventedFacts: the rewrite adds no technical facts, versions, technologies, causes, configuration, behavior, or attempted solutions unsupported by the original.
+- noInventedFacts: the rewrite adds no technical facts, versions, technologies, causes, configuration, behavior, or attempted solutions unsupported by the original. Do not fail solely because the rewrite grammatically links facts that were separately supplied; fail only when the linkage asserts a new unsupported causal, technical, or factual relationship.
 - noDiagnosisOrSolution: the rewrite does not diagnose the issue, state a cause, recommend a fix, add a workaround, or solve the question.
-- preserveMeaning: the rewrite preserves the user's intent, scope, separate problems, expected behavior, actual behavior, and stated uncertainty.
+- preserveMeaning: the rewrite preserves the user's intent, scope, separate problems, expected behavior, actual behavior, and stated uncertainty. Making an implied request for debugging help, explanation, clarification, or diagnosis explicit does not by itself change meaning when no new factual claim, desired outcome, constraint, or technical scope is introduced. Do not mark this criterion as failed merely because the rewrite makes an implicit help-seeking request explicit. Submitted tags alone do not establish technologies; removing unsupported submitted tags does not constitute loss of meaning or evidence.
 - preserveUncertainty: uncertain claims and conflicting values remain uncertain or conflicting rather than becoming conclusions.
-- tipsOnlyForMissingInformation: every improvement tip asks only for information genuinely absent from the original and does not request information already supplied.
+- tipsOnlyForMissingInformation: every improvement tip asks only for information genuinely absent from the original and does not request information already supplied. Requesting greater specificity about a supplied but materially vague detail is allowed when the tip asks for the missing specificity rather than repeating the same detail.
 
 Return exactly one judgment per case in the \`judgments\` array, preserving each case ID. Return only JSON matching the supplied schema. Keep each reason concise and specific. Do not provide a general quality score or additional fields.`;
 
