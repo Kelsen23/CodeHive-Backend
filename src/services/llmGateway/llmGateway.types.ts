@@ -10,6 +10,7 @@ type LLMFeature =
   | "securityVerifier"
   | "aiAnswer"
   | "aiSuggestion"
+  | "suggestionEvalJudge"
   | "embeddings";
 
 type LLMRole = "system" | "user" | "assistant";
