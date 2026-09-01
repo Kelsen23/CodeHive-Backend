@@ -4,7 +4,7 @@ import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
 import generateQuestionImprovementSuggestion from "../../src/services/question/ai/suggestion/questionImprovementSuggestion.service.js";
-import type { QuestionEligibilityGateDiagnosis } from "../../src/services/question/ai/suggestion/questionSuggestion.shared.js";
+
 import { llmGatewayConfig } from "../../src/config/llmGateway.config.js";
 import { suggestionEvalJudgeEnvSchema } from "../../src/validations/config/llmGateway.schema.js";
 
@@ -80,35 +80,11 @@ const getGitCommit = () => {
   }
 };
 
-const isQuestionEligibilityGateDiagnosis = (
-  value: unknown,
-): value is QuestionEligibilityGateDiagnosis => {
-  if (!value || typeof value !== "object") return false;
-
-  const diagnosis = value as Record<string, unknown>;
-
-  return (
-    (diagnosis.decision === "ALLOW" ||
-      diagnosis.decision === "CLARIFY" ||
-      diagnosis.decision === "REJECT") &&
-    (diagnosis.questionEligibilityStatus === "ALLOWED" ||
-      diagnosis.questionEligibilityStatus === "CLARIFY" ||
-      diagnosis.questionEligibilityStatus === "REJECTED") &&
-    typeof diagnosis.userFacingReason === "string" &&
-    typeof diagnosis.internalReason === "string"
-  );
-};
-
 const dependencies: SuggestionEvalRunnerDependencies = {
   loadCases: loadSuggestionEvalCases,
   generateSuggestion: async (input) => {
     const execution = await generateQuestionImprovementSuggestion({
       ...input,
-      eligibilityGateDiagnosis: isQuestionEligibilityGateDiagnosis(
-        input.eligibilityGateDiagnosis,
-      )
-        ? input.eligibilityGateDiagnosis
-        : undefined,
     });
 
     return {

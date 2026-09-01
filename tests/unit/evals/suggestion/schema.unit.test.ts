@@ -21,7 +21,12 @@ const validCase = {
 
 describe("suggestion eval schema", () => {
   it("accepts flexible property-based assertions", () => {
-    expect(suggestionEvalCaseSchema.parse(validCase)).toEqual(validCase);
+    expect(
+      suggestionEvalCaseSchema.parse({
+        ...validCase,
+        assertions: { ...validCase.assertions, preserveLanguage: true },
+      }),
+    ).toMatchObject({ assertions: { preserveLanguage: true } });
   });
 
   it("rejects unsupported tags and tip categories", () => {
@@ -131,6 +136,35 @@ describe("suggestion eval schema", () => {
       suggestionEvalCaseSchema.parse({
         ...validCase,
         assertions: { noInventedFacts: false },
+      }),
+    ).toThrow();
+  });
+
+  it("validates eligibility diagnostics instead of silently dropping them", () => {
+    const diagnosis = {
+      decision: "CLARIFY",
+      questionEligibilityStatus: "CLARIFY",
+      userFacingReason: "More context is needed.",
+      internalReason: "Missing reproduction details.",
+    };
+
+    expect(
+      suggestionEvalCaseSchema.parse({
+        ...validCase,
+        input: { ...validCase.input, eligibilityGateDiagnosis: diagnosis },
+      }).input.eligibilityGateDiagnosis,
+    ).toEqual(diagnosis);
+
+    expect(() =>
+      suggestionEvalCaseSchema.parse({
+        ...validCase,
+        input: {
+          ...validCase.input,
+          eligibilityGateDiagnosis: {
+            ...diagnosis,
+            questionEligibilityStatus: "INVALID",
+          },
+        },
       }),
     ).toThrow();
   });

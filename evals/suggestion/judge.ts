@@ -40,6 +40,7 @@ const requestedCriteriaFromAssertions = (
     "noDiagnosisOrSolution",
     "preserveMeaning",
     "preserveUncertainty",
+    "preserveLanguage",
     "tipsOnlyForMissingInformation",
   ].filter(
     (criterion) =>

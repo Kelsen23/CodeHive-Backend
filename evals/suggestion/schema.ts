@@ -17,13 +17,24 @@ const uniqueInterestArray = (name: string) =>
 const uniqueTipCategoryArray = (name: string) =>
   uniqueArray(questionSuggestionTipCategorySchema, name);
 
+const questionEligibilityGateDiagnosisSchema = z
+  .object({
+    decision: z.enum(["ALLOW", "CLARIFY", "REJECT"]),
+    questionEligibilityStatus: z.enum(["ALLOWED", "CLARIFY", "REJECTED"]),
+    userFacingReason: z.string(),
+    internalReason: z.string(),
+  })
+  .strict();
+
 const suggestionEvalInputSchema = z
   .object({
     title: z.string(),
     body: z.string(),
     tags: z.array(z.string()),
     securityVerifierStatus: z.unknown().optional(),
-    eligibilityGateDiagnosis: z.unknown().optional(),
+    eligibilityGateDiagnosis: questionEligibilityGateDiagnosisSchema
+      .nullable()
+      .optional(),
   })
   .strict();
 
@@ -68,6 +79,7 @@ const suggestionEvalAssertionsSchema = z
     noDiagnosisOrSolution: z.boolean().optional(),
     preserveMeaning: z.boolean().optional(),
     preserveUncertainty: z.boolean().optional(),
+    preserveLanguage: z.boolean().optional(),
     tipsOnlyForMissingInformation: z.boolean().optional(),
   })
   .strict()
