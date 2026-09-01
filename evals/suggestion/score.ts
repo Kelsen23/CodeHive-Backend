@@ -107,6 +107,15 @@ const scoreDeterministicAssertions = (
   const text = rewriteText(actual);
   const result: SuggestionAssertion[] = [];
 
+  for (const value of expected.mustPreserve ?? []) {
+    result.push(
+      assertion(`mustPreserve:${value}`, text.includes(value), "MAJOR", {
+        expected: value,
+        actual: text.includes(value),
+      }),
+    );
+  }
+
   for (const value of expected.mustPreserveVerbatim ?? []) {
     result.push(
       assertion(
@@ -368,8 +377,11 @@ const scoreSuggestionCases = async ({
           const score = scoresById.get(testCase.id);
 
           if (score) {
-            score.status = "EVALUATOR_FAILURE";
             score.evaluatorError = `${criterion}: ${evaluatorError}`;
+
+            if (score.status === "PASS") {
+              score.status = "EVALUATOR_FAILURE";
+            }
           }
         }
 

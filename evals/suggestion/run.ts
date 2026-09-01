@@ -3,9 +3,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
-import { llmGatewayConfig } from "../../src/config/llmGateway.config.js";
 import generateQuestionImprovementSuggestion from "../../src/services/question/ai/suggestion/questionImprovementSuggestion.service.js";
 import type { QuestionEligibilityGateDiagnosis } from "../../src/services/question/ai/suggestion/questionSuggestion.shared.js";
+import { llmGatewayConfig } from "../../src/config/llmGateway.config.js";
+import { suggestionEvalJudgeEnvSchema } from "../../src/validations/config/llmGateway.schema.js";
 
 import { loadSuggestionEvalCases } from "./load.js";
 import {
@@ -130,14 +131,17 @@ const run = async () => {
   const args = process.argv.slice(2);
   const dataset = parseDatasetName(args);
   const caseId = parseArgument(args, "--case-id");
-  const route = llmGatewayConfig.routes.suggestionEvalJudge.primary;
+  const generatorRoute = llmGatewayConfig.routes.aiSuggestion.primary;
+  const judgeRoute = suggestionEvalJudgeEnvSchema.parse(process.env);
 
   await runSuggestionEval({
     dataset,
     datasetConfig: datasetConfigs[dataset],
     dependencies,
-    provider: route.provider,
-    model: route.model,
+    provider: generatorRoute.provider,
+    model: generatorRoute.model,
+    judgeProvider: judgeRoute.LLM_EVALS_SUGGESTION_JUDGE_PROVIDER,
+    judgeModel: judgeRoute.LLM_EVALS_SUGGESTION_JUDGE_MODEL,
     caseId,
   });
 };

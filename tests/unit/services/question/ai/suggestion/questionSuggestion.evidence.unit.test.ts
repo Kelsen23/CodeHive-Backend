@@ -53,4 +53,38 @@ describe("question suggestion technical evidence protection", () => {
 
     expect(protectTechnicalEvidence(body)).toEqual({ text: body, blocks: [] });
   });
+
+  it("protects indented fences with a longer closing fence", () => {
+    const body = [
+      "Before",
+      "   ```js",
+      "const value = 1;",
+      "   `````",
+      "After",
+    ].join("\n");
+
+    const protectedEvidence = protectTechnicalEvidence(body);
+
+    expect(protectedEvidence.blocks).toEqual([
+      ["   ```js", "const value = 1;", "   `````"].join("\n"),
+    ]);
+    expect(
+      restoreTechnicalEvidence(
+        protectedEvidence.text,
+        protectedEvidence.blocks,
+      ),
+    ).toBe(body);
+  });
+
+  it("rejects missing or duplicated protected placeholders", () => {
+    expect(() =>
+      restoreTechnicalEvidence("no block", ["```js\nvalue\n```"]),
+    ).toThrow("must occur exactly once; found 0");
+    expect(() =>
+      restoreTechnicalEvidence(
+        "__QANOPY_TECHNICAL_BLOCK_0__ __QANOPY_TECHNICAL_BLOCK_0__",
+        ["```js\nvalue\n```"],
+      ),
+    ).toThrow("must occur exactly once; found 2");
+  });
 });

@@ -239,6 +239,7 @@ const validateLlmGatewayEnvRules = (
       "LLM_ANSWER_GENERATION_FALLBACK_PROVIDER",
       "LLM_ANSWER_GENERATION_FALLBACK_MODEL",
     ],
+    ["LLM_EVALS_SUGGESTION_JUDGE_PROVIDER", "LLM_EVALS_SUGGESTION_JUDGE_MODEL"],
   ] as const;
 
   for (const [providerKey, modelKey] of fallbackPairs) {
@@ -402,6 +403,14 @@ const validateLlmGatewayEnvRules = (
       | undefined,
     "LLM_EVALS_SUGGESTION_JUDGE_PROVIDER",
   );
+  validateReasoningProvider(
+    ctx,
+    env.LLM_EVALS_SUGGESTION_JUDGE_PROVIDER as
+      | (typeof supportedProviders)[number]
+      | undefined,
+    env.LLM_EVALS_SUGGESTION_JUDGE_EFFORT as LLMReasoningEffort | undefined,
+    "LLM_EVALS_SUGGESTION_JUDGE_EFFORT",
+  );
   validateFeatureProvider(
     ctx,
     "embeddings",
@@ -480,14 +489,8 @@ const llmGatewayEnvSchema = z
     LLM_ANSWER_GENERATION_FALLBACK_MODEL: z.string().trim().optional(),
     LLM_ANSWER_GENERATION_FALLBACK_EFFORT: optionalReasoningEffortSchema,
 
-    LLM_EVALS_SUGGESTION_JUDGE_PROVIDER: requiredString(
-      "LLM_EVALS_SUGGESTION_JUDGE_PROVIDER",
-    )
-      .transform((value) => value.toLowerCase())
-      .pipe(providerSchema),
-    LLM_EVALS_SUGGESTION_JUDGE_MODEL: requiredString(
-      "LLM_EVALS_SUGGESTION_JUDGE_MODEL",
-    ),
+    LLM_EVALS_SUGGESTION_JUDGE_PROVIDER: optionalProviderSchema,
+    LLM_EVALS_SUGGESTION_JUDGE_MODEL: z.string().trim().optional(),
     LLM_EVALS_SUGGESTION_JUDGE_EFFORT: optionalReasoningEffortSchema,
 
     LLM_EMBEDDINGS_PROVIDER: requiredString("LLM_EMBEDDINGS_PROVIDER")
@@ -589,8 +592,12 @@ const llmGatewayConfigSchema: z.ZodType<LLMGatewayConfig> =
         suggestionEvalJudge: {
           primary: withReasoningEffort(
             {
-              provider: env.LLM_EVALS_SUGGESTION_JUDGE_PROVIDER,
-              model: env.LLM_EVALS_SUGGESTION_JUDGE_MODEL,
+              provider:
+                env.LLM_EVALS_SUGGESTION_JUDGE_PROVIDER ??
+                env.LLM_SUGGESTION_GENERATION_PRIMARY_PROVIDER,
+              model:
+                env.LLM_EVALS_SUGGESTION_JUDGE_MODEL ??
+                env.LLM_SUGGESTION_GENERATION_PRIMARY_MODEL,
             },
             env.LLM_EVALS_SUGGESTION_JUDGE_EFFORT,
           ),
@@ -613,8 +620,21 @@ const llmGatewayConfigSchema: z.ZodType<LLMGatewayConfig> =
     } satisfies LLMGatewayConfig;
   });
 
+const suggestionEvalJudgeEnvSchema = z.object({
+  LLM_EVALS_SUGGESTION_JUDGE_PROVIDER: requiredString(
+    "LLM_EVALS_SUGGESTION_JUDGE_PROVIDER",
+  )
+    .transform((value) => value.toLowerCase())
+    .pipe(providerSchema),
+  LLM_EVALS_SUGGESTION_JUDGE_MODEL: requiredString(
+    "LLM_EVALS_SUGGESTION_JUDGE_MODEL",
+  ),
+  LLM_EVALS_SUGGESTION_JUDGE_EFFORT: optionalReasoningEffortSchema,
+});
+
 export {
   llmGatewayConfigSchema,
   llmGatewayEnvSchema,
+  suggestionEvalJudgeEnvSchema,
   validateLlmGatewayEnvRules,
 };

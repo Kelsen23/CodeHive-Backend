@@ -153,7 +153,7 @@ Output rules:
 - suggestedTitle, suggestedBody, suggestedTags, and improvementTips describe the same original question.
 - Do not invent facts, technology, diagnosis, code, errors, versions, environment, configuration, behavior, or attempted solutions.
 - Do not turn uncertainty or conflicts into conclusions.
-- Properly escape every JSON string; use no placeholders.
+- Properly escape every JSON string. Preserve every protected technical-block placeholder exactly once in suggestedBody; do not emit any other placeholder.
 - Never add text after the JSON object.
 `;
 

@@ -73,6 +73,8 @@ type RunSuggestionEvalOptions = {
   dependencies: SuggestionEvalRunnerDependencies;
   provider: string;
   model: string;
+  judgeProvider?: string;
+  judgeModel?: string;
   caseId?: string;
 };
 
@@ -143,6 +145,8 @@ const runSuggestionEval = async ({
   dependencies,
   provider,
   model,
+  judgeProvider,
+  judgeModel,
   caseId,
 }: RunSuggestionEvalOptions) => {
   const loadedCases = await dependencies.loadCases(datasetConfig.path);
@@ -246,6 +250,8 @@ const runSuggestionEval = async ({
       gitCommit: dependencies.getGitCommit(),
       configuredProvider: provider,
       configuredModel: model,
+      ...(judgeProvider ? { judgeProvider } : {}),
+      ...(judgeModel ? { judgeModel } : {}),
       caseId: caseId ?? null,
     },
     summary,

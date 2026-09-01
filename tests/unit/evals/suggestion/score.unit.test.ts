@@ -84,6 +84,23 @@ describe("scoreQuestionSuggestionCase", () => {
 });
 
 describe("scoreDeterministicAssertions", () => {
+  it("scores required evidence preservation", () => {
+    expect(
+      scoreDeterministicAssertions(
+        { mustPreserve: ["ECONNRESET"] },
+        validSuggestion,
+      ),
+    ).toEqual([
+      {
+        name: "mustPreserve:ECONNRESET",
+        passed: true,
+        severity: "MAJOR",
+        expected: "ECONNRESET",
+        actual: true,
+      },
+    ]);
+  });
+
   it("reports suggested body maximum length explicitly", () => {
     const assertions = scoreDeterministicAssertions(
       { suggestedBodyMaxLength: 20 },
@@ -238,5 +255,32 @@ describe("scoreSuggestionCases", () => {
     expect(scores[0]?.score.assertions).not.toContainEqual(
       expect.objectContaining({ name: "preserveMeaning" }),
     );
+  });
+
+  it("does not hide deterministic quality failures when the judge fails", async () => {
+    const judge = vi.fn(async () => {
+      throw new Error("judge timed out");
+    });
+
+    const scores = await scoreSuggestionCases({
+      cases: [
+        {
+          testCase: {
+            ...testCase,
+            assertions: {
+              mustPreserve: ["not present"],
+              preserveMeaning: true,
+            },
+          },
+          suggestion: validSuggestion,
+        },
+      ],
+      judge,
+    });
+
+    expect(scores[0]?.score).toMatchObject({
+      status: "QUALITY_FAILURE",
+      evaluatorError: "preserveMeaning: judge timed out",
+    });
   });
 });
