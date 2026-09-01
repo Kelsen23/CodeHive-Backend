@@ -308,6 +308,7 @@ const severityForSemanticCriterion = (
     case "preserveMeaning":
       return "CRITICAL";
     case "preserveUncertainty":
+    case "preserveLanguage":
     case "tipsOnlyForMissingInformation":
       return "MAJOR";
   }

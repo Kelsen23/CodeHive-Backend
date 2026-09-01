@@ -142,6 +142,7 @@ describe("scoreSuggestionCases", () => {
     );
     expect(severityForSemanticCriterion("preserveMeaning")).toBe("CRITICAL");
     expect(severityForSemanticCriterion("preserveUncertainty")).toBe("MAJOR");
+    expect(severityForSemanticCriterion("preserveLanguage")).toBe("MAJOR");
     expect(severityForSemanticCriterion("tipsOnlyForMissingInformation")).toBe(
       "MAJOR",
     );

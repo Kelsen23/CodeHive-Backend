@@ -190,6 +190,7 @@ const semanticJudgeCriterionSchema = z.enum([
   "noDiagnosisOrSolution",
   "preserveMeaning",
   "preserveUncertainty",
+  "preserveLanguage",
   "tipsOnlyForMissingInformation",
 ]);
 

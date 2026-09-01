@@ -5,7 +5,7 @@ type ProtectedTechnicalEvidence = {
 };
 
 const fencedTechnicalBlockPattern =
-  /^ {0,3}(`{3,})(?!`)[^\r\n]*\r?\n[\s\S]*?^ {0,3}\1`*[ \t]*$|^ {0,3}(~{3,})(?!~)[^\r\n]*\r?\n[\s\S]*?^ {0,3}\2~*[ \t]*$/gm;
+  /^ {0,3}(`{3,})(?!`)[^\r\n]*\r?\n[\s\S]*?^ {0,3}\1`*[ \t]*$|^ {0,3}(~{3,})(?!~)[^\r\n]*\r?\n[\s\S]*?^ {0,3}\2~*[ \t]*$|^ {0,3}(`{3,})(?!`)[^\r\n]*(?:\r?\n[\s\S]*)?(?![\s\S])|^ {0,3}(~{3,})(?!~)[^\r\n]*(?:\r?\n[\s\S]*)?(?![\s\S])/gm;
 
 const protectTechnicalEvidence = (body: string): ProtectedTechnicalEvidence => {
   const blocks: string[] = [];

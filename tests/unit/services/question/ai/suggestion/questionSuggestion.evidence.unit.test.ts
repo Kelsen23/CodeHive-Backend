@@ -82,6 +82,25 @@ describe("question suggestion technical evidence protection", () => {
     ).toBe(body);
   });
 
+  it("protects an opening fence that has no closing delimiter", () => {
+    const body = [
+      "Before",
+      "```log",
+      "status=500",
+      "still part of the log",
+    ].join("\n");
+    const protectedEvidence = protectTechnicalEvidence(body);
+
+    expect(protectedEvidence.blocks).toEqual([body.slice(body.indexOf("```"))]);
+    expect(
+      restoreTechnicalEvidence(
+        protectedEvidence.text,
+        protectedEvidence.blocks,
+        protectedEvidence.placeholders,
+      ),
+    ).toBe(body);
+  });
+
   it("rejects missing or duplicated protected placeholders", () => {
     expect(() =>
       restoreTechnicalEvidence("no block", ["```js\nvalue\n```"]),
