@@ -152,11 +152,22 @@ const restoreTechnicalEvidence = (
       );
     }
 
-    const occurrences = restoredBody.split(placeholder).length - 1;
+    const placeholderOccurrences = restoredBody.split(placeholder).length - 1;
+    const blockOccurrences = restoredBody.split(block).length - 1;
 
-    if (occurrences !== 1) {
+    if (placeholderOccurrences === 0 && blockOccurrences === 1) {
+      return;
+    }
+
+    if (placeholderOccurrences !== 1) {
       throw new Error(
-        `Protected technical evidence placeholder ${placeholder} must occur exactly once; found ${occurrences}`,
+        `Protected technical evidence placeholder ${placeholder} must occur exactly once; found ${placeholderOccurrences}`,
+      );
+    }
+
+    if (blockOccurrences > 0) {
+      throw new Error(
+        `Protected technical evidence block ${index} was duplicated in the generated body`,
       );
     }
 

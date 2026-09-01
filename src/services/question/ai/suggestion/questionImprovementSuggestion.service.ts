@@ -253,16 +253,6 @@ const generateQuestionImprovementSuggestion = async ({
     protectedEvidence.placeholders,
   );
 
-  if (
-    protectedEvidence.blocks.some((block) =>
-      response.data.suggestedBody.includes(block),
-    )
-  ) {
-    throw new Error(
-      "Question improvement suggestion duplicated protected technical evidence",
-    );
-  }
-
   if (restoredBody.length > 20000 || restoredBody.trim().length < 20) {
     throw new Error(
       "Question improvement suggestion body is invalid after restoring technical evidence",

@@ -137,6 +137,22 @@ describe("question suggestion technical evidence protection", () => {
     ).toThrow("must occur exactly once; found 2");
   });
 
+  it("accepts a raw block when it was preserved exactly once", () => {
+    const block = "```js\nconst value = 1;\n```";
+
+    expect(restoreTechnicalEvidence(block, [block])).toBe(block);
+  });
+
+  it("rejects a raw block alongside its placeholder", () => {
+    const block = "```js\nconst value = 1;\n```";
+
+    expect(() =>
+      restoreTechnicalEvidence(`__QANOPY_TECHNICAL_BLOCK_0__\n${block}`, [
+        block,
+      ]),
+    ).toThrow("was duplicated in the generated body");
+  });
+
   it("avoids collisions with literal placeholder-shaped evidence", () => {
     const body = [
       "The log contains __QANOPY_TECHNICAL_BLOCK_0__.",
