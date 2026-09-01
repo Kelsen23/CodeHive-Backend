@@ -94,6 +94,20 @@ const suggestionEvalAssertionsSchema = z
       );
     }
 
+    if ([...mustPreserve].some((value) => mustNotContain.has(value))) {
+      addOverlapIssue(
+        ["mustNotContain"],
+        "Required evidence and forbidden literal output must not overlap",
+      );
+    }
+
+    if ([...mustPreserveVerbatim].some((value) => mustNotPreserve.has(value))) {
+      addOverlapIssue(
+        ["mustNotPreserve"],
+        "Required verbatim evidence and forbidden preserved content must not overlap",
+      );
+    }
+
     const requiredTags = new Set(assertions.requiredTags ?? []);
     const forbiddenTags = new Set(assertions.forbiddenTags ?? []);
     if ([...requiredTags].some((tag) => forbiddenTags.has(tag))) {

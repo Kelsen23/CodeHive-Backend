@@ -77,6 +77,20 @@ describe("suggestion eval schema", () => {
     ).toThrow();
   });
 
+  it("rejects cross-overlapping preservation assertions", () => {
+    expect(() =>
+      suggestionEvalCaseSchema.parse({
+        ...validCase,
+        assertions: {
+          mustPreserve: ["ECONNRESET"],
+          mustNotContain: ["ECONNRESET"],
+          mustPreserveVerbatim: ["Node.js 22.3.0"],
+          mustNotPreserve: ["Node.js 22.3.0"],
+        },
+      }),
+    ).toThrow();
+  });
+
   it("rejects unknown case and assertion fields", () => {
     expect(() =>
       suggestionEvalCaseSchema.parse({
