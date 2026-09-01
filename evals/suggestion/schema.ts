@@ -76,6 +76,23 @@ const suggestionEvalAssertionsSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
     };
 
+    const hasActiveAssertion = Object.entries(assertions).some(
+      ([key, value]) => {
+        if (value === undefined) return false;
+        if (key === "expectNoTips") return true;
+        if (typeof value === "boolean") return value;
+        if (Array.isArray(value)) return value.length > 0;
+        return true;
+      },
+    );
+
+    if (!hasActiveAssertion) {
+      addOverlapIssue(
+        [],
+        "Each suggestion eval case must define at least one active assertion",
+      );
+    }
+
     const mustPreserve = new Set(assertions.mustPreserve ?? []);
     const mustNotPreserve = new Set(assertions.mustNotPreserve ?? []);
     if ([...mustPreserve].some((value) => mustNotPreserve.has(value))) {

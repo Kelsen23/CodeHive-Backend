@@ -101,6 +101,30 @@ describe("question suggestion technical evidence protection", () => {
     ).toBe(body);
   });
 
+  it("protects fences nested in blockquotes and list items", () => {
+    const body = [
+      "> ```js",
+      "> const quoted = true;",
+      "> ```",
+      "- ```text",
+      "  list-value=1",
+      "  ```",
+    ].join("\n");
+    const protectedEvidence = protectTechnicalEvidence(body);
+
+    expect(protectedEvidence.blocks).toEqual([
+      ["> ```js", "> const quoted = true;", "> ```"].join("\n"),
+      ["- ```text", "  list-value=1", "  ```"].join("\n"),
+    ]);
+    expect(
+      restoreTechnicalEvidence(
+        protectedEvidence.text,
+        protectedEvidence.blocks,
+        protectedEvidence.placeholders,
+      ),
+    ).toBe(body);
+  });
+
   it("rejects missing or duplicated protected placeholders", () => {
     expect(() =>
       restoreTechnicalEvidence("no block", ["```js\nvalue\n```"]),

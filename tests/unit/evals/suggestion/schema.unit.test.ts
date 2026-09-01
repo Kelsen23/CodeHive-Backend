@@ -118,4 +118,20 @@ describe("suggestion eval schema", () => {
       }),
     ).toThrow();
   });
+
+  it("rejects cases without active assertions", () => {
+    expect(() =>
+      suggestionEvalCaseSchema.parse({
+        ...validCase,
+        assertions: {},
+      }),
+    ).toThrow();
+
+    expect(() =>
+      suggestionEvalCaseSchema.parse({
+        ...validCase,
+        assertions: { noInventedFacts: false },
+      }),
+    ).toThrow();
+  });
 });
