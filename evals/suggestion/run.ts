@@ -42,14 +42,20 @@ const parseArgument = (args: string[], name: string) => {
   const argumentIndex = args.findIndex((arg) => arg === name);
   if (argumentIndex >= 0) {
     const value = args[argumentIndex + 1];
-    if (!value || value.startsWith("--")) {
+    if (!value || value.startsWith("--") || !value.trim()) {
       throw new Error(`Missing value for ${name}`);
     }
     return value;
   }
 
   const inlineArgument = args.find((arg) => arg.startsWith(`${name}=`));
-  return inlineArgument?.slice(name.length + 1);
+  const inlineValue = inlineArgument?.slice(name.length + 1);
+
+  if (inlineArgument && !inlineValue?.trim()) {
+    throw new Error(`Missing value for ${name}`);
+  }
+
+  return inlineValue;
 };
 
 const parseDatasetName = (args: string[]): DatasetName => {

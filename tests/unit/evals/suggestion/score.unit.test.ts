@@ -283,4 +283,49 @@ describe("scoreSuggestionCases", () => {
       evaluatorError: "preserveMeaning: judge timed out",
     });
   });
+
+  it("keeps later semantic quality failures after an earlier judge failure", async () => {
+    const judge = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("first criterion timed out"))
+      .mockResolvedValueOnce({
+        result: {
+          judgments: [
+            {
+              caseId: testCase.id,
+              passed: false,
+              reason: "The generated suggestion changes the meaning.",
+            },
+          ],
+        },
+        metadata: {} as never,
+      });
+
+    const scores = await scoreSuggestionCases({
+      cases: [
+        {
+          testCase: {
+            ...testCase,
+            assertions: {
+              noInventedFacts: true,
+              preserveMeaning: true,
+            },
+          },
+          suggestion: validSuggestion,
+        },
+      ],
+      judge,
+    });
+
+    expect(scores[0]?.score).toMatchObject({
+      status: "QUALITY_FAILURE",
+      evaluatorError: "noInventedFacts: first criterion timed out",
+    });
+    expect(scores[0]?.score.assertions).toContainEqual(
+      expect.objectContaining({
+        name: "preserveMeaning",
+        passed: false,
+      }),
+    );
+  });
 });

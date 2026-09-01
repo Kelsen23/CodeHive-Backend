@@ -67,6 +67,17 @@ const assertion = (
 const rewriteText = (result: QuestionSuggestionResult) =>
   `${result.suggestedTitle}\n${result.suggestedBody}`;
 
+const suggestionText = (result: QuestionSuggestionResult) =>
+  [
+    result.suggestedTitle,
+    result.suggestedBody,
+    ...result.suggestedTags,
+    ...result.improvementTips.flatMap(({ category, message }) => [
+      category,
+      message,
+    ]),
+  ].join("\n");
+
 const scoreQuestionSuggestionCase = (
   testCase: SuggestionEvalCase,
   actual: unknown,
@@ -103,7 +114,7 @@ const scoreDeterministicAssertions = (
   expected: SuggestionEvalAssertions,
   actual: QuestionSuggestionResult,
 ): SuggestionAssertion[] => {
-  const output = JSON.stringify(actual);
+  const output = suggestionText(actual);
   const text = rewriteText(actual);
   const result: SuggestionAssertion[] = [];
 
@@ -283,7 +294,7 @@ const addSemanticAssertions = (
     ),
   );
 
-  if (!judgment.passed && score.status !== "EVALUATOR_FAILURE") {
+  if (!judgment.passed) {
     score.status = "QUALITY_FAILURE";
   }
 };

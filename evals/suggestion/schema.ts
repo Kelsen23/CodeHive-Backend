@@ -151,6 +151,13 @@ const suggestionEvalAssertionsSchema = z
       );
     }
 
+    if (assertions.expectNoTips === false && assertions.tipCount?.max === 0) {
+      addOverlapIssue(
+        ["tipCount", "max"],
+        "expectNoTips false cannot be combined with a zero tip count maximum",
+      );
+    }
+
     if (
       assertions.tipCount?.max !== undefined &&
       assertions.tipCount.max === 0 &&

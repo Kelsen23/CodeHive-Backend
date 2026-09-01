@@ -92,4 +92,16 @@ describe("suggestion eval schema", () => {
       }),
     ).toThrow();
   });
+
+  it("rejects contradictory zero-tip assertions", () => {
+    expect(() =>
+      suggestionEvalCaseSchema.parse({
+        ...validCase,
+        assertions: {
+          expectNoTips: false,
+          tipCount: { max: 0 },
+        },
+      }),
+    ).toThrow();
+  });
 });

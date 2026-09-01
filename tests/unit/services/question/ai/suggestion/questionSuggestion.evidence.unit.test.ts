@@ -44,6 +44,7 @@ describe("question suggestion technical evidence protection", () => {
       restoreTechnicalEvidence(
         protectedEvidence.text,
         protectedEvidence.blocks,
+        protectedEvidence.placeholders,
       ),
     ).toBe(body);
   });
@@ -51,7 +52,11 @@ describe("question suggestion technical evidence protection", () => {
   it("leaves ordinary prose unchanged", () => {
     const body = "The request fails after a few seconds.";
 
-    expect(protectTechnicalEvidence(body)).toEqual({ text: body, blocks: [] });
+    expect(protectTechnicalEvidence(body)).toEqual({
+      text: body,
+      blocks: [],
+      placeholders: [],
+    });
   });
 
   it("protects indented fences with a longer closing fence", () => {
@@ -72,6 +77,7 @@ describe("question suggestion technical evidence protection", () => {
       restoreTechnicalEvidence(
         protectedEvidence.text,
         protectedEvidence.blocks,
+        protectedEvidence.placeholders,
       ),
     ).toBe(body);
   });
@@ -86,5 +92,27 @@ describe("question suggestion technical evidence protection", () => {
         ["```js\nvalue\n```"],
       ),
     ).toThrow("must occur exactly once; found 2");
+  });
+
+  it("avoids collisions with literal placeholder-shaped evidence", () => {
+    const body = [
+      "The log contains __QANOPY_TECHNICAL_BLOCK_0__.",
+      "```text",
+      "value=1",
+      "```",
+    ].join("\n");
+
+    const protectedEvidence = protectTechnicalEvidence(body);
+
+    expect(protectedEvidence.placeholders[0]).not.toBe(
+      "__QANOPY_TECHNICAL_BLOCK_0__",
+    );
+    expect(
+      restoreTechnicalEvidence(
+        protectedEvidence.text,
+        protectedEvidence.blocks,
+        protectedEvidence.placeholders,
+      ),
+    ).toBe(body);
   });
 });
