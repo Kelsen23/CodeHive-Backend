@@ -61,7 +61,7 @@ describe("dense scoring", () => {
 
     expect(candidates).toHaveLength(50);
     expect(candidates[0]?.questionId).toBe("q-00");
-    expect(candidates.at(-1)?.questionId).toBe("q-49");
+    expect(candidates[candidates.length - 1]?.questionId).toBe("q-49");
   });
 
   it("filters source, historical, and ineligible versions before scoring", async () => {
