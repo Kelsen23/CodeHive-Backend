@@ -18,6 +18,7 @@ import closeAllRedisConnections from "./utils/redis/closeAllRedisConnections.uti
 
 import { appEnvSchema } from "./validations/config.schema.js";
 import createUserLoader from "./dataloaders/user.loader.js";
+import createQuestionProcessingStateLoader from "./dataloaders/questionProcessingState.loader.js";
 import typeDefs from "./graphql/typeDefs/index.js";
 import resolvers from "./graphql/resolvers/index.js";
 import authenticateGraphQLUser from "./middlewares/graphqlAuth.middleware.js";
@@ -60,6 +61,7 @@ app.use(
         user,
         loaders: {
           userLoader: createUserLoader(),
+          questionProcessingStateLoader: createQuestionProcessingStateLoader(),
         },
       };
     },
