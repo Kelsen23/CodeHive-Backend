@@ -140,13 +140,10 @@ const processSimilarQuestionSearchJob = async ({
 
     if (updated.modifiedCount === 0) return;
 
-    await runSimilarQuestionsReadySideEffects({
+    await runReadySideEffectsIfCurrent({
       questionId,
       version,
-      userId: String(question.userId),
-      similarQuestionIds: candidates
-        .slice(0, 15)
-        .map((candidate) => String(candidate.questionId)),
+      candidates: candidates.slice(0, 15),
       notify: !refresh,
     });
   } catch (error) {

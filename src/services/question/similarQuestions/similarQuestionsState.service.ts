@@ -82,27 +82,25 @@ const finalizeSimilarQuestions = async ({
     let updateResult;
 
     await session.withTransaction(async () => {
-      const [source, processingState] = await Promise.all([
-        Question.findOne({
-          _id: questionId,
-          currentVersion: version,
-          isActive: true,
-          isDeleted: false,
-        })
-          .select("_id")
-          .session(session)
-          .lean(),
-        QuestionProcessingState.findOne({
-          questionId,
-          questionVersion: version,
-          ...publicQuestionProcessingStateMatch,
-          embeddingStatus: "READY",
-          similarQuestionsStatus: "PROCESSING",
-        })
-          .select("_id")
-          .session(session)
-          .lean(),
-      ]);
+      const source = await Question.findOne({
+        _id: questionId,
+        currentVersion: version,
+        isActive: true,
+        isDeleted: false,
+      })
+        .select("_id")
+        .session(session)
+        .lean();
+      const processingState = await QuestionProcessingState.findOne({
+        questionId,
+        questionVersion: version,
+        ...publicQuestionProcessingStateMatch,
+        embeddingStatus: "READY",
+        similarQuestionsStatus: "PROCESSING",
+      })
+        .select("_id")
+        .session(session)
+        .lean();
 
       if (!source || !processingState) return;
 

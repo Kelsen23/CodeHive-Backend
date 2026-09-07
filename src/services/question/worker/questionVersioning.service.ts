@@ -41,22 +41,20 @@ const loadQuestionVersionSeed = async (
   questionId: string,
   session: mongoose.ClientSession,
 ) => {
-  const [question, processingState] = await Promise.all([
-    Question.findById(questionId)
-      .select("currentVersion")
-      .session(session)
-      .lean<{ currentVersion: number }>(),
-    QuestionProcessingState.findOne({ questionId })
-      .select(
-        "questionVersion moderationStatus moderationUpdatedAt moderationSourceVersion",
-      )
-      .session(session)
-      .lean<
-        Omit<QuestionVersionSeed, "currentVersion"> & {
-          questionVersion: number;
-        }
-      >(),
-  ]);
+  const question = await Question.findById(questionId)
+    .select("currentVersion")
+    .session(session)
+    .lean<{ currentVersion: number }>();
+  const processingState = await QuestionProcessingState.findOne({ questionId })
+    .select(
+      "questionVersion moderationStatus moderationUpdatedAt moderationSourceVersion",
+    )
+    .session(session)
+    .lean<
+      Omit<QuestionVersionSeed, "currentVersion"> & {
+        questionVersion: number;
+      }
+    >();
 
   if (!question || !processingState) return null;
   if (question.currentVersion !== processingState.questionVersion) {
