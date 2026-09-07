@@ -1,9 +1,4 @@
-import {
-  canGetAIAnswer,
-  canGetAISuggestion,
-} from "./ai/questionAiHelp.shared.js";
-
-const toPublicQuestion = (question: any) => ({
+const toPublicQuestion = (question: any, processingState: any) => ({
   id: question.id ?? question._id,
   userId: question.userId,
   title: question.title,
@@ -15,11 +10,9 @@ const toPublicQuestion = (question: any) => ({
   acceptedAnswerCount: question.acceptedAnswerCount ?? 0,
   currentVersion: question.currentVersion,
   basedOnVersion: question.basedOnVersion,
-  canGetAISuggestion: canGetAISuggestion(question),
-  canGetAIAnswer: canGetAIAnswer(question),
-  similarQuestionsReady:
-    question.similarQuestionsReady ??
-    question.similarQuestionsStatus === "READY",
+  canGetAISuggestion: processingState.canGetAISuggestion,
+  canGetAIAnswer: processingState.canGetAIAnswer,
+  similarQuestionsReady: processingState.similarQuestionsStatus === "READY",
   isActive: question.isActive ?? true,
   isDeleted: question.isDeleted ?? false,
   createdAt: question.createdAt,
