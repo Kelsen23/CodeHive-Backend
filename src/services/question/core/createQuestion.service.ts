@@ -1,12 +1,11 @@
 import mongoose from "mongoose";
 
 import { queueQuestionContentFinalize } from "../contentFinalize/contentFinalizeQueue.service.js";
+import { queueQuestionStats } from "../question.shared.js";
 import { createQuestionProcessingState } from "../processingState/questionProcessingState.service.js";
+import { toPublicQuestion } from "../question.response.js";
 
 import Question from "../../../models/question.model.js";
-
-import { queueQuestionStats } from "../question.shared.js";
-import { toPublicQuestion } from "../question.response.js";
 
 const createQuestion = async ({
   userId,

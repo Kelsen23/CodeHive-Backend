@@ -1,3 +1,9 @@
+import {
+  downstreamAllowedSecurityVerifierStatuses,
+  eligibleQuestionProcessingStateMatch,
+  publicQuestionProcessingStateMatch,
+} from "../processingState/questionProcessingState.query.js";
+
 // Initial Dense v1 beta floor; cosine thresholds are model-specific and
 // should be recalibrated as production relevance labels accumulate.
 const similarQuestionScoreThreshold = 0.72;
@@ -5,12 +11,6 @@ const similarQuestionResultLimit = 15;
 const denseCandidateLimit = 50;
 const aiAnswerSimilarQuestionScoreThreshold = 0.7;
 const aiAnswerSimilarQuestionResultLimit = 8;
-
-import {
-  downstreamAllowedSecurityVerifierStatuses,
-  eligibleQuestionProcessingStateMatch,
-  publicQuestionProcessingStateMatch,
-} from "../processingState/questionProcessingState.query.js";
 
 const currentLiveQuestionMatch = {
   isActive: true,

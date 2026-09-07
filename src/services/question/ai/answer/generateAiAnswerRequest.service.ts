@@ -11,7 +11,6 @@ import { makeJobId } from "../../../../utils/job/makeJobId.util.js";
 
 import AiAnswer from "../../../../models/aiAnswer.model.js";
 import QuestionEmbedding from "../../../../models/questionEmbedding.model.js";
-
 import questionAiAnswerQueue from "../../../../queues/questionAiAnswer.queue.js";
 
 const generateAiAnswerRequest = async (
