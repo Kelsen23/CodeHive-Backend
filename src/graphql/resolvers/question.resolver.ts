@@ -4,9 +4,9 @@ import { Redis } from "ioredis";
 import { Interest, User } from "../../generated/prisma/client.js";
 
 import {
-  canGetAIAnswer,
-  canGetAISuggestion,
-} from "../../services/question/ai/questionAiHelp.shared.js";
+  buildProcessingStateLookupStages,
+  publicQuestionProcessingStateMatch,
+} from "../../services/question/processingState/questionProcessingState.query.js";
 import queueUserInterest from "../../services/user/userInterest/queueUserInterest.service.js";
 
 import {
@@ -117,15 +117,56 @@ interface SearchQuestionStage {
 const isInterest = (tag: string): tag is Interest =>
   interests.includes(tag as Interest);
 
-const publicQuestionVisibilityMatch = {
-  moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
-  questionEligibilityStatus: "ALLOWED",
-  securityVerifierStatus: {
-    $in: ["NOT_REQUIRED", "ALLOWED", "ALLOWED_WITH_CONSTRAINTS"],
-  },
+const publicQuestionVisibilityStages = () =>
+  buildProcessingStateLookupStages({
+    match: publicQuestionProcessingStateMatch,
+  });
+
+const loadProcessingStateForQuestionField = async (
+  parent: any,
+  loaders: any,
+) => {
+  const state =
+    parent.processingState ??
+    (await loaders.questionProcessingStateLoader.load(
+      String(parent.id ?? parent._id),
+    ));
+
+  if (!state) throw new Error("Question processing state missing");
+  if (
+    parent.currentVersion !== undefined &&
+    Number(state.questionVersion) !== Number(parent.currentVersion)
+  ) {
+    throw new Error("Question processing state is stale");
+  }
+
+  return state;
 };
 
 const questionResolver = {
+  Question: {
+    canGetAISuggestion: async (parent: any, _: any, { loaders }: any) => {
+      if (typeof parent.canGetAISuggestion === "boolean") {
+        return parent.canGetAISuggestion;
+      }
+      const state = await loadProcessingStateForQuestionField(parent, loaders);
+      return state.canGetAISuggestion;
+    },
+    canGetAIAnswer: async (parent: any, _: any, { loaders }: any) => {
+      if (typeof parent.canGetAIAnswer === "boolean") {
+        return parent.canGetAIAnswer;
+      }
+      const state = await loadProcessingStateForQuestionField(parent, loaders);
+      return state.canGetAIAnswer;
+    },
+    similarQuestionsReady: async (parent: any, _: any, { loaders }: any) => {
+      if (typeof parent.similarQuestionsReady === "boolean") {
+        return parent.similarQuestionsReady;
+      }
+      const state = await loadProcessingStateForQuestionField(parent, loaders);
+      return state.similarQuestionsStatus === "READY";
+    },
+  },
   Query: {
     recommendedQuestions: async (
       _: any,
@@ -222,7 +263,6 @@ const questionResolver = {
       const matchStage: any = {
         isDeleted: false,
         isActive: true,
-        ...publicQuestionVisibilityMatch,
       };
 
       if (cursor) {
@@ -272,7 +312,7 @@ const questionResolver = {
             _id: -1,
           } as any,
         },
-
+        ...publicQuestionVisibilityStages(),
         { $limit: normalizedLimitCount },
 
         {
@@ -292,6 +332,11 @@ const questionResolver = {
             isDeleted: 1,
             createdAt: 1,
             updatedAt: 1,
+            canGetAISuggestion: "$processingState.canGetAISuggestion",
+            canGetAIAnswer: "$processingState.canGetAIAnswer",
+            similarQuestionsReady: {
+              $eq: ["$processingState.similarQuestionsStatus", "READY"],
+            },
           },
         },
       );
@@ -356,15 +401,8 @@ const questionResolver = {
       if (cachedQuestion) {
         const parsedCachedQuestion = JSON.parse(cachedQuestion);
 
-        const {
-          embedding: _embedding,
-          moderationStatus: _moderationStatus,
-          questionEligibilityStatus,
-          securityVerifierStatus,
-          embeddingStatus,
-          similarQuestionsStatus,
-          ...publicQuestion
-        } = parsedCachedQuestion;
+        const { embedding: _embedding, ...publicQuestion } =
+          parsedCachedQuestion;
 
         if (user?.id) {
           queueUserInterest({
@@ -376,31 +414,24 @@ const questionResolver = {
 
         return {
           ...publicQuestion,
-          canGetAISuggestion:
-            publicQuestion.canGetAISuggestion ??
-            canGetAISuggestion({
-              questionEligibilityStatus,
-              securityVerifierStatus,
-            }),
-          canGetAIAnswer:
-            publicQuestion.canGetAIAnswer ??
-            canGetAIAnswer({
-              questionEligibilityStatus,
-              securityVerifierStatus,
-              embeddingStatus,
-            }),
-          similarQuestionsReady:
-            publicQuestion.similarQuestionsReady ??
-            similarQuestionsStatus === "READY",
         };
       }
 
       const [question, aiAnswer] = await Promise.all([
-        Question.findOne({
-          _id: new mongoose.Types.ObjectId(id),
-          isActive: true,
-          isDeleted: false,
-        }).lean(),
+        Question.aggregate([
+          {
+            $match: {
+              _id: new mongoose.Types.ObjectId(id),
+              isActive: true,
+              isDeleted: false,
+            },
+          },
+          ...buildProcessingStateLookupStages({
+            preserveMissing: true,
+            requireCurrentVersion: false,
+          }),
+          { $limit: 1 },
+        ]).then((questions) => questions[0] ?? null),
         AiAnswer.findOne({
           questionId: new mongoose.Types.ObjectId(id),
           isPublished: true,
@@ -410,6 +441,15 @@ const questionResolver = {
       ]);
 
       if (!question) return null;
+      if (!question.processingState) {
+        throw new Error("Question processing state missing");
+      }
+      if (
+        Number(question.processingState.questionVersion) !==
+        Number(question.currentVersion)
+      ) {
+        throw new Error("Question processing state is stale");
+      }
 
       const owner = question.userId
         ? await loaders.userLoader.load(question.userId.toString())
@@ -425,9 +465,10 @@ const questionResolver = {
         downvoteCount: question.downvoteCount,
         answerCount: question.answerCount,
         currentVersion: question.currentVersion,
-        canGetAISuggestion: canGetAISuggestion(question),
-        canGetAIAnswer: canGetAIAnswer(question),
-        similarQuestionsReady: question.similarQuestionsStatus === "READY",
+        canGetAISuggestion: question.processingState.canGetAISuggestion,
+        canGetAIAnswer: question.processingState.canGetAIAnswer,
+        similarQuestionsReady:
+          question.processingState.similarQuestionsStatus === "READY",
         isActive: question.isActive,
         isDeleted: question.isDeleted,
         createdAt: question.createdAt,
@@ -452,15 +493,7 @@ const questionResolver = {
           : null,
       };
 
-      const cachePayload = {
-        ...result,
-        isActive: question.isActive,
-        isDeleted: question.isDeleted,
-        moderationStatus: question.moderationStatus,
-        questionEligibilityStatus: question.questionEligibilityStatus,
-        securityVerifierStatus: question.securityVerifierStatus,
-        embeddingStatus: question.embeddingStatus,
-      };
+      const cachePayload = { ...result };
 
       if (user?.id) {
         queueUserInterest({
@@ -496,14 +529,18 @@ const questionResolver = {
 
       if (cachedSimilarQuestions) return JSON.parse(cachedSimilarQuestions);
 
-      const foundQuestion = await Question.findOne({
-        _id: new mongoose.Types.ObjectId(questionId),
-        isActive: true,
-        isDeleted: false,
-        ...publicQuestionVisibilityMatch,
-      })
-        .select("currentVersion")
-        .lean();
+      const [foundQuestion] = await Question.aggregate([
+        {
+          $match: {
+            _id: new mongoose.Types.ObjectId(questionId),
+            isActive: true,
+            isDeleted: false,
+          },
+        },
+        ...publicQuestionVisibilityStages(),
+        { $project: { currentVersion: 1 } },
+        { $limit: 1 },
+      ]);
 
       if (!foundQuestion) {
         await getRedisCacheClient().set(
@@ -537,18 +574,40 @@ const questionResolver = {
         return [];
       }
 
-      const similarQuestions = await Question.find({
-        _id: {
-          $in: uniqueEdgeIds.map((id) => new mongoose.Types.ObjectId(id)),
+      const similarQuestions = await Question.aggregate([
+        {
+          $match: {
+            _id: {
+              $in: uniqueEdgeIds.map((id) => new mongoose.Types.ObjectId(id)),
+            },
+            isActive: true,
+            isDeleted: false,
+          },
         },
-        isActive: true,
-        isDeleted: false,
-        ...publicQuestionVisibilityMatch,
-      })
-        .select(
-          "_id userId title body tags upvoteCount downvoteCount answerCount acceptedAnswerCount currentVersion isActive isDeleted createdAt updatedAt",
-        )
-        .lean();
+        ...publicQuestionVisibilityStages(),
+        {
+          $project: {
+            userId: 1,
+            title: 1,
+            body: 1,
+            tags: 1,
+            upvoteCount: 1,
+            downvoteCount: 1,
+            answerCount: 1,
+            acceptedAnswerCount: 1,
+            currentVersion: 1,
+            isActive: 1,
+            isDeleted: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            canGetAISuggestion: "$processingState.canGetAISuggestion",
+            canGetAIAnswer: "$processingState.canGetAIAnswer",
+            similarQuestionsReady: {
+              $eq: ["$processingState.similarQuestionsStatus", "READY"],
+            },
+          },
+        },
+      ]);
 
       const questionMap = new Map(
         similarQuestions.map((q: any) => [String(q._id), q]),
@@ -1204,9 +1263,10 @@ const questionResolver = {
           $match: {
             isDeleted: false,
             isActive: true,
-            ...publicQuestionVisibilityMatch,
           },
         },
+
+        ...publicQuestionVisibilityStages(),
 
         {
           $group: {
@@ -1322,7 +1382,6 @@ const questionResolver = {
       const matchStage: any = {
         isDeleted: false,
         isActive: true,
-        ...publicQuestionVisibilityMatch,
       };
 
       const pipeline: any[] = [searchStage];
@@ -1394,7 +1453,7 @@ const questionResolver = {
               ? { createdAt: -1, _id: -1 }
               : { searchScore: -1, upvoteCount: -1, _id: -1 },
         },
-
+        ...publicQuestionVisibilityStages(),
         { $limit: normalizedLimitCount },
 
         {
@@ -1413,6 +1472,11 @@ const questionResolver = {
             isDeleted: 1,
             createdAt: 1,
             updatedAt: 1,
+            canGetAISuggestion: "$processingState.canGetAISuggestion",
+            canGetAIAnswer: "$processingState.canGetAIAnswer",
+            similarQuestionsReady: {
+              $eq: ["$processingState.similarQuestionsStatus", "READY"],
+            },
           },
         },
       );
@@ -1674,7 +1738,6 @@ const questionResolver = {
         userId,
         isDeleted: false,
         isActive: true,
-        $or: [publicQuestionVisibilityMatch, { userId: requesterUserId }],
       };
 
       const pipeline: any[] = [{ $match: matchStage }];
@@ -1759,6 +1822,10 @@ const questionResolver = {
         pipeline.push({ $sort: { upvoteCount: -1, _id: -1 } });
       }
 
+      if (viewerScope === "public") {
+        pipeline.push(...publicQuestionVisibilityStages());
+      }
+
       pipeline.push({ $limit: normalizedLimitCount + 1 });
 
       pipeline.push({
@@ -1777,6 +1844,15 @@ const questionResolver = {
           isDeleted: 1,
           createdAt: 1,
           updatedAt: 1,
+          ...(viewerScope === "public"
+            ? {
+                canGetAISuggestion: "$processingState.canGetAISuggestion",
+                canGetAIAnswer: "$processingState.canGetAIAnswer",
+                similarQuestionsReady: {
+                  $eq: ["$processingState.similarQuestionsStatus", "READY"],
+                },
+              }
+            : {}),
         },
       });
 
@@ -2065,7 +2141,6 @@ const questionResolver = {
         userId,
         isActive: true,
         isDeleted: false,
-        ...publicQuestionVisibilityMatch,
         acceptedAnswerCount: { $eq: 0 },
       };
 
@@ -2082,6 +2157,7 @@ const questionResolver = {
 
       pipeline.push(
         { $sort: { _id: -1 } },
+        ...publicQuestionVisibilityStages(),
         { $limit: normalizedLimitCount + 1 },
       );
 
@@ -2101,6 +2177,11 @@ const questionResolver = {
           isDeleted: 1,
           createdAt: 1,
           updatedAt: 1,
+          canGetAISuggestion: "$processingState.canGetAISuggestion",
+          canGetAIAnswer: "$processingState.canGetAIAnswer",
+          similarQuestionsReady: {
+            $eq: ["$processingState.similarQuestionsStatus", "READY"],
+          },
         },
       });
 
@@ -2115,7 +2196,7 @@ const questionResolver = {
 
       const result = {
         questions: slicedQuestions,
-        nextCursor: hasMore ? { id: lastQuestion._id } : null,
+        nextCursor: hasMore ? { id: lastQuestion.id } : null,
         hasMore,
       };
 
@@ -2157,7 +2238,6 @@ const questionResolver = {
         userId,
         isActive: true,
         isDeleted: false,
-        ...publicQuestionVisibilityMatch,
         answerCount: 0,
       };
 
@@ -2173,6 +2253,7 @@ const questionResolver = {
 
       pipeline.push(
         { $sort: { _id: -1 } },
+        ...publicQuestionVisibilityStages(),
         { $limit: normalizedLimitCount + 1 },
       );
 
@@ -2192,6 +2273,11 @@ const questionResolver = {
           isDeleted: 1,
           createdAt: 1,
           updatedAt: 1,
+          canGetAISuggestion: "$processingState.canGetAISuggestion",
+          canGetAIAnswer: "$processingState.canGetAIAnswer",
+          similarQuestionsReady: {
+            $eq: ["$processingState.similarQuestionsStatus", "READY"],
+          },
         },
       });
 
@@ -2205,7 +2291,7 @@ const questionResolver = {
 
       const result = {
         questions: slicedQuestions,
-        nextCursor: hasMore ? { id: lastQuestion._id } : null,
+        nextCursor: hasMore ? { id: lastQuestion.id } : null,
         hasMore,
       };
 

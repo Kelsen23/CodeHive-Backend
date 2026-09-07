@@ -1,3 +1,9 @@
+import {
+  downstreamAllowedSecurityVerifierStatuses,
+  eligibleQuestionProcessingStateMatch,
+  publicQuestionProcessingStateMatch,
+} from "../processingState/questionProcessingState.query.js";
+
 // Initial Dense v1 beta floor; cosine thresholds are model-specific and
 // should be recalibrated as production relevance labels accumulate.
 const similarQuestionScoreThreshold = 0.72;
@@ -6,25 +12,9 @@ const denseCandidateLimit = 50;
 const aiAnswerSimilarQuestionScoreThreshold = 0.7;
 const aiAnswerSimilarQuestionResultLimit = 8;
 
-const downstreamAllowedSecurityVerifierStatuses = [
-  "NOT_REQUIRED",
-  "ALLOWED",
-  "ALLOWED_WITH_CONSTRAINTS",
-] as const;
-
-const currentLiveEligibleQuestionMatch = {
+const currentLiveQuestionMatch = {
   isActive: true,
   isDeleted: false,
-  moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
-  questionEligibilityStatus: "ALLOWED",
-  securityVerifierStatus: {
-    $in: downstreamAllowedSecurityVerifierStatuses,
-  },
-};
-
-const currentEligibleQuestionMatch = {
-  ...currentLiveEligibleQuestionMatch,
-  embeddingStatus: "READY",
 };
 
 type SimilarQuestionsJobData = {
@@ -37,8 +27,9 @@ export {
   aiAnswerSimilarQuestionResultLimit,
   aiAnswerSimilarQuestionScoreThreshold,
   downstreamAllowedSecurityVerifierStatuses,
-  currentEligibleQuestionMatch,
-  currentLiveEligibleQuestionMatch,
+  eligibleQuestionProcessingStateMatch,
+  publicQuestionProcessingStateMatch,
+  currentLiveQuestionMatch,
   denseCandidateLimit,
   similarQuestionResultLimit,
   similarQuestionScoreThreshold,

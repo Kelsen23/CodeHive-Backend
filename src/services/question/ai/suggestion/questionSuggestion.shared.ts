@@ -7,7 +7,7 @@ import calculateCreditCharge from "../../../user/credits/calculateCreditCharge.s
 import chargeCredits from "../../../user/credits/chargeCredits.service.js";
 import refundCreditCharge from "../../../user/credits/refundCreditCharge.service.js";
 import { toPublicAiSuggestion } from "../../question.response.js";
-import { canGetAISuggestion } from "../questionAiHelp.shared.js";
+import { loadQuestionWithProcessingState } from "../../processingState/questionProcessingState.query.js";
 
 import prisma from "../../../../config/prisma.config.js";
 
@@ -18,7 +18,6 @@ import normalizeText from "../../../../utils/question/normalizeText.util.js";
 import AiSuggestion from "../../../../models/aiSuggestion.model.js";
 import EligibilityGateActionLog from "../../../../models/eligibilityGateActionLog.model.js";
 import Notification from "../../../../models/notification.model.js";
-import Question from "../../../../models/question.model.js";
 import QuestionVersion from "../../../../models/questionVersion.model.js";
 
 type GenerateQuestionSuggestionRequestInput = {
@@ -127,16 +126,15 @@ const loadQuestionSuggestionContext = async ({
   questionId,
   version,
 }: GenerateQuestionSuggestionRequestInput): Promise<QuestionSuggestionContext> => {
-  const question = await Question.findOne({
-    _id: questionId,
-    userId,
-  })
-    .select(
-      "_id isActive currentVersion moderationStatus questionEligibilityStatus securityVerifierStatus",
-    )
-    .lean();
+  const question = await loadQuestionWithProcessingState({
+    questionId,
+    questionMatch: { userId },
+  });
 
   if (!question) throw new HttpError("Question not found", 404);
+  if (!question.processingState) {
+    throw new Error("Question processing state missing");
+  }
   if (!question.isActive) throw new HttpError("Question not active", 410);
 
   if (Number(question.currentVersion) !== version) {
@@ -145,12 +143,18 @@ const loadQuestionSuggestionContext = async ({
       409,
     );
   }
+  if (
+    Number(question.processingState.questionVersion) !==
+    Number(question.currentVersion)
+  ) {
+    throw new Error("Question processing state is stale");
+  }
 
-  if (!isEligibleModerationStatus(question.moderationStatus)) {
+  if (!isEligibleModerationStatus(question.processingState.moderationStatus)) {
     throw new HttpError("Question moderation status is not eligible", 400);
   }
 
-  if (!canGetAISuggestion(question)) {
+  if (!question.processingState.canGetAISuggestion) {
     throw new HttpError("Question is not eligible for AI suggestion", 400);
   }
 
@@ -183,7 +187,10 @@ const loadQuestionSuggestionContext = async ({
   });
 
   return {
-    question,
+    question: {
+      ...question,
+      securityVerifierStatus: question.processingState.securityVerifierStatus,
+    },
     title,
     body,
     tags,

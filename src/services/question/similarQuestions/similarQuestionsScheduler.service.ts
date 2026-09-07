@@ -1,7 +1,13 @@
 import { queueQuestionPipelineStep } from "../pipelineRouter/pipelineRouting.service.js";
-import { currentEligibleQuestionMatch } from "./similarQuestions.shared.js";
+import { eligibleQuestionProcessingStateMatch } from "./similarQuestions.shared.js";
+import { updateQuestionProcessingState } from "../processingState/questionProcessingState.service.js";
+
+import { getRedisCacheClient } from "../../../config/redis.config.js";
+
+import { clearQuestionDiscoveryCache } from "../../../utils/cache/clearCache.util.js";
 
 import Question from "../../../models/question.model.js";
+import QuestionProcessingState from "../../../models/questionProcessingState.model.js";
 
 const similarQuestionsFreshnessMs = 12 * 60 * 60 * 1000;
 const similarQuestionsSchedulerBatchSize = 100;
@@ -9,86 +15,128 @@ const similarQuestionsSchedulerBatchSize = 100;
 const discoverStaleSimilarQuestions = async (now = new Date()) => {
   const staleBefore = new Date(now.getTime() - similarQuestionsFreshnessMs);
 
-  return Question.find({
-    ...currentEligibleQuestionMatch,
-    $and: [
-      { similarQuestionsStatus: { $ne: "PROCESSING" } },
-      {
-        $or: [
+  return QuestionProcessingState.aggregate<{
+    questionId: unknown;
+    questionVersion: number;
+    similarQuestionsStatus: "NONE" | "PENDING" | "READY";
+  }>([
+    {
+      $match: {
+        ...eligibleQuestionProcessingStateMatch,
+        $and: [
+          { similarQuestionsStatus: { $ne: "PROCESSING" } },
           {
-            $expr: {
-              $ne: ["$similarQuestionsComputedVersion", "$currentVersion"],
-            },
+            $or: [
+              {
+                $expr: {
+                  $ne: ["$similarQuestionsComputedVersion", "$questionVersion"],
+                },
+              },
+              { similarQuestionsComputedAt: null },
+              { similarQuestionsComputedAt: { $lt: staleBefore } },
+              { similarQuestionsStatus: { $in: ["NONE", "PENDING"] } },
+            ],
           },
-          { similarQuestionsComputedAt: null },
-          { similarQuestionsComputedAt: { $lt: staleBefore } },
-          { similarQuestionsStatus: { $in: ["NONE", "PENDING"] } },
         ],
       },
-    ],
-  })
-    .sort({ similarQuestionsComputedAt: 1, _id: 1 })
-    .limit(similarQuestionsSchedulerBatchSize)
-    .select("_id currentVersion similarQuestionsStatus")
-    .lean<
-      {
-        _id: unknown;
-        currentVersion: number;
-        similarQuestionsStatus: "NONE" | "PENDING" | "READY";
-      }[]
-    >();
+    },
+    { $sort: { similarQuestionsComputedAt: 1, questionId: 1 } },
+    {
+      $lookup: {
+        from: Question.collection.name,
+        let: { questionId: "$questionId", version: "$questionVersion" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$_id", "$$questionId"] },
+                  { $eq: ["$currentVersion", "$$version"] },
+                  { $eq: ["$isActive", true] },
+                  { $eq: ["$isDeleted", false] },
+                ],
+              },
+            },
+          },
+          { $project: { _id: 1 } },
+        ],
+        as: "question",
+      },
+    },
+    { $unwind: "$question" },
+    { $limit: similarQuestionsSchedulerBatchSize },
+    {
+      $project: {
+        _id: 0,
+        questionId: 1,
+        questionVersion: 1,
+        similarQuestionsStatus: 1,
+      },
+    },
+  ]);
 };
 
 const scheduleStaleSimilarQuestions = async () => {
   const staleQuestions = await discoverStaleSimilarQuestions();
   let queued = 0;
+  let invalidatedCachedReadiness = false;
 
-  for (const question of staleQuestions) {
-    const questionId = String(question._id);
-    const claim = await Question.updateOne(
-      {
-        _id: question._id,
-        currentVersion: question.currentVersion,
-        ...currentEligibleQuestionMatch,
-        similarQuestionsStatus: { $in: ["NONE", "READY"] },
-      },
-      {
-        $set: {
+  try {
+    for (const question of staleQuestions) {
+      const questionId = String(question.questionId);
+      const claim = await updateQuestionProcessingState({
+        questionId: question.questionId,
+        questionVersion: question.questionVersion,
+        match: {
+          ...eligibleQuestionProcessingStateMatch,
+          similarQuestionsStatus: { $in: ["NONE", "READY"] },
+        },
+        set: {
           similarQuestionsStatus: "PENDING",
           similarQuestionsComputedVersion: null,
         },
-      },
-    );
-
-    if (
-      claim.matchedCount === 0 &&
-      question.similarQuestionsStatus !== "PENDING"
-    ) {
-      continue;
-    }
-
-    try {
-      await queueQuestionPipelineStep({
-        questionId,
-        version: question.currentVersion,
-        step: "SIMILAR",
-        refresh: true,
       });
-      queued += 1;
-    } catch (error) {
-      if (claim.matchedCount > 0) {
-        await Question.updateOne(
-          {
-            _id: question._id,
-            currentVersion: question.currentVersion,
-            similarQuestionsStatus: "PENDING",
-          },
-          { $set: { similarQuestionsStatus: "NONE" } },
-        );
+
+      if (
+        claim.matchedCount === 0 &&
+        question.similarQuestionsStatus !== "PENDING"
+      ) {
+        continue;
       }
 
-      throw error;
+      if (
+        claim.matchedCount > 0 &&
+        question.similarQuestionsStatus === "READY"
+      ) {
+        await getRedisCacheClient().del(`question:${questionId}`);
+        invalidatedCachedReadiness = true;
+      }
+
+      try {
+        await queueQuestionPipelineStep({
+          questionId,
+          version: question.questionVersion,
+          step: "SIMILAR",
+          refresh: true,
+        });
+        queued += 1;
+      } catch (error) {
+        if (claim.matchedCount > 0) {
+          await updateQuestionProcessingState({
+            questionId: question.questionId,
+            questionVersion: question.questionVersion,
+            match: {
+              similarQuestionsStatus: "PENDING",
+            },
+            set: { similarQuestionsStatus: "NONE" },
+          });
+        }
+
+        throw error;
+      }
     }
+  } finally {
+    if (invalidatedCachedReadiness) await clearQuestionDiscoveryCache();
   }
 
   return { discovered: staleQuestions.length, queued };

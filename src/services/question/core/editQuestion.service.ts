@@ -1,4 +1,7 @@
+import mongoose from "mongoose";
+
 import { queueQuestionContentFinalize } from "../contentFinalize/contentFinalizeQueue.service.js";
+import { findOneAndUpdateQuestionProcessingState } from "../processingState/questionProcessingState.service.js";
 import { toPublicQuestion } from "../question.response.js";
 
 import { getRedisCacheClient } from "../../../config/redis.config.js";
@@ -44,31 +47,60 @@ const editQuestion = async (
     throw new HttpError("Unauthorized to edit question", 403);
 
   const newVersion = Number(foundQuestion.currentVersion ?? 0) + 1;
-  const editedQuestion = await Question.findByIdAndUpdate(
-    foundQuestion._id || foundQuestion.id,
-    {
-      title,
-      body,
-      tags,
-      currentVersion: newVersion,
-      basedOnVersion: foundQuestion.currentVersion,
-      lastRollbackVersion: null,
-      moderationStatus: "PENDING",
-      moderationUpdatedAt: null,
-      moderationSourceVersion: newVersion,
-      questionEligibilityStatus: "PENDING",
-      questionEligibilityUpdatedAt: null,
-      questionEligibilitySourceVersion: newVersion,
-      securityVerifierStatus: "NOT_REQUIRED",
-      securityVerifierUpdatedAt: null,
-      securityVerifierSourceVersion: newVersion,
-      embeddingStatus: "NONE",
-      similarQuestionsStatus: "NONE",
-      similarQuestionsComputedAt: null,
-      similarQuestionsComputedVersion: null,
-    },
-    { returnDocument: "after" },
-  );
+  const session = await mongoose.startSession();
+  let editedQuestion: any;
+  let editedProcessingState: any;
+  try {
+    await session.withTransaction(async () => {
+      editedQuestion = await Question.findOneAndUpdate(
+        {
+          _id: foundQuestion._id || foundQuestion.id,
+          currentVersion: foundQuestion.currentVersion,
+          isActive: true,
+          isDeleted: false,
+        },
+        {
+          title,
+          body,
+          tags,
+          currentVersion: newVersion,
+          basedOnVersion: foundQuestion.currentVersion,
+          lastRollbackVersion: null,
+        },
+        { returnDocument: "after", session },
+      );
+
+      if (!editedQuestion) throw new HttpError("Question changed", 409);
+
+      editedProcessingState = await findOneAndUpdateQuestionProcessingState({
+        questionId: editedQuestion._id,
+        questionVersion: foundQuestion.currentVersion,
+        set: {
+          questionVersion: newVersion,
+          moderationStatus: "PENDING",
+          moderationUpdatedAt: null,
+          moderationSourceVersion: newVersion,
+          questionEligibilityStatus: "PENDING",
+          questionEligibilityUpdatedAt: null,
+          questionEligibilitySourceVersion: newVersion,
+          securityVerifierStatus: "NOT_REQUIRED",
+          securityVerifierUpdatedAt: null,
+          securityVerifierSourceVersion: newVersion,
+          embeddingStatus: "NONE",
+          similarQuestionsStatus: "NONE",
+          similarQuestionsComputedAt: null,
+          similarQuestionsComputedVersion: null,
+        },
+        session,
+      });
+
+      if (!editedProcessingState) {
+        throw new Error("Question processing state missing or stale");
+      }
+    });
+  } finally {
+    await session.endSession();
+  }
 
   await queueQuestionContentFinalize({
     userId,
@@ -80,7 +112,6 @@ const editQuestion = async (
     tags,
     moderationStatus: "PENDING",
     moderationUpdatedAt: null,
-    embeddingStatus: "NONE",
   });
 
   await getRedisCacheClient().del(`question:${editedQuestion?._id}`);
@@ -89,7 +120,7 @@ const editQuestion = async (
 
   return {
     message: "Successfully edited question",
-    editedQuestion: toPublicQuestion(editedQuestion),
+    editedQuestion: toPublicQuestion(editedQuestion, editedProcessingState),
   };
 };
 

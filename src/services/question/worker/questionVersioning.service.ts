@@ -14,12 +14,10 @@ import { getRedisCacheClient } from "../../../config/redis.config.js";
 
 import QuestionVersion from "../../../models/questionVersion.model.js";
 import Question from "../../../models/question.model.js";
+import QuestionProcessingState from "../../../models/questionProcessingState.model.js";
 
 const QUESTION_VERSION_MAX_RETRIES = 3;
 const QUESTION_VERSION_RETRY_BACKOFF_MS = [100, 300, 700];
-
-const QUESTION_VERSION_PARENT_SELECT =
-  "currentVersion moderationStatus moderationUpdatedAt moderationSourceVersion";
 
 type QuestionVersionSeed = {
   currentVersion: number;
@@ -42,11 +40,34 @@ type QuestionVersionSnapshot = {
 const loadQuestionVersionSeed = async (
   questionId: string,
   session: mongoose.ClientSession,
-) =>
-  Question.findById(questionId)
-    .select(QUESTION_VERSION_PARENT_SELECT)
+) => {
+  const question = await Question.findById(questionId)
+    .select("currentVersion")
     .session(session)
-    .lean<QuestionVersionSeed>();
+    .lean<{ currentVersion: number }>();
+  const processingState = await QuestionProcessingState.findOne({ questionId })
+    .select(
+      "questionVersion moderationStatus moderationUpdatedAt moderationSourceVersion",
+    )
+    .session(session)
+    .lean<
+      Omit<QuestionVersionSeed, "currentVersion"> & {
+        questionVersion: number;
+      }
+    >();
+
+  if (!question || !processingState) return null;
+  if (question.currentVersion !== processingState.questionVersion) {
+    throw new Error(`Question processing state is stale: ${questionId}`);
+  }
+
+  return {
+    currentVersion: question.currentVersion,
+    moderationStatus: processingState.moderationStatus,
+    moderationUpdatedAt: processingState.moderationUpdatedAt,
+    moderationSourceVersion: processingState.moderationSourceVersion,
+  };
+};
 
 const createQuestionVersionRecord = async ({
   data,

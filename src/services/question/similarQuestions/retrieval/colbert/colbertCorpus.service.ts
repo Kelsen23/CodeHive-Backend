@@ -6,27 +6,19 @@ import type {
 } from "../retrieval.types.js";
 
 import {
-  currentLiveEligibleQuestionMatch,
+  loadCurrentLiveEligibleQuestionVersions,
   loadCurrentLiveEligibleQuestionVersionsById,
 } from "../dense/denseCorpus.service.js";
 
 import colbertConfig from "../../../../../config/colbert.config.js";
-import Question from "../../../../../models/question.model.js";
 import QuestionMultiVectorEmbedding from "../../../../../models/questionMultiVectorEmbedding.model.js";
 
 const colbertRepresentationVersion = "colbert-v1";
 const colbertModel = colbertConfig.model;
 
-const loadCurrentEligibleQuestionVersions = async () => {
-  const questions = await Question.find(currentLiveEligibleQuestionMatch)
-    .select("_id currentVersion")
-    .lean<{ _id: unknown; currentVersion: number }[]>();
-
-  return questions.map<EligibleQuestionVersion>((question) => ({
-    questionId: String(question._id),
-    version: question.currentVersion,
-  }));
-};
+const loadCurrentEligibleQuestionVersions = async (): Promise<
+  EligibleQuestionVersion[]
+> => loadCurrentLiveEligibleQuestionVersions();
 
 const streamMultiVectorEmbeddings = ({ model }: { model: string }) =>
   QuestionMultiVectorEmbedding.find({

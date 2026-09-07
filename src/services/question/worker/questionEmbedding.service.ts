@@ -1,3 +1,5 @@
+import type { QuestionEmbeddingJobData } from "../embedding/dense/questionEmbedding.shared.js";
+
 import generateEmbedding from "../ai/generateEmbedding.service.js";
 import runQuestionEmbeddingReadySideEffects from "../embedding/dense/questionEmbeddingSideEffects.service.js";
 import {
@@ -8,11 +10,7 @@ import {
   resetQuestionEmbeddingProcessing,
 } from "../embedding/dense/questionEmbeddingState.service.js";
 import buildQuestionEmbeddingInput from "../embedding/dense/questionEmbeddingText.service.js";
-
-import {
-  denseRepresentationVersion,
-  type QuestionEmbeddingJobData,
-} from "../embedding/dense/questionEmbedding.shared.js";
+import { denseRepresentationVersion } from "../embedding/dense/questionEmbedding.shared.js";
 
 import { getLlmFeatureRoute } from "../../../config/llmGateway.config.js";
 
@@ -81,10 +79,7 @@ const processQuestionEmbeddingJob = async ({
     });
 
     if (updated.questionUpdated) {
-      await runReadySideEffectsIfCurrent({
-        questionId,
-        version,
-      });
+      await runReadySideEffectsIfCurrent({ questionId, version });
     }
 
     return;
@@ -107,10 +102,7 @@ const processQuestionEmbeddingJob = async ({
 
   if (!updated.questionUpdated) return;
 
-  await runReadySideEffectsIfCurrent({
-    questionId,
-    version,
-  });
+  await runReadySideEffectsIfCurrent({ questionId, version });
 };
 
 export default processQuestionEmbeddingJob;

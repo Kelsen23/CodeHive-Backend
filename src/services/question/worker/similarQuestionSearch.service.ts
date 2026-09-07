@@ -13,6 +13,7 @@ import { denseCandidateLimit } from "../similarQuestions/similarQuestions.shared
 import QuestionEmbedding from "../../../models/questionEmbedding.model.js";
 import QuestionVersion from "../../../models/questionVersion.model.js";
 import SimilarQuestion from "../../../models/similarQuestion.model.js";
+import Question from "../../../models/question.model.js";
 
 const similarQuestionsRetrievalVersion = "dense-v1";
 
@@ -79,31 +80,42 @@ const processSimilarQuestionSearchJob = async ({
   }
 
   try {
-    const embeddingDocument = await QuestionEmbedding.findOne({
-      questionId,
-      version,
-      representationVersion: "dense-v1",
-    }).lean();
-    const embedding = embeddingDocument?.vector;
+    const [question, embeddingDocument, questionVersion] = await Promise.all([
+      Question.findOne({
+        _id: questionId,
+        currentVersion: version,
+        isActive: true,
+        isDeleted: false,
+      })
+        .select("userId")
+        .lean<{ userId: unknown }>(),
+      QuestionEmbedding.findOne({
+        questionId,
+        version,
+        representationVersion: "dense-v1",
+      }).lean(),
+      QuestionVersion.findOne({
+        questionId,
+        version,
+        isActive: true,
+        moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
+      })
+        .select("title body tags")
+        .lean<{
+          title: string;
+          body: string;
+          tags?: string[];
+        }>(),
+    ]);
 
-    if (!Array.isArray(embedding) || embedding.length === 0) {
+    if (!question || !questionVersion) {
       await resetSimilarQuestionsProcessing(questionId, version);
       return;
     }
 
-    const questionVersion = await QuestionVersion.findOne({
-      questionId,
-      version,
-      isActive: true,
-    })
-      .select("title body tags")
-      .lean<{
-        title: string;
-        body: string;
-        tags?: string[];
-      }>();
+    const embedding = embeddingDocument?.vector;
 
-    if (!questionVersion) {
+    if (!Array.isArray(embedding) || embedding.length === 0) {
       await resetSimilarQuestionsProcessing(questionId, version);
       return;
     }

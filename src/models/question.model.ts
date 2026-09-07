@@ -17,53 +17,6 @@ const QuestionSchema: Schema = new Schema(
     basedOnVersion: { type: Number, default: 1, min: 1 },
     lastRollbackVersion: { type: Number, default: null, required: false },
 
-    similarQuestionsStatus: {
-      type: String,
-      enum: ["NONE", "PENDING", "PROCESSING", "READY"],
-      default: "NONE",
-    },
-    similarQuestionsComputedAt: { type: Date, default: null },
-    similarQuestionsComputedVersion: { type: Number, default: null, min: 1 },
-
-    embeddingStatus: {
-      type: String,
-      enum: ["NONE", "PENDING", "PROCESSING", "READY"],
-      default: "NONE",
-    },
-
-    questionEligibilityStatus: {
-      type: String,
-      enum: ["PENDING", "PROCESSING", "ALLOWED", "CLARIFY", "REJECTED"],
-      default: "PENDING",
-      index: true,
-    },
-    questionEligibilityUpdatedAt: { type: Date, default: null },
-    questionEligibilitySourceVersion: { type: Number, default: 1, min: 1 },
-
-    securityVerifierStatus: {
-      type: String,
-      enum: [
-        "NOT_REQUIRED",
-        "PENDING",
-        "PROCESSING",
-        "ALLOWED",
-        "ALLOWED_WITH_CONSTRAINTS",
-        "REJECTED",
-      ],
-      default: "NOT_REQUIRED",
-      index: true,
-    },
-    securityVerifierUpdatedAt: { type: Date, default: null },
-    securityVerifierSourceVersion: { type: Number, default: 1, min: 1 },
-
-    moderationStatus: {
-      type: String,
-      enum: ["PENDING", "APPROVED", "FLAGGED", "REJECTED"],
-      default: "PENDING",
-    },
-    moderationUpdatedAt: { type: Date, default: null },
-    moderationSourceVersion: { type: Number, default: 1, min: 1 },
-
     isDeleted: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
   },
@@ -82,21 +35,5 @@ const QuestionSchema: Schema = new Schema(
     },
   },
 );
-
-QuestionSchema.index({
-  similarQuestionsStatus: 1,
-  similarQuestionsComputedAt: 1,
-  currentVersion: 1,
-});
-
-QuestionSchema.index({
-  isActive: 1,
-  isDeleted: 1,
-  moderationStatus: 1,
-  questionEligibilityStatus: 1,
-  securityVerifierStatus: 1,
-  embeddingStatus: 1,
-  similarQuestionsComputedAt: 1,
-});
 
 export default mongoose.model("Question", QuestionSchema);

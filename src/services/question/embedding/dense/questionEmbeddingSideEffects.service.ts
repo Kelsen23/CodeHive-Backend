@@ -3,6 +3,8 @@ import { queueContentPipelineRoute } from "../../pipelineRouter/pipelineRouting.
 
 import { getRedisCacheClient } from "../../../../config/redis.config.js";
 
+import { clearQuestionDiscoveryCache } from "../../../../utils/cache/clearCache.util.js";
+
 const runQuestionEmbeddingReadySideEffects = async ({
   questionId,
   version,
@@ -25,6 +27,7 @@ const runQuestionEmbeddingReadySideEffects = async ({
   });
 
   await getRedisCacheClient().del(`question:${questionId}`);
+  await clearQuestionDiscoveryCache();
 };
 
 export default runQuestionEmbeddingReadySideEffects;

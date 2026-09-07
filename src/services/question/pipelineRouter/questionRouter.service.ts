@@ -6,6 +6,7 @@ import { invalidateSimilarQuestions } from "../similarQuestions/similarQuestions
 
 import Question from "../../../models/question.model.js";
 import QuestionVersion from "../../../models/questionVersion.model.js";
+import QuestionProcessingState from "../../../models/questionProcessingState.model.js";
 
 type QuestionPipelineRouteDecision =
   | { type: "NOOP" }
@@ -45,31 +46,34 @@ const loadQuestionPipelineRouteState = async (
   questionId: string,
   version: number,
 ): Promise<QuestionPipelineRouteState | null> => {
-  const questionVersion = await QuestionVersion.findOne({ questionId, version })
-    .select("moderationStatus")
-    .lean<{
-      moderationStatus: QuestionPipelineRouteState["moderationStatus"];
-    }>();
+  const [questionVersion, question, processingState] = await Promise.all([
+    QuestionVersion.findOne({ questionId, version })
+      .select("moderationStatus")
+      .lean<{
+        moderationStatus: QuestionPipelineRouteState["moderationStatus"];
+      }>(),
+    Question.findOne({ _id: questionId })
+      .select("currentVersion isActive isDeleted")
+      .lean<{
+        currentVersion: number;
+        isActive: boolean;
+        isDeleted: boolean;
+      }>(),
+    QuestionProcessingState.findOne({ questionId, questionVersion: version })
+      .select(
+        "questionEligibilityStatus securityVerifierStatus embeddingStatus similarQuestionsStatus",
+      )
+      .lean<{
+        questionEligibilityStatus: QuestionPipelineRouteState["questionEligibilityStatus"];
+        securityVerifierStatus: QuestionPipelineRouteState["securityVerifierStatus"];
+        embeddingStatus: QuestionPipelineRouteState["embeddingStatus"];
+        similarQuestionsStatus: QuestionPipelineRouteState["similarQuestionsStatus"];
+      }>(),
+  ]);
 
   if (!questionVersion) return null;
 
-  const question = await Question.findOne({
-    _id: questionId,
-    currentVersion: version,
-  })
-    .select(
-      "questionEligibilityStatus securityVerifierStatus embeddingStatus similarQuestionsStatus isActive isDeleted",
-    )
-    .lean<{
-      questionEligibilityStatus: QuestionPipelineRouteState["questionEligibilityStatus"];
-      securityVerifierStatus: QuestionPipelineRouteState["securityVerifierStatus"];
-      embeddingStatus: QuestionPipelineRouteState["embeddingStatus"];
-      similarQuestionsStatus: QuestionPipelineRouteState["similarQuestionsStatus"];
-      isActive: boolean;
-      isDeleted: boolean;
-    }>();
-
-  if (!question) {
+  if (!question || question.currentVersion !== version) {
     return {
       moderationStatus: questionVersion.moderationStatus,
       isActive: false,
@@ -78,12 +82,18 @@ const loadQuestionPipelineRouteState = async (
     };
   }
 
+  if (!processingState) {
+    throw new Error(
+      `Question processing state missing or stale: ${questionId}`,
+    );
+  }
+
   return {
     moderationStatus: questionVersion.moderationStatus,
-    questionEligibilityStatus: question.questionEligibilityStatus,
-    securityVerifierStatus: question.securityVerifierStatus,
-    embeddingStatus: question.embeddingStatus,
-    similarQuestionsStatus: question.similarQuestionsStatus,
+    questionEligibilityStatus: processingState.questionEligibilityStatus,
+    securityVerifierStatus: processingState.securityVerifierStatus,
+    embeddingStatus: processingState.embeddingStatus,
+    similarQuestionsStatus: processingState.similarQuestionsStatus,
     isActive: question.isActive,
     isDeleted: question.isDeleted,
     isCurrentVersion: true,
@@ -196,3 +206,5 @@ const questionRouter = async (questionId: string, version: number) => {
 };
 
 export default questionRouter;
+
+export { loadQuestionPipelineRouteState, resolveQuestionPipelineRouteDecision };

@@ -4,7 +4,6 @@ import { makeJobId } from "../../../utils/job/makeJobId.util.js";
 import ensureJobIsQueued from "../../../utils/job/ensureJobIsQueued.util.js";
 
 import Question from "../../../models/question.model.js";
-
 import contentFinalizeQueue from "../../../queues/contentFinalize.queue.js";
 import questionVersioningQueue from "../../../queues/questionVersioning.queue.js";
 
@@ -63,7 +62,6 @@ const queueQuestionContentFinalize = async ({
   tags,
   moderationStatus,
   moderationUpdatedAt,
-  embeddingStatus,
 }: {
   userId: string;
   entityId: string;
@@ -74,7 +72,6 @@ const queueQuestionContentFinalize = async ({
   tags: string[];
   moderationStatus?: string;
   moderationUpdatedAt?: Date | null;
-  embeddingStatus?: string;
 }) => {
   const jobId = makeJobId("contentFinalize", "QUESTION", entityId, version);
   const alreadyQueued = await ensureJobIsQueued({
@@ -96,7 +93,6 @@ const queueQuestionContentFinalize = async ({
       tags,
       moderationStatus,
       moderationUpdatedAt,
-      embeddingStatus,
     },
     {
       removeOnComplete: true,

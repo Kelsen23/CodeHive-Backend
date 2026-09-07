@@ -1,18 +1,16 @@
 import type { CreditCharge } from "../../../user/credits/credits.types.js";
 
-import { canGetAIAnswer } from "../questionAiHelp.shared.js";
 import refundCreditCharge from "../../../user/credits/refundCreditCharge.service.js";
 import { toPublicAiAnswer } from "../../question.response.js";
+import { loadQuestionWithProcessingState } from "../../processingState/questionProcessingState.query.js";
 
 import { getRedisCacheClient } from "../../../../config/redis.config.js";
 
 import HttpError from "../../../../utils/http/httpError.util.js";
 import { makeJobId } from "../../../../utils/job/makeJobId.util.js";
 
-import Question from "../../../../models/question.model.js";
 import AiAnswer from "../../../../models/aiAnswer.model.js";
 import QuestionEmbedding from "../../../../models/questionEmbedding.model.js";
-
 import questionAiAnswerQueue from "../../../../queues/questionAiAnswer.queue.js";
 
 const generateAiAnswerRequest = async (
@@ -21,16 +19,24 @@ const generateAiAnswerRequest = async (
   version: number,
   creditCharge?: CreditCharge,
 ) => {
-  const foundQuestion = await Question.findOne({
-    _id: questionId,
-    userId,
-  })
-    .select(
-      "_id isActive currentVersion moderationStatus embeddingStatus questionEligibilityStatus securityVerifierStatus",
-    )
-    .lean();
+  const [foundQuestion, embedding] = await Promise.all([
+    loadQuestionWithProcessingState({
+      questionId,
+      questionMatch: { userId },
+    }),
+    QuestionEmbedding.findOne({
+      questionId,
+      version,
+      representationVersion: "dense-v1",
+    })
+      .select("vector")
+      .lean(),
+  ]);
 
   if (!foundQuestion) throw new HttpError("Question not found", 404);
+  if (!foundQuestion.processingState) {
+    throw new Error("Question processing state missing");
+  }
   if (!foundQuestion.isActive) throw new HttpError("Question not active", 410);
 
   if (Number(foundQuestion.currentVersion) !== version)
@@ -38,22 +44,24 @@ const generateAiAnswerRequest = async (
       `Stale version. Current version is ${foundQuestion.currentVersion}`,
       409,
     );
+  if (
+    Number(foundQuestion.processingState.questionVersion) !==
+    Number(foundQuestion.currentVersion)
+  ) {
+    throw new Error("Question processing state is stale");
+  }
 
-  if (!["APPROVED", "FLAGGED"].includes(String(foundQuestion.moderationStatus)))
+  if (
+    !["APPROVED", "FLAGGED"].includes(
+      String(foundQuestion.processingState.moderationStatus),
+    )
+  )
     throw new HttpError("Question moderation status is not eligible", 400);
-
-  const embedding = await QuestionEmbedding.findOne({
-    questionId,
-    version,
-    representationVersion: "dense-v1",
-  })
-    .select("vector")
-    .lean();
 
   if (!embedding?.vector?.length)
     throw new HttpError("Question does not have embedding", 400);
 
-  if (!canGetAIAnswer(foundQuestion))
+  if (!foundQuestion.processingState.canGetAIAnswer)
     throw new HttpError("Question is not eligible for AI answer", 400);
 
   const foundAiAnswer = await AiAnswer.findOne({

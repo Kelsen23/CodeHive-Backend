@@ -9,6 +9,10 @@ import {
 import queueQuestionGatewayAudit from "../questionEligibilityGate/queueQuestionGatewayAudit.service.js";
 import { questionGatewayAuditDecisionByGateDecision } from "../questionEligibilityGate/questionGatewayAudit.shared.js";
 import { queueContentPipelineRoute } from "../pipelineRouter/pipelineRouting.service.js";
+import {
+  findOneAndUpdateQuestionProcessingState,
+  updateQuestionProcessingState,
+} from "../processingState/questionProcessingState.service.js";
 import routeNotification from "../../notification/routeNotification.service.js";
 
 import { getRedisCacheClient } from "../../../config/redis.config.js";
@@ -18,27 +22,26 @@ import { clearQuestionDiscoveryCache } from "../../../utils/cache/clearCache.uti
 
 import QuestionVersion from "../../../models/questionVersion.model.js";
 import Question from "../../../models/question.model.js";
+import QuestionProcessingState from "../../../models/questionProcessingState.model.js";
 
 const resetQuestionEligibilityProcessing = async (
   questionId: string,
   version: number,
 ) => {
-  await Question.updateOne(
-    {
-      _id: questionId,
-      currentVersion: version,
+  await updateQuestionProcessingState({
+    questionId,
+    questionVersion: version,
+    match: {
       questionEligibilityStatus: "PROCESSING",
     },
-    {
-      $set: {
-        questionEligibilityStatus: "PENDING",
-        questionEligibilityUpdatedAt: null,
-        securityVerifierStatus: "NOT_REQUIRED",
-        securityVerifierUpdatedAt: null,
-        securityVerifierSourceVersion: version,
-      },
+    set: {
+      questionEligibilityStatus: "PENDING",
+      questionEligibilityUpdatedAt: null,
+      securityVerifierStatus: "NOT_REQUIRED",
+      securityVerifierUpdatedAt: null,
+      securityVerifierSourceVersion: version,
     },
-  );
+  });
 };
 
 const queueQuestionEligibilitySideEffects = async ({
@@ -103,34 +106,51 @@ const resumeQuestionEligibilitySideEffects = async ({
   questionId,
   version,
 }: ProcessQuestionEligibilityGateJobData) => {
-  const routedQuestion = await Question.findOne({
-    _id: questionId,
-    currentVersion: version,
-    isActive: true,
-    isDeleted: false,
-    questionEligibilitySourceVersion: version,
-    questionEligibilityStatus: { $in: ["ALLOWED", "CLARIFY", "REJECTED"] },
-  })
-    .select("userId questionEligibilityStatus securityVerifierStatus")
-    .lean<{
-      userId: string;
-      questionEligibilityStatus: "ALLOWED" | "CLARIFY" | "REJECTED";
-      securityVerifierStatus:
-        | "NOT_REQUIRED"
-        | "PENDING"
-        | "ALLOWED"
-        | "ALLOWED_WITH_CONSTRAINTS"
-        | "REJECTED";
-    }>();
+  const [question, processingState] = await Promise.all([
+    Question.findOne({
+      _id: questionId,
+      currentVersion: version,
+      isActive: true,
+      isDeleted: false,
+    })
+      .select("userId")
+      .lean<{ userId: string }>(),
+    QuestionProcessingState.findOne({
+      questionId,
+      questionVersion: version,
+    })
+      .select(
+        "questionEligibilitySourceVersion questionEligibilityStatus securityVerifierStatus",
+      )
+      .lean<{
+        questionEligibilitySourceVersion: number;
+        questionEligibilityStatus: "ALLOWED" | "CLARIFY" | "REJECTED";
+        securityVerifierStatus:
+          | "NOT_REQUIRED"
+          | "PENDING"
+          | "ALLOWED"
+          | "ALLOWED_WITH_CONSTRAINTS"
+          | "REJECTED";
+      }>(),
+  ]);
 
-  if (!routedQuestion) return;
+  if (!question) return;
+  if (!processingState) throw new Error("Question processing state missing");
+  if (
+    processingState.questionEligibilitySourceVersion !== version ||
+    !["ALLOWED", "CLARIFY", "REJECTED"].includes(
+      processingState.questionEligibilityStatus,
+    )
+  ) {
+    return;
+  }
 
   await queueQuestionEligibilitySideEffects({
     questionId,
     version,
-    userId: String(routedQuestion.userId),
-    questionEligibilityStatus: routedQuestion.questionEligibilityStatus,
-    securityVerifierStatus: routedQuestion.securityVerifierStatus,
+    userId: String(question.userId),
+    questionEligibilityStatus: processingState.questionEligibilityStatus,
+    securityVerifierStatus: processingState.securityVerifierStatus,
   });
 };
 
@@ -138,25 +158,16 @@ const processQuestionEligibilityGateJob = async ({
   questionId,
   version,
 }: ProcessQuestionEligibilityGateJobData) => {
-  const lockedQuestion = await Question.findOneAndUpdate(
-    {
-      _id: questionId,
-      currentVersion: version,
-      isActive: true,
-      isDeleted: false,
+  const lockedState = await findOneAndUpdateQuestionProcessingState({
+    questionId,
+    questionVersion: version,
+    match: {
       questionEligibilityStatus: "PENDING",
     },
-    { $set: { questionEligibilityStatus: "PROCESSING" } },
-    { returnDocument: "after" },
-  )
-    .select("_id currentVersion userId")
-    .lean<{
-      _id: unknown;
-      currentVersion: number;
-      userId: string;
-    }>();
+    set: { questionEligibilityStatus: "PROCESSING" },
+  });
 
-  if (!lockedQuestion) {
+  if (!lockedState) {
     await resumeQuestionEligibilitySideEffects({ questionId, version });
     return;
   }
@@ -164,20 +175,30 @@ const processQuestionEligibilityGateJob = async ({
   let statusUpdated = false;
   let auditQueued = false;
   try {
-    const questionVersion = await QuestionVersion.findOne({
-      questionId,
-      version,
-      isActive: true,
-      moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
-    })
-      .select("title body tags")
-      .lean<{
-        title: string;
-        body: string;
-        tags: string[];
-      }>();
+    const [question, questionVersion] = await Promise.all([
+      Question.findOne({
+        _id: questionId,
+        currentVersion: version,
+        isActive: true,
+        isDeleted: false,
+      })
+        .select("userId")
+        .lean<{ userId: string }>(),
+      QuestionVersion.findOne({
+        questionId,
+        version,
+        isActive: true,
+        moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
+      })
+        .select("title body tags")
+        .lean<{
+          title: string;
+          body: string;
+          tags: string[];
+        }>(),
+    ]);
 
-    if (!questionVersion) {
+    if (!question || !questionVersion) {
       await resetQuestionEligibilityProcessing(questionId, version);
       return;
     }
@@ -200,26 +221,24 @@ const processQuestionEligibilityGateJob = async ({
       version,
     );
     const updatedAt = new Date();
-    const updateResult = await Question.updateOne(
-      {
-        _id: questionId,
-        currentVersion: version,
+    const updateResult = await updateQuestionProcessingState({
+      questionId,
+      questionVersion: version,
+      match: {
         questionEligibilityStatus: "PROCESSING",
       },
-      {
-        $set: {
-          questionEligibilityStatus: nextEligibilityStatus,
-          questionEligibilityUpdatedAt: updatedAt,
-          questionEligibilitySourceVersion: version,
-          securityVerifierStatus:
-            eligibilityResult.decision === "ALLOW"
-              ? nextSecurityVerifierStatus
-              : "NOT_REQUIRED",
-          securityVerifierUpdatedAt: null,
-          securityVerifierSourceVersion: version,
-        },
+      set: {
+        questionEligibilityStatus: nextEligibilityStatus,
+        questionEligibilityUpdatedAt: updatedAt,
+        questionEligibilitySourceVersion: version,
+        securityVerifierStatus:
+          eligibilityResult.decision === "ALLOW"
+            ? nextSecurityVerifierStatus
+            : "NOT_REQUIRED",
+        securityVerifierUpdatedAt: null,
+        securityVerifierSourceVersion: version,
       },
-    );
+    });
 
     if (updateResult.modifiedCount === 0) return;
     statusUpdated = true;
@@ -228,7 +247,7 @@ const processQuestionEligibilityGateJob = async ({
       decisionId: auditDecisionId,
       questionId,
       version,
-      userId: String(lockedQuestion.userId),
+      userId: String(question.userId),
       stage: "QUESTION_ELIGIBILITY_GATE",
       decision:
         questionGatewayAuditDecisionByGateDecision[eligibilityResult.decision],
@@ -248,7 +267,7 @@ const processQuestionEligibilityGateJob = async ({
     await queueQuestionEligibilitySideEffects({
       questionId,
       version,
-      userId: String(lockedQuestion.userId),
+      userId: String(question.userId),
       questionEligibilityStatus: nextEligibilityStatus,
       securityVerifierStatus:
         eligibilityResult.decision === "ALLOW"

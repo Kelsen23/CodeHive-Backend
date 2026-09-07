@@ -2,10 +2,15 @@ import mongoose from "mongoose";
 
 import type { RetrievalCandidate } from "./retrieval/retrieval.types.js";
 
-import { currentLiveEligibleQuestionMatch } from "./similarQuestions.shared.js";
+import { publicQuestionProcessingStateMatch } from "./similarQuestions.shared.js";
+import {
+  findOneAndUpdateQuestionProcessingState,
+  updateQuestionProcessingState,
+} from "../processingState/questionProcessingState.service.js";
 
 import Question from "../../../models/question.model.js";
 import SimilarQuestion from "../../../models/similarQuestion.model.js";
+import QuestionProcessingState from "../../../models/questionProcessingState.model.js";
 
 type LockedSimilarQuestionsQuestion = {
   _id: unknown;
@@ -16,51 +21,47 @@ const lockQuestionForSimilarQuestions = async (
   questionId: string,
   version: number,
 ) =>
-  Question.findOneAndUpdate(
-    {
-      _id: new mongoose.Types.ObjectId(questionId),
-      currentVersion: version,
-      ...currentLiveEligibleQuestionMatch,
+  findOneAndUpdateQuestionProcessingState({
+    questionId: new mongoose.Types.ObjectId(questionId),
+    questionVersion: version,
+    match: {
+      ...publicQuestionProcessingStateMatch,
       embeddingStatus: "READY",
       similarQuestionsStatus: { $in: ["NONE", "PENDING"] },
     },
-    { $set: { similarQuestionsStatus: "PROCESSING" } },
-    { returnDocument: "after" },
-  ).lean<LockedSimilarQuestionsQuestion>();
+    set: { similarQuestionsStatus: "PROCESSING" },
+  });
 
 const resetSimilarQuestionsProcessing = async (
   questionId: string,
   version: number,
 ) =>
-  Question.updateOne(
-    {
-      _id: questionId,
-      currentVersion: version,
+  updateQuestionProcessingState({
+    questionId,
+    questionVersion: version,
+    match: {
       similarQuestionsStatus: "PROCESSING",
     },
-    {
-      $set: {
-        similarQuestionsStatus: "NONE",
-        similarQuestionsComputedAt: null,
-        similarQuestionsComputedVersion: null,
-      },
+    set: {
+      similarQuestionsStatus: "NONE",
+      similarQuestionsComputedAt: null,
+      similarQuestionsComputedVersion: null,
     },
-  );
+  });
 
 const invalidateSimilarQuestions = async (
   questionId: string,
   version: number,
 ) =>
-  Question.updateOne(
-    { _id: questionId, currentVersion: version },
-    {
-      $set: {
-        similarQuestionsStatus: "NONE",
-        similarQuestionsComputedAt: null,
-        similarQuestionsComputedVersion: null,
-      },
+  updateQuestionProcessingState({
+    questionId,
+    questionVersion: version,
+    set: {
+      similarQuestionsStatus: "NONE",
+      similarQuestionsComputedAt: null,
+      similarQuestionsComputedVersion: null,
     },
-  );
+  });
 
 const finalizeSimilarQuestions = async ({
   questionId,
@@ -84,7 +85,16 @@ const finalizeSimilarQuestions = async ({
       const source = await Question.findOne({
         _id: questionId,
         currentVersion: version,
-        ...currentLiveEligibleQuestionMatch,
+        isActive: true,
+        isDeleted: false,
+      })
+        .select("_id")
+        .session(session)
+        .lean();
+      const processingState = await QuestionProcessingState.findOne({
+        questionId,
+        questionVersion: version,
+        ...publicQuestionProcessingStateMatch,
         embeddingStatus: "READY",
         similarQuestionsStatus: "PROCESSING",
       })
@@ -92,7 +102,7 @@ const finalizeSimilarQuestions = async ({
         .session(session)
         .lean();
 
-      if (!source) return;
+      if (!source || !processingState) return;
 
       await SimilarQuestion.deleteMany(
         {
@@ -123,21 +133,25 @@ const finalizeSimilarQuestions = async ({
         );
       }
 
-      updateResult = await Question.updateOne(
-        {
-          _id: questionId,
-          currentVersion: version,
+      updateResult = await updateQuestionProcessingState({
+        questionId,
+        questionVersion: version,
+        match: {
           similarQuestionsStatus: "PROCESSING",
         },
-        {
-          $set: {
-            similarQuestionsStatus: "READY",
-            similarQuestionsComputedAt: computedAt,
-            similarQuestionsComputedVersion: version,
-          },
+        set: {
+          similarQuestionsStatus: "READY",
+          similarQuestionsComputedAt: computedAt,
+          similarQuestionsComputedVersion: version,
         },
-        { session },
-      );
+        session,
+      });
+
+      if (updateResult.matchedCount !== 1) {
+        throw new Error(
+          "Question processing state changed during finalization",
+        );
+      }
     });
 
     if (!updateResult) {
@@ -153,18 +167,38 @@ const finalizeSimilarQuestions = async ({
 const loadReadyQuestionForSimilarSideEffects = async (
   questionId: string,
   version: number,
-) =>
-  Question.findOne({
-    _id: questionId,
-    currentVersion: version,
-    ...currentLiveEligibleQuestionMatch,
-    embeddingStatus: "READY",
-    similarQuestionsStatus: "READY",
-  })
-    .select("userId")
-    .lean<{
-      userId: unknown;
-    }>();
+) => {
+  const [question, processingState] = await Promise.all([
+    Question.findOne({
+      _id: questionId,
+      currentVersion: version,
+      isActive: true,
+      isDeleted: false,
+    })
+      .select("userId")
+      .lean<{ userId: unknown }>(),
+    QuestionProcessingState.findOne({
+      questionId,
+      questionVersion: version,
+    })
+      .select(
+        "moderationStatus questionEligibilityStatus securityVerifierStatus embeddingStatus similarQuestionsStatus",
+      )
+      .lean<Record<string, string>>(),
+  ]);
+
+  if (!question) return null;
+  if (!processingState) throw new Error("Question processing state missing");
+  return ["APPROVED", "FLAGGED"].includes(processingState.moderationStatus) &&
+    processingState.questionEligibilityStatus === "ALLOWED" &&
+    ["NOT_REQUIRED", "ALLOWED", "ALLOWED_WITH_CONSTRAINTS"].includes(
+      processingState.securityVerifierStatus,
+    ) &&
+    processingState.embeddingStatus === "READY" &&
+    processingState.similarQuestionsStatus === "READY"
+    ? question
+    : null;
+};
 
 export {
   finalizeSimilarQuestions,

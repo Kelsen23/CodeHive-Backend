@@ -1,6 +1,7 @@
 import type { ClientSession } from "mongoose";
 
-import Question from "../../models/question.model.js";
+import { updateQuestionProcessingState } from "../question/processingState/questionProcessingState.service.js";
+
 import QuestionVersion from "../../models/questionVersion.model.js";
 
 type ModerationStatus = "PENDING" | "APPROVED" | "FLAGGED" | "REJECTED";
@@ -80,18 +81,18 @@ const syncQuestionModerationStatusFromVersions = async ({
     throw new Error("Question version not found");
   }
 
-  const updatedQuestion = await Question.findOneAndUpdate(
-    { _id: questionId, isActive: true },
-    {
+  const updatedState = await updateQuestionProcessingState({
+    questionId,
+    set: {
       moderationStatus: worstVersionStatus.moderationStatus,
       moderationUpdatedAt,
       moderationSourceVersion: worstVersionStatus.moderationSourceVersion,
     },
-    { returnDocument: "after", session },
-  );
+    session,
+  });
 
-  if (!updatedQuestion) {
-    throw new Error("Question not found");
+  if (updatedState.matchedCount !== 1) {
+    throw new Error("Question processing state not found");
   }
 
   return worstVersionStatus;
