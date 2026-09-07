@@ -38,6 +38,10 @@ vi.mock(
   () => mockModerationUnitModules.questionModel,
 );
 vi.mock(
+  "../../../../src/models/questionProcessingState.model.js",
+  () => mockModerationUnitModules.questionProcessingStateModel,
+);
+vi.mock(
   "../../../../src/models/questionVersion.model.js",
   () => mockModerationUnitModules.questionVersionModel,
 );
@@ -110,22 +114,26 @@ describe("moderation content state services", () => {
         { version: 2, moderationStatus: "REJECTED" },
       ]),
     );
-    env.questionFindOneAndUpdate.mockResolvedValueOnce({ _id: "question_1" });
-
     const result = await syncQuestionModerationStatusFromVersions({
       questionId: "question_1",
       moderationUpdatedAt: new Date("2030-01-01T00:00:00.000Z"),
       session: {} as never,
     });
 
-    expect(env.questionFindOneAndUpdate).toHaveBeenCalledWith(
-      { _id: "question_1", isActive: true },
-      expect.objectContaining({
-        moderationStatus: "REJECTED",
-        moderationSourceVersion: 2,
-      }),
+    expect(env.questionProcessingStateUpdateOne).toHaveBeenCalledWith(
+      { questionId: "question_1" },
+      [
+        {
+          $set: expect.objectContaining({
+            moderationStatus: "REJECTED",
+            moderationSourceVersion: 2,
+          }),
+        },
+        expect.any(Object),
+      ],
       expect.objectContaining({
         session: {},
+        updatePipeline: true,
       }),
     );
     expect(result).toEqual({
@@ -156,8 +164,6 @@ describe("moderation content state services", () => {
     env.questionVersionFindOneAndUpdate.mockResolvedValueOnce({
       _id: "version_3",
     });
-    env.questionFindOneAndUpdate.mockResolvedValueOnce({ _id: "question_1" });
-
     const result = await applyContentModerationDecision(
       "question_1",
       "QUESTION",
@@ -166,7 +172,7 @@ describe("moderation content state services", () => {
     );
 
     expect(env.questionVersionFindOneAndUpdate).toHaveBeenCalled();
-    expect(env.questionFindOneAndUpdate).toHaveBeenCalled();
+    expect(env.questionProcessingStateUpdateOne).toHaveBeenCalled();
     expect(env.clearModeratedContentCache).toHaveBeenCalledWith(
       "QUESTION",
       "question_1",

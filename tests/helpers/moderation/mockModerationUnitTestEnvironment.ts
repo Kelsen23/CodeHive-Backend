@@ -4,7 +4,8 @@ const createQueryChain = <T>(value: T) => ({
   select: vi.fn().mockReturnThis(),
   lean: vi.fn(async () => value),
   session: vi.fn().mockReturnThis(),
-  then: (onFulfilled: (value: T) => unknown) => Promise.resolve(value).then(onFulfilled),
+  then: (onFulfilled: (value: T) => unknown) =>
+    Promise.resolve(value).then(onFulfilled),
   catch: (onRejected: (reason: unknown) => unknown) =>
     Promise.resolve(value).catch(onRejected),
   finally: (onFinally: () => void) => Promise.resolve(value).finally(onFinally),
@@ -30,7 +31,9 @@ const prismaTransaction = vi.fn(async (cb: (tx: any) => Promise<unknown>) =>
   cb(prismaMocks.transactionClient),
 );
 
-const redisGet = vi.fn<(key: string) => Promise<string | null>>(async () => null);
+const redisGet = vi.fn<(key: string) => Promise<string | null>>(
+  async () => null,
+);
 const redisEval = vi.fn<(...args: unknown[]) => Promise<number>>(async () => 0);
 const redisDel = vi.fn<(...keys: string[]) => Promise<number>>(
   async (...keys: string[]) => keys.length,
@@ -45,6 +48,7 @@ const questionFindById = vi.fn();
 const questionFind = vi.fn();
 const questionFindOne = vi.fn();
 const questionFindOneAndUpdate = vi.fn();
+const questionProcessingStateUpdateOne = vi.fn();
 const questionVersionFindOne = vi.fn();
 const questionVersionFind = vi.fn();
 const questionVersionFindOneAndUpdate = vi.fn();
@@ -66,8 +70,8 @@ const questionSyncModerationStatusFromVersions = vi.fn(async () => ({
   moderationSourceVersion: 3,
 }));
 
-const mongooseSessionWithTransaction = vi.fn(async (cb: () => Promise<unknown>) =>
-  cb(),
+const mongooseSessionWithTransaction = vi.fn(
+  async (cb: () => Promise<unknown>) => cb(),
 );
 const mongooseSessionEnd = vi.fn();
 const mongooseStartSession = vi.fn(async () => ({
@@ -98,7 +102,9 @@ const moderationMetricsQueueAdd = vi.fn(async () => ({ id: "metrics-job-id" }));
 const contentPipelineRouterAdd = vi.fn(async () => ({ id: "pipeline-job-id" }));
 const contentPipelineRouterGetJob = vi.fn(async () => null);
 const emailQueueAdd = vi.fn(async () => ({ id: "email-job-id" }));
-const imageDeletionQueueAdd = vi.fn(async () => ({ id: "image-delete-job-id" }));
+const imageDeletionQueueAdd = vi.fn(async () => ({
+  id: "image-delete-job-id",
+}));
 const routeNotification = vi.fn(async () => undefined);
 const removeModeratedContent = vi.fn(async () => ({
   removed: false,
@@ -110,7 +116,10 @@ const sendUnbanNoticeEmail = vi.fn(async () => ({ sent: true }));
 const applyAdminReportModerationDecision = vi.fn(async () => undefined);
 const applyAdminContentModerationDecision = vi.fn(async () => undefined);
 const applyContentModerationDecision = vi.fn(async () => ({ applied: true }));
-const applyUserBan = vi.fn(async () => ({ createdBan: true, status: "SUSPENDED" }));
+const applyUserBan = vi.fn(async () => ({
+  createdBan: true,
+  status: "SUSPENDED",
+}));
 const assertAdminModerationTargetReady = vi.fn(async () => undefined);
 const runSideEffectWithRetry = vi.fn(
   async (_effectName: string, fn: () => Promise<unknown>) => ({
@@ -245,6 +254,11 @@ export const mockModerationUnitModules = {
       find: questionFind,
       findOne: questionFindOne,
       findOneAndUpdate: questionFindOneAndUpdate,
+    },
+  },
+  questionProcessingStateModel: {
+    default: {
+      updateOne: questionProcessingStateUpdateOne,
     },
   },
   questionVersionModel: {
@@ -450,7 +464,8 @@ export const mockModerationUnitModules = {
     addAdminModPoints,
   },
   questionModerationStatusService: {
-    syncQuestionModerationStatusFromVersions: questionSyncModerationStatusFromVersions,
+    syncQuestionModerationStatusFromVersions:
+      questionSyncModerationStatusFromVersions,
   },
 };
 
@@ -484,6 +499,7 @@ export const mockModerationUnitTestEnvironment = {
   questionFind,
   questionFindOne,
   questionFindOneAndUpdate,
+  questionProcessingStateUpdateOne,
   questionVersionFindOne,
   questionVersionFind,
   questionVersionFindOneAndUpdate,
@@ -578,12 +594,16 @@ export const resetModerationUnitTestEnvironment = () => {
   prismaBanCreate.mockReset();
   prismaBanUpdateMany.mockReset();
   prismaWarningDeleteMany.mockReset();
-  prismaTransaction.mockReset().mockImplementation(
-    async (cb: (tx: any) => Promise<unknown>) => cb(prismaMocks.transactionClient),
-  );
+  prismaTransaction
+    .mockReset()
+    .mockImplementation(async (cb: (tx: any) => Promise<unknown>) =>
+      cb(prismaMocks.transactionClient),
+    );
   redisGet.mockReset().mockResolvedValue(null);
   redisEval.mockReset().mockResolvedValue(0);
-  redisDel.mockReset().mockImplementation(async (...keys: string[]) => keys.length);
+  redisDel
+    .mockReset()
+    .mockImplementation(async (...keys: string[]) => keys.length);
 
   reportFindOne.mockReset();
   reportFindOneAndUpdate.mockReset();
@@ -592,6 +612,10 @@ export const resetModerationUnitTestEnvironment = () => {
   questionFind.mockReset();
   questionFindOne.mockReset();
   questionFindOneAndUpdate.mockReset();
+  questionProcessingStateUpdateOne.mockReset().mockResolvedValue({
+    matchedCount: 1,
+    modifiedCount: 1,
+  });
   questionVersionFindOne.mockReset();
   questionVersionFind.mockReset();
   questionVersionFindOneAndUpdate.mockReset();
@@ -611,9 +635,9 @@ export const resetModerationUnitTestEnvironment = () => {
     moderationStatus: "REJECTED",
     moderationSourceVersion: 3,
   });
-  mongooseSessionWithTransaction.mockReset().mockImplementation(
-    async (cb: () => Promise<unknown>) => cb(),
-  );
+  mongooseSessionWithTransaction
+    .mockReset()
+    .mockImplementation(async (cb: () => Promise<unknown>) => cb());
   mongooseSessionEnd.mockReset();
   mongooseStartSession.mockReset().mockResolvedValue({
     withTransaction: mongooseSessionWithTransaction,
@@ -627,12 +651,12 @@ export const resetModerationUnitTestEnvironment = () => {
   clearAnswerCache.mockReset().mockResolvedValue(undefined);
   clearReplyCache.mockReset().mockResolvedValue(undefined);
   clearVersionHistoryCache.mockReset().mockResolvedValue(undefined);
-  makeJobId.mockReset().mockImplementation((...parts: unknown[]) =>
-    parts.join("__"),
-  );
-  makeUniqueJobId.mockReset().mockImplementation(
-    (...parts: unknown[]) => `unique__${parts.join("__")}`,
-  );
+  makeJobId
+    .mockReset()
+    .mockImplementation((...parts: unknown[]) => parts.join("__"));
+  makeUniqueJobId
+    .mockReset()
+    .mockImplementation((...parts: unknown[]) => `unique__${parts.join("__")}`);
   moderationAuditQueueAdd.mockReset().mockResolvedValue({ id: "audit-job-id" });
   moderationMetricsQueueAdd
     .mockReset()
@@ -642,7 +666,9 @@ export const resetModerationUnitTestEnvironment = () => {
     .mockResolvedValue({ id: "pipeline-job-id" });
   contentPipelineRouterGetJob.mockReset().mockResolvedValue(null);
   emailQueueAdd.mockReset().mockResolvedValue({ id: "email-job-id" });
-  imageDeletionQueueAdd.mockReset().mockResolvedValue({ id: "image-delete-job-id" });
+  imageDeletionQueueAdd
+    .mockReset()
+    .mockResolvedValue({ id: "image-delete-job-id" });
   routeNotification.mockReset().mockResolvedValue(undefined);
   removeModeratedContent.mockReset().mockResolvedValue({
     removed: false,
@@ -653,18 +679,22 @@ export const resetModerationUnitTestEnvironment = () => {
   sendUnbanNoticeEmail.mockReset().mockResolvedValue({ sent: true });
   applyAdminReportModerationDecision.mockReset().mockResolvedValue(undefined);
   applyAdminContentModerationDecision.mockReset().mockResolvedValue(undefined);
-  applyContentModerationDecision.mockReset().mockResolvedValue({ applied: true });
+  applyContentModerationDecision
+    .mockReset()
+    .mockResolvedValue({ applied: true });
   applyUserBan
     .mockReset()
     .mockResolvedValue({ createdBan: true, status: "SUSPENDED" });
   assertAdminModerationTargetReady.mockReset().mockResolvedValue(undefined);
-  runSideEffectWithRetry.mockReset().mockImplementation(
-    async (_effectName: string, fn: () => Promise<unknown>) => ({
-      success: true,
-      attempts: 1,
-      result: await fn(),
-    }),
-  );
+  runSideEffectWithRetry
+    .mockReset()
+    .mockImplementation(
+      async (_effectName: string, fn: () => Promise<unknown>) => ({
+        success: true,
+        attempts: 1,
+        result: await fn(),
+      }),
+    );
   assertReportClaimIsCurrent.mockReset().mockResolvedValue(undefined);
   finalizeReportReview.mockReset().mockResolvedValue(undefined);
   resolveReportStatus.mockReset().mockResolvedValue(undefined);
@@ -685,7 +715,9 @@ export const resetModerationUnitTestEnvironment = () => {
   handleContentModerationBan.mockReset().mockResolvedValue(undefined);
   handleContentModerationWarn.mockReset().mockResolvedValue(undefined);
   handleContentModerationIgnore.mockReset().mockResolvedValue(undefined);
-  buildAiModerationNotificationMeta.mockReset().mockReturnValue({ action: "WARN" });
+  buildAiModerationNotificationMeta
+    .mockReset()
+    .mockReturnValue({ action: "WARN" });
   computeRiskScore.mockReset().mockReturnValue(4.5);
   calculateTempBanMs.mockReset().mockReturnValue(3_600_000);
   banNoticeHtml.mockReset().mockReturnValue("<ban-notice>");
