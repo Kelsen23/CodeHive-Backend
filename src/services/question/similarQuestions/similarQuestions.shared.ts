@@ -6,25 +6,15 @@ const denseCandidateLimit = 50;
 const aiAnswerSimilarQuestionScoreThreshold = 0.7;
 const aiAnswerSimilarQuestionResultLimit = 8;
 
-const downstreamAllowedSecurityVerifierStatuses = [
-  "NOT_REQUIRED",
-  "ALLOWED",
-  "ALLOWED_WITH_CONSTRAINTS",
-] as const;
+import {
+  downstreamAllowedSecurityVerifierStatuses,
+  eligibleQuestionProcessingStateMatch,
+  publicQuestionProcessingStateMatch,
+} from "../processingState/questionProcessingState.query.js";
 
-const currentLiveEligibleQuestionMatch = {
+const currentLiveQuestionMatch = {
   isActive: true,
   isDeleted: false,
-  moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
-  questionEligibilityStatus: "ALLOWED",
-  securityVerifierStatus: {
-    $in: downstreamAllowedSecurityVerifierStatuses,
-  },
-};
-
-const currentEligibleQuestionMatch = {
-  ...currentLiveEligibleQuestionMatch,
-  embeddingStatus: "READY",
 };
 
 type SimilarQuestionsJobData = {
@@ -37,8 +27,9 @@ export {
   aiAnswerSimilarQuestionResultLimit,
   aiAnswerSimilarQuestionScoreThreshold,
   downstreamAllowedSecurityVerifierStatuses,
-  currentEligibleQuestionMatch,
-  currentLiveEligibleQuestionMatch,
+  eligibleQuestionProcessingStateMatch,
+  publicQuestionProcessingStateMatch,
+  currentLiveQuestionMatch,
   denseCandidateLimit,
   similarQuestionResultLimit,
   similarQuestionScoreThreshold,

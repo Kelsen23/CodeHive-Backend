@@ -1,39 +1,3 @@
-type SecurityVerifierStatus =
-  | "NOT_REQUIRED"
-  | "PENDING"
-  | "PROCESSING"
-  | "ALLOWED"
-  | "ALLOWED_WITH_CONSTRAINTS"
-  | "REJECTED";
-
-const completedSecurityVerifierStatuses = new Set<SecurityVerifierStatus>([
-  "NOT_REQUIRED",
-  "ALLOWED",
-  "ALLOWED_WITH_CONSTRAINTS",
-]);
-
-const aiSuggestionEligibilityStatuses = new Set(["ALLOWED", "CLARIFY"]);
-
-const canGetAISuggestion = ({
-  questionEligibilityStatus,
-  securityVerifierStatus,
-}: Record<string, any>) =>
-  aiSuggestionEligibilityStatuses.has(questionEligibilityStatus) &&
-  completedSecurityVerifierStatuses.has(
-    securityVerifierStatus as SecurityVerifierStatus,
-  );
-
-const canGetAIAnswer = ({
-  questionEligibilityStatus,
-  securityVerifierStatus,
-  embeddingStatus,
-}: Record<string, any>) =>
-  questionEligibilityStatus === "ALLOWED" &&
-  completedSecurityVerifierStatuses.has(
-    securityVerifierStatus as SecurityVerifierStatus,
-  ) &&
-  embeddingStatus === "READY";
-
 const buildSecurityConstraintInstructions = ({
   securityVerifierStatus,
 }: {
@@ -56,8 +20,4 @@ const buildSecurityConstraintInstructions = ({
 `;
 };
 
-export {
-  buildSecurityConstraintInstructions,
-  canGetAIAnswer,
-  canGetAISuggestion,
-};
+export { buildSecurityConstraintInstructions };

@@ -14,7 +14,6 @@ type ContentFinalizeJobData = {
   tags?: string[];
   moderationStatus?: string;
   moderationUpdatedAt?: Date | null;
-  embeddingStatus?: string;
 };
 
 type MutableBodyEntity = {

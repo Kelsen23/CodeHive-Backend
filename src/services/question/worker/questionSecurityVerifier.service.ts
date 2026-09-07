@@ -1,6 +1,10 @@
 import verifyQuestionSecurity from "../ai/securityVerifier.service.js";
 import { queueAiSuggestionUnlockedNotification } from "../ai/unlockNotification.service.js";
 import { queueContentPipelineRoute } from "../pipelineRouter/pipelineRouting.service.js";
+import {
+  findOneAndUpdateQuestionProcessingState,
+  updateQuestionProcessingState,
+} from "../processingState/questionProcessingState.service.js";
 import queueQuestionGatewayAudit from "../questionEligibilityGate/queueQuestionGatewayAudit.service.js";
 import {
   buildFailClosedSecurityVerifierResult,
@@ -18,25 +22,24 @@ import { clearQuestionDiscoveryCache } from "../../../utils/cache/clearCache.uti
 
 import QuestionVersion from "../../../models/questionVersion.model.js";
 import Question from "../../../models/question.model.js";
+import QuestionProcessingState from "../../../models/questionProcessingState.model.js";
 
 const resetSecurityVerifierProcessing = async (
   questionId: string,
   version: number,
 ) => {
-  await Question.updateOne(
-    {
-      _id: questionId,
-      currentVersion: version,
+  await updateQuestionProcessingState({
+    questionId,
+    questionVersion: version,
+    match: {
       securityVerifierStatus: "PROCESSING",
     },
-    {
-      $set: {
-        securityVerifierStatus: "PENDING",
-        securityVerifierUpdatedAt: null,
-        securityVerifierSourceVersion: version,
-      },
+    set: {
+      securityVerifierStatus: "PENDING",
+      securityVerifierUpdatedAt: null,
+      securityVerifierSourceVersion: version,
     },
-  );
+  });
 };
 
 const queueSecurityVerifierSideEffects = async ({
@@ -89,33 +92,49 @@ const resumeSecurityVerifierSideEffects = async ({
   questionId,
   version,
 }: ProcessSecurityVerifierJobData) => {
-  const routedQuestion = await Question.findOne({
-    _id: questionId,
-    currentVersion: version,
-    isActive: true,
-    isDeleted: false,
-    questionEligibilityStatus: "ALLOWED",
-    securityVerifierSourceVersion: version,
-    securityVerifierStatus: {
-      $in: ["ALLOWED", "ALLOWED_WITH_CONSTRAINTS", "REJECTED"],
-    },
-  })
-    .select("userId securityVerifierStatus")
-    .lean<{
-      userId: string;
-      securityVerifierStatus:
-        | "ALLOWED"
-        | "ALLOWED_WITH_CONSTRAINTS"
-        | "REJECTED";
-    }>();
+  const [question, processingState] = await Promise.all([
+    Question.findOne({
+      _id: questionId,
+      currentVersion: version,
+      isActive: true,
+      isDeleted: false,
+    })
+      .select("userId")
+      .lean<{ userId: string }>(),
+    QuestionProcessingState.findOne({
+      questionId,
+      questionVersion: version,
+    })
+      .select(
+        "questionEligibilityStatus securityVerifierSourceVersion securityVerifierStatus",
+      )
+      .lean<{
+        questionEligibilityStatus: string;
+        securityVerifierSourceVersion: number;
+        securityVerifierStatus:
+          | "ALLOWED"
+          | "ALLOWED_WITH_CONSTRAINTS"
+          | "REJECTED";
+      }>(),
+  ]);
 
-  if (!routedQuestion) return;
+  if (!question) return;
+  if (!processingState) throw new Error("Question processing state missing");
+  if (
+    processingState.questionEligibilityStatus !== "ALLOWED" ||
+    processingState.securityVerifierSourceVersion !== version ||
+    !["ALLOWED", "ALLOWED_WITH_CONSTRAINTS", "REJECTED"].includes(
+      processingState.securityVerifierStatus,
+    )
+  ) {
+    return;
+  }
 
   await queueSecurityVerifierSideEffects({
     questionId,
     version,
-    userId: String(routedQuestion.userId),
-    securityVerifierStatus: routedQuestion.securityVerifierStatus,
+    userId: String(question.userId),
+    securityVerifierStatus: processingState.securityVerifierStatus,
   });
 };
 
@@ -123,26 +142,17 @@ const processQuestionSecurityVerifierJob = async ({
   questionId,
   version,
 }: ProcessSecurityVerifierJobData) => {
-  const lockedQuestion = await Question.findOneAndUpdate(
-    {
-      _id: questionId,
-      currentVersion: version,
-      isActive: true,
-      isDeleted: false,
+  const lockedState = await findOneAndUpdateQuestionProcessingState({
+    questionId,
+    questionVersion: version,
+    match: {
       questionEligibilityStatus: "ALLOWED",
       securityVerifierStatus: "PENDING",
     },
-    { $set: { securityVerifierStatus: "PROCESSING" } },
-    { returnDocument: "after" },
-  )
-    .select("_id currentVersion userId")
-    .lean<{
-      _id: unknown;
-      currentVersion: number;
-      userId: string;
-    }>();
+    set: { securityVerifierStatus: "PROCESSING" },
+  });
 
-  if (!lockedQuestion) {
+  if (!lockedState) {
     await resumeSecurityVerifierSideEffects({ questionId, version });
     return;
   }
@@ -150,20 +160,30 @@ const processQuestionSecurityVerifierJob = async ({
   let statusUpdated = false;
   let auditQueued = false;
   try {
-    const questionVersion = await QuestionVersion.findOne({
-      questionId,
-      version,
-      isActive: true,
-      moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
-    })
-      .select("title body tags")
-      .lean<{
-        title: string;
-        body: string;
-        tags: string[];
-      }>();
+    const [question, questionVersion] = await Promise.all([
+      Question.findOne({
+        _id: questionId,
+        currentVersion: version,
+        isActive: true,
+        isDeleted: false,
+      })
+        .select("userId")
+        .lean<{ userId: string }>(),
+      QuestionVersion.findOne({
+        questionId,
+        version,
+        isActive: true,
+        moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
+      })
+        .select("title body tags")
+        .lean<{
+          title: string;
+          body: string;
+          tags: string[];
+        }>(),
+    ]);
 
-    if (!questionVersion) {
+    if (!question || !questionVersion) {
       await resetSecurityVerifierProcessing(questionId, version);
       return;
     }
@@ -186,21 +206,19 @@ const processQuestionSecurityVerifierJob = async ({
       version,
     );
     const updatedAt = new Date();
-    const updateResult = await Question.updateOne(
-      {
-        _id: questionId,
-        currentVersion: version,
+    const updateResult = await updateQuestionProcessingState({
+      questionId,
+      questionVersion: version,
+      match: {
         questionEligibilityStatus: "ALLOWED",
         securityVerifierStatus: "PROCESSING",
       },
-      {
-        $set: {
-          securityVerifierStatus: nextSecurityVerifierStatus,
-          securityVerifierUpdatedAt: updatedAt,
-          securityVerifierSourceVersion: version,
-        },
+      set: {
+        securityVerifierStatus: nextSecurityVerifierStatus,
+        securityVerifierUpdatedAt: updatedAt,
+        securityVerifierSourceVersion: version,
       },
-    );
+    });
 
     if (updateResult.modifiedCount === 0) return;
     statusUpdated = true;
@@ -209,7 +227,7 @@ const processQuestionSecurityVerifierJob = async ({
       decisionId: auditDecisionId,
       questionId,
       version,
-      userId: String(lockedQuestion.userId),
+      userId: String(question.userId),
       stage: "QUESTION_SECURITY_VERIFIER",
       decision:
         questionGatewayAuditDecisionBySecurityDecision[
@@ -231,7 +249,7 @@ const processQuestionSecurityVerifierJob = async ({
     await queueSecurityVerifierSideEffects({
       questionId,
       version,
-      userId: String(lockedQuestion.userId),
+      userId: String(question.userId),
       securityVerifierStatus: nextSecurityVerifierStatus,
     });
   } catch (error) {

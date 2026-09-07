@@ -2,7 +2,6 @@ import type { CreditCharge } from "../../user/credits/credits.types.js";
 
 import contextualAnswerService from "../ai/answer/contextualAnswer.service.js";
 import fullAnswerService from "../ai/answer/fullAnswer.service.js";
-import { canGetAIAnswer } from "../ai/questionAiHelp.shared.js";
 import refundCreditCharge from "../../user/credits/refundCreditCharge.service.js";
 import {
   aiAnswerSimilarQuestionResultLimit,
@@ -18,6 +17,7 @@ import publishSocketEvent from "../../../utils/socket/publishSocketEvent.util.js
 
 import Question from "../../../models/question.model.js";
 import QuestionEmbedding from "../../../models/questionEmbedding.model.js";
+import QuestionProcessingState from "../../../models/questionProcessingState.model.js";
 
 type ProcessAiAnswerJobData = {
   userId: string;
@@ -38,11 +38,21 @@ const processQuestionAiAnswerJob = async ({
   const cancelKey = getAiAnswerCancelKey(questionId, version);
 
   try {
-    const foundQuestion = await Question.findById(questionId)
-      .select(
-        "_id isActive isDeleted currentVersion title body tags moderationStatus embeddingStatus questionEligibilityStatus securityVerifierStatus",
-      )
-      .lean();
+    const [foundQuestion, processingState, embedding] = await Promise.all([
+      Question.findById(questionId)
+        .select("_id isActive isDeleted currentVersion title body tags")
+        .lean(),
+      QuestionProcessingState.findOne({ questionId, questionVersion: version })
+        .select(
+          "moderationStatus embeddingStatus canGetAIAnswer securityVerifierStatus",
+        )
+        .lean(),
+      QuestionEmbedding.findOne({
+        questionId,
+        version,
+        representationVersion: "dense-v1",
+      }).lean(),
+    ]);
 
     if (!foundQuestion) throw new Error("Question not found");
 
@@ -53,26 +63,25 @@ const processQuestionAiAnswerJob = async ({
       throw new Error("Not current version");
     }
 
+    if (!processingState) throw new Error("Question processing state missing");
+
     if (
-      !["APPROVED", "FLAGGED"].includes(String(foundQuestion.moderationStatus))
+      !["APPROVED", "FLAGGED"].includes(
+        String(processingState.moderationStatus),
+      )
     ) {
       throw new Error("Question is not eligible for AI answer");
     }
 
-    const embedding = await QuestionEmbedding.findOne({
-      questionId,
-      version,
-      representationVersion: "dense-v1",
-    }).lean();
     if (!embedding?.vector?.length) {
       throw new Error("Question does not have embedding");
     }
 
-    if (foundQuestion.embeddingStatus !== "READY") {
+    if (processingState.embeddingStatus !== "READY") {
       throw new Error("Embedding not ready");
     }
 
-    if (!canGetAIAnswer(foundQuestion)) {
+    if (!processingState.canGetAIAnswer) {
       throw new Error("Question is not eligible for AI answer");
     }
 
@@ -102,7 +111,7 @@ const processQuestionAiAnswerJob = async ({
         String(foundQuestion.body ?? ""),
         version,
         {
-          securityVerifierStatus: foundQuestion.securityVerifierStatus,
+          securityVerifierStatus: processingState.securityVerifierStatus,
         },
       );
     } else {
@@ -114,7 +123,7 @@ const processQuestionAiAnswerJob = async ({
         String(foundQuestion.body ?? ""),
         version,
         {
-          securityVerifierStatus: foundQuestion.securityVerifierStatus,
+          securityVerifierStatus: processingState.securityVerifierStatus,
         },
       );
     }

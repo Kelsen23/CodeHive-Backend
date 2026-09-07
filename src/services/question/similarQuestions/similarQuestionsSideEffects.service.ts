@@ -2,6 +2,8 @@ import routeNotification from "../../notification/routeNotification.service.js";
 
 import { getRedisCacheClient } from "../../../config/redis.config.js";
 
+import { clearQuestionDiscoveryCache } from "../../../utils/cache/clearCache.util.js";
+
 const runSimilarQuestionsReadySideEffects = async ({
   questionId,
   version,
@@ -19,6 +21,7 @@ const runSimilarQuestionsReadySideEffects = async ({
     `question:${questionId}`,
     `similarQuestions:${questionId}`,
   );
+  await clearQuestionDiscoveryCache();
 
   if (notify)
     await routeNotification({

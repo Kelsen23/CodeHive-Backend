@@ -4,28 +4,22 @@ import type {
 } from "../retrieval.types.js";
 
 import {
-  currentLiveEligibleQuestionMatch,
+  loadCurrentLiveEligibleQuestionVersions,
   loadCurrentLiveEligibleQuestionVersionsById,
 } from "../dense/denseCorpus.service.js";
 
-import Question from "../../../../../models/question.model.js";
 import QuestionVersion from "../../../../../models/questionVersion.model.js";
 
 const loadCurrentEligibleQuestionDocuments = async () => {
-  const questions = await Question.find(currentLiveEligibleQuestionMatch)
-    .select("_id currentVersion")
-    .lean<{ _id: unknown; currentVersion: number }[]>();
+  const questions = await loadCurrentLiveEligibleQuestionVersions();
 
   if (questions.length === 0) return [];
 
   const currentVersions = new Map(
-    questions.map((question) => [
-      String(question._id),
-      question.currentVersion,
-    ]),
+    questions.map((question) => [question.questionId, question.version]),
   );
   const versions = await QuestionVersion.find({
-    questionId: { $in: questions.map(({ _id }) => _id) },
+    questionId: { $in: questions.map(({ questionId }) => questionId) },
     isActive: true,
   })
     .select("questionId version title body tags")

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 import { queueContentPipelineRoute } from "../pipelineRouter/pipelineRouting.service.js";
+import { updateQuestionProcessingState } from "../processingState/questionProcessingState.service.js";
 import { toPublicQuestionVersion } from "../question.response.js";
 
 import { getRedisCacheClient } from "../../../config/redis.config.js";
@@ -13,6 +14,7 @@ import {
 
 import Question from "../../../models/question.model.js";
 import QuestionVersion from "../../../models/questionVersion.model.js";
+import QuestionProcessingState from "../../../models/questionProcessingState.model.js";
 
 const moderationSeverity = {
   PENDING: 0,
@@ -76,11 +78,20 @@ const rollbackVersion = async (
 
   const session = await mongoose.startSession();
 
-  const { nextVersion, createdNewVersion } = await session.withTransaction(
-    async () => {
+  let transactionResult;
+  try {
+    transactionResult = await session.withTransaction(async () => {
       const freshQuestion =
         await Question.findById(questionId).session(session);
       if (!freshQuestion) throw new HttpError("Question not found", 404);
+
+      const freshProcessingState = await QuestionProcessingState.findOne({
+        questionId,
+        questionVersion: Number(freshQuestion.currentVersion),
+      }).session(session);
+      if (!freshProcessingState) {
+        throw new Error("Question processing state missing or stale");
+      }
 
       const nextVersion = Number(freshQuestion.currentVersion) + 1;
       const rolledBackVersionIsPending =
@@ -88,7 +99,8 @@ const rollbackVersion = async (
       const rolledBackVersionIsWorse =
         moderationSeverity[foundVersion.moderationStatus as ModerationStatus] >=
         moderationSeverity[
-          (freshQuestion.moderationStatus as ModerationStatus) ?? "PENDING"
+          (freshProcessingState.moderationStatus as ModerationStatus) ??
+            "PENDING"
         ];
 
       await QuestionVersion.updateMany(
@@ -134,21 +146,32 @@ const rollbackVersion = async (
           currentVersion: nextVersion,
           basedOnVersion: foundVersion.version,
           lastRollbackVersion: foundVersion.version,
+        },
+        { session },
+      );
+
+      const processingStateUpdate = await updateQuestionProcessingState({
+        questionId,
+        questionVersion: Number(freshQuestion.currentVersion),
+        set: {
+          questionVersion: nextVersion,
           moderationStatus: rolledBackVersionIsPending
             ? "PENDING"
             : rolledBackVersionIsWorse
               ? foundVersion.moderationStatus
-              : freshQuestion.moderationStatus,
+              : freshProcessingState.moderationStatus,
           moderationUpdatedAt: rolledBackVersionIsPending
             ? null
             : rolledBackVersionIsWorse
               ? (foundVersion.moderationUpdatedAt ?? null)
-              : (freshQuestion.moderationUpdatedAt ?? null),
+              : (freshProcessingState.moderationUpdatedAt ?? null),
           moderationSourceVersion: rolledBackVersionIsPending
             ? nextVersion
             : rolledBackVersionIsWorse
               ? nextVersion
-              : Number(freshQuestion.moderationSourceVersion ?? nextVersion),
+              : Number(
+                  freshProcessingState.moderationSourceVersion ?? nextVersion,
+                ),
           questionEligibilityStatus: "PENDING",
           questionEligibilityUpdatedAt: null,
           questionEligibilitySourceVersion: nextVersion,
@@ -160,14 +183,21 @@ const rollbackVersion = async (
           similarQuestionsComputedAt: null,
           similarQuestionsComputedVersion: null,
         },
-        { session },
-      );
+        session,
+      });
+
+      if (processingStateUpdate.matchedCount !== 1) {
+        throw new Error("Question processing state changed during rollback");
+      }
 
       return { nextVersion, createdNewVersion };
-    },
-  );
+    });
+  } finally {
+    await session.endSession();
+  }
 
-  session.endSession();
+  if (!transactionResult) throw new Error("Rollback transaction failed");
+  const { nextVersion, createdNewVersion } = transactionResult;
 
   await getRedisCacheClient().del(
     `question:${questionId}`,

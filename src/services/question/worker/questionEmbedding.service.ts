@@ -81,9 +81,10 @@ const processQuestionEmbeddingJob = async ({
     });
 
     if (updated.questionUpdated) {
-      await runReadySideEffectsIfCurrent({
+      await runQuestionEmbeddingReadySideEffects({
         questionId,
         version,
+        userId: String(questionVersion.userId),
       });
     }
 
@@ -107,9 +108,10 @@ const processQuestionEmbeddingJob = async ({
 
   if (!updated.questionUpdated) return;
 
-  await runReadySideEffectsIfCurrent({
+  await runQuestionEmbeddingReadySideEffects({
     questionId,
     version,
+    userId: String(questionVersion.userId),
   });
 };
 

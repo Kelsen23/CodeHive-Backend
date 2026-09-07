@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 import type {
   DenseEmbeddingRecord,
   EligibleQuestionVersion,
@@ -5,8 +7,8 @@ import type {
 
 import { denseRepresentationVersion } from "../../../embedding/dense/questionEmbedding.shared.js";
 import {
-  currentEligibleQuestionMatch,
-  currentLiveEligibleQuestionMatch,
+  eligibleQuestionProcessingStateMatch,
+  publicQuestionProcessingStateMatch,
 } from "../../similarQuestions.shared.js";
 import {
   buildDenseAnnIndex,
@@ -15,6 +17,7 @@ import {
 
 import Question from "../../../../../models/question.model.js";
 import QuestionEmbedding from "../../../../../models/questionEmbedding.model.js";
+import QuestionProcessingState from "../../../../../models/questionProcessingState.model.js";
 
 const denseAnnIndexMaxAgeMs = 5 * 60 * 1000;
 const denseAnnCandidateOversampleFactor = 5;
@@ -23,16 +26,70 @@ const denseAnnIndexCache = new Map<
   { builtAt: number; promise: Promise<DenseAnnIndex | null> }
 >();
 
-const loadCurrentEligibleQuestionVersions = async () => {
-  const questions = await Question.find(currentEligibleQuestionMatch)
-    .select("_id currentVersion")
-    .lean<{ _id: unknown; currentVersion: number }[]>();
+const loadEligibleQuestionVersions = async ({
+  questionIds,
+  requireEmbedding,
+}: {
+  questionIds?: string[];
+  requireEmbedding: boolean;
+}) => {
+  if (questionIds?.length === 0) return [];
 
-  return questions.map<EligibleQuestionVersion>((question) => ({
-    questionId: String(question._id),
-    version: question.currentVersion,
+  const states = await QuestionProcessingState.aggregate<{
+    questionId: unknown;
+    questionVersion: number;
+  }>([
+    {
+      $match: {
+        ...(requireEmbedding
+          ? eligibleQuestionProcessingStateMatch
+          : publicQuestionProcessingStateMatch),
+        ...(questionIds
+          ? {
+              questionId: {
+                $in: questionIds.map((id) => new mongoose.Types.ObjectId(id)),
+              },
+            }
+          : {}),
+      },
+    },
+    {
+      $lookup: {
+        from: Question.collection.name,
+        let: { questionId: "$questionId", version: "$questionVersion" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$_id", "$$questionId"] },
+                  { $eq: ["$currentVersion", "$$version"] },
+                  { $eq: ["$isActive", true] },
+                  { $eq: ["$isDeleted", false] },
+                ],
+              },
+            },
+          },
+          { $project: { _id: 1 } },
+        ],
+        as: "question",
+      },
+    },
+    { $unwind: "$question" },
+    { $project: { _id: 0, questionId: 1, questionVersion: 1 } },
+  ]);
+
+  return states.map<EligibleQuestionVersion>((state) => ({
+    questionId: String(state.questionId),
+    version: state.questionVersion,
   }));
 };
+
+const loadCurrentEligibleQuestionVersions = async () =>
+  loadEligibleQuestionVersions({ requireEmbedding: true });
+
+const loadCurrentLiveEligibleQuestionVersions = async () =>
+  loadEligibleQuestionVersions({ requireEmbedding: false });
 
 const streamDenseEmbeddings = ({ model }: { model: string }) =>
   QuestionEmbedding.find({
@@ -91,46 +148,21 @@ const searchDenseEmbeddings = async ({
 const loadCurrentEligibleQuestionVersionsById = async (
   questionIds: string[],
 ) => {
-  if (questionIds.length === 0) return [];
-
-  const questions = await Question.find({
-    _id: { $in: questionIds },
-    ...currentEligibleQuestionMatch,
-  })
-    .select("_id currentVersion")
-    .lean<{ _id: unknown; currentVersion: number }[]>();
-
-  return questions.map<EligibleQuestionVersion>((question) => ({
-    questionId: String(question._id),
-    version: question.currentVersion,
-  }));
+  return loadEligibleQuestionVersions({ questionIds, requireEmbedding: true });
 };
 
 const loadCurrentLiveEligibleQuestionVersionsById = async (
   questionIds: string[],
 ) => {
-  if (questionIds.length === 0) return [];
-
-  const questions = await Question.find({
-    _id: { $in: questionIds },
-    ...currentLiveEligibleQuestionMatch,
-  })
-    .select("_id currentVersion")
-    .lean<{ _id: unknown; currentVersion: number }[]>();
-
-  return questions.map<EligibleQuestionVersion>((question) => ({
-    questionId: String(question._id),
-    version: question.currentVersion,
-  }));
+  return loadEligibleQuestionVersions({ questionIds, requireEmbedding: false });
 };
 
 export {
-  currentEligibleQuestionMatch,
-  currentLiveEligibleQuestionMatch,
   denseRepresentationVersion,
   denseAnnIndexMaxAgeMs,
   loadCurrentEligibleQuestionVersions,
   loadCurrentEligibleQuestionVersionsById,
+  loadCurrentLiveEligibleQuestionVersions,
   loadCurrentLiveEligibleQuestionVersionsById,
   searchDenseEmbeddings,
   streamDenseEmbeddings,

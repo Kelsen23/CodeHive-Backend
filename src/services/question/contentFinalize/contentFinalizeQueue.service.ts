@@ -63,7 +63,6 @@ const queueQuestionContentFinalize = async ({
   tags,
   moderationStatus,
   moderationUpdatedAt,
-  embeddingStatus,
 }: {
   userId: string;
   entityId: string;
@@ -74,7 +73,6 @@ const queueQuestionContentFinalize = async ({
   tags: string[];
   moderationStatus?: string;
   moderationUpdatedAt?: Date | null;
-  embeddingStatus?: string;
 }) => {
   const jobId = makeJobId("contentFinalize", "QUESTION", entityId, version);
   const alreadyQueued = await ensureJobIsQueued({
@@ -96,7 +94,6 @@ const queueQuestionContentFinalize = async ({
       tags,
       moderationStatus,
       moderationUpdatedAt,
-      embeddingStatus,
     },
     {
       removeOnComplete: true,

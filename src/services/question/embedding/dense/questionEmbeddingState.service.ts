@@ -4,10 +4,15 @@ import {
   denseRepresentationVersion,
   downstreamAllowedSecurityVerifierStatuses,
 } from "./questionEmbedding.shared.js";
+import {
+  findOneAndUpdateQuestionProcessingState,
+  updateQuestionProcessingState,
+} from "../../processingState/questionProcessingState.service.js";
 
 import Question from "../../../../models/question.model.js";
 import QuestionVersion from "../../../../models/questionVersion.model.js";
 import QuestionEmbedding from "../../../../models/questionEmbedding.model.js";
+import QuestionProcessingState from "../../../../models/questionProcessingState.model.js";
 
 type LockedEmbeddingQuestion = {
   _id: unknown;
@@ -15,18 +20,17 @@ type LockedEmbeddingQuestion = {
 };
 
 type EmbeddingQuestionVersion = {
+  userId: unknown;
   title: string;
   body: string;
   tags: string[];
 };
 
 const lockQuestionForEmbedding = async (questionId: string, version: number) =>
-  Question.findOneAndUpdate(
-    {
-      _id: questionId,
-      currentVersion: version,
-      isActive: true,
-      isDeleted: false,
+  findOneAndUpdateQuestionProcessingState({
+    questionId,
+    questionVersion: version,
+    match: {
       moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
       questionEligibilityStatus: "ALLOWED",
       securityVerifierStatus: {
@@ -34,35 +38,49 @@ const lockQuestionForEmbedding = async (questionId: string, version: number) =>
       },
       embeddingStatus: "NONE",
     },
-    { $set: { embeddingStatus: "PROCESSING" } },
-    { returnDocument: "after" },
-  ).lean<LockedEmbeddingQuestion>();
+    set: { embeddingStatus: "PROCESSING" },
+  });
 
 const loadCurrentQuestionVersionForEmbedding = async (
   questionId: string,
   version: number,
-) =>
-  QuestionVersion.findOne({
-    questionId,
-    version,
-    isActive: true,
-    moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
-  })
-    .select("title body tags")
-    .lean<EmbeddingQuestionVersion>();
+) => {
+  const [question, questionVersion] = await Promise.all([
+    Question.findOne({
+      _id: questionId,
+      currentVersion: version,
+      isActive: true,
+      isDeleted: false,
+    })
+      .select("userId")
+      .lean<{ userId: unknown }>(),
+    QuestionVersion.findOne({
+      questionId,
+      version,
+      isActive: true,
+      moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
+    })
+      .select("title body tags")
+      .lean<Omit<EmbeddingQuestionVersion, "userId">>(),
+  ]);
+
+  return question && questionVersion
+    ? { ...questionVersion, userId: question.userId }
+    : null;
+};
 
 const resetQuestionEmbeddingProcessing = async (
   questionId: string,
   version: number,
 ) =>
-  Question.updateOne(
-    {
-      _id: questionId,
-      currentVersion: version,
+  updateQuestionProcessingState({
+    questionId,
+    questionVersion: version,
+    match: {
       embeddingStatus: "PROCESSING",
     },
-    { $set: { embeddingStatus: "NONE" } },
-  );
+    set: { embeddingStatus: "NONE" },
+  });
 
 const finalizeQuestionEmbedding = async ({
   questionId,
@@ -80,6 +98,28 @@ const finalizeQuestionEmbedding = async ({
 
   try {
     const embeddingResult = await session.withTransaction(async () => {
+      const questionUpdate = await updateQuestionProcessingState({
+        questionId,
+        questionVersion: version,
+        match: {
+          moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
+          questionEligibilityStatus: "ALLOWED",
+          securityVerifierStatus: {
+            $in: downstreamAllowedSecurityVerifierStatuses,
+          },
+          embeddingStatus: "PROCESSING",
+        },
+        set: {
+          embeddingStatus: "READY",
+          similarQuestionsStatus: "NONE",
+          similarQuestionsComputedAt: null,
+          similarQuestionsComputedVersion: null,
+        },
+        session,
+      });
+
+      if (questionUpdate.matchedCount !== 1) return null;
+
       const result = await QuestionEmbedding.updateOne(
         {
           questionId,
@@ -99,37 +139,12 @@ const finalizeQuestionEmbedding = async ({
         { upsert: true, session },
       );
 
-      if (result.acknowledged) {
-        const questionUpdate = await Question.updateOne(
-          {
-            _id: questionId,
-            currentVersion: version,
-            isActive: true,
-            isDeleted: false,
-            moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
-            questionEligibilityStatus: "ALLOWED",
-            securityVerifierStatus: {
-              $in: downstreamAllowedSecurityVerifierStatuses,
-            },
-            embeddingStatus: "PROCESSING",
-          },
-          {
-            $set: {
-              embeddingStatus: "READY",
-              similarQuestionsStatus: "NONE",
-              similarQuestionsComputedAt: null,
-              similarQuestionsComputedVersion: null,
-            },
-          },
-          { session },
-        );
-        questionUpdated = questionUpdate.matchedCount === 1;
-      }
+      questionUpdated = result.acknowledged;
 
       return result;
     });
 
-    return { ...embeddingResult, questionUpdated };
+    return { ...(embeddingResult ?? {}), questionUpdated };
   } finally {
     await session.endSession();
   }
@@ -138,21 +153,42 @@ const finalizeQuestionEmbedding = async ({
 const loadReadyQuestionForEmbeddingSideEffects = async (
   questionId: string,
   version: number,
-) =>
-  Question.findOne({
-    _id: questionId,
-    currentVersion: version,
-    isActive: true,
-    isDeleted: false,
-    moderationStatus: { $in: ["APPROVED", "FLAGGED"] },
-    questionEligibilityStatus: "ALLOWED",
-    securityVerifierStatus: {
-      $in: downstreamAllowedSecurityVerifierStatuses,
-    },
-    embeddingStatus: "READY",
-  })
-    .select("userId")
-    .lean<{ userId: unknown }>();
+) => {
+  const [question, state] = await Promise.all([
+    Question.findOne({
+      _id: questionId,
+      currentVersion: version,
+      isActive: true,
+      isDeleted: false,
+    })
+      .select("userId")
+      .lean<{ userId: unknown }>(),
+    QuestionProcessingState.findOne({
+      questionId,
+      questionVersion: version,
+    })
+      .select(
+        "moderationStatus questionEligibilityStatus securityVerifierStatus embeddingStatus",
+      )
+      .lean<{
+        moderationStatus: string;
+        questionEligibilityStatus: string;
+        securityVerifierStatus: string;
+        embeddingStatus: string;
+      }>(),
+  ]);
+
+  if (!question) return null;
+  if (!state) throw new Error("Question processing state missing");
+  return ["APPROVED", "FLAGGED"].includes(state.moderationStatus) &&
+    state.questionEligibilityStatus === "ALLOWED" &&
+    downstreamAllowedSecurityVerifierStatuses.includes(
+      state.securityVerifierStatus as (typeof downstreamAllowedSecurityVerifierStatuses)[number],
+    ) &&
+    state.embeddingStatus === "READY"
+    ? question
+    : null;
+};
 
 export {
   finalizeQuestionEmbedding,

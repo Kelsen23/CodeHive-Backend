@@ -5,27 +5,19 @@ import type {
 } from "../retrieval.types.js";
 
 import {
-  currentLiveEligibleQuestionMatch,
+  loadCurrentLiveEligibleQuestionVersions,
   loadCurrentLiveEligibleQuestionVersionsById,
 } from "../dense/denseCorpus.service.js";
 
 import spladeConfig from "../../../../../config/splade.config.js";
-import Question from "../../../../../models/question.model.js";
 import QuestionSparseEmbedding from "../../../../../models/questionSparseEmbedding.model.js";
 
 const sparseRepresentationVersion = "splade-v1";
 const sparseModel = spladeConfig.model;
 
-const loadCurrentEligibleQuestionVersions = async () => {
-  const questions = await Question.find(currentLiveEligibleQuestionMatch)
-    .select("_id currentVersion")
-    .lean<{ _id: unknown; currentVersion: number }[]>();
-
-  return questions.map<EligibleQuestionVersion>((question) => ({
-    questionId: String(question._id),
-    version: question.currentVersion,
-  }));
-};
+const loadCurrentEligibleQuestionVersions = async (): Promise<
+  EligibleQuestionVersion[]
+> => loadCurrentLiveEligibleQuestionVersions();
 
 const streamSparseEmbeddings = ({ model }: { model: string }) =>
   QuestionSparseEmbedding.find({
